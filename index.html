@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Khata - Mess Account Manager</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- pdfMake for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
+        body { font-family: 'Noto Sans Bengali', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .brand-font { font-family: 'Poppins', sans-serif; }
+        .toast-notification { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { 
+            from { transform: translateX(100%); opacity: 0; } 
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <div class="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <!-- Header & Logo Section -->
+        <div class="flex items-center justify-center gap-3 mb-6 border-b pb-4">
+            <svg class="w-10 h-10 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                <path d="M12 6a3 3 0 0 0-3 3v2h6V9a3 3 0 0 0-3-3z"/>
+                <path d="M9 11v3"/>
+                <path d="M15 11v3"/>
+            </svg>
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-bold brand-font text-emerald-600 tracking-wide">Meal Khata</h1>
+                <p class="text-xs text-gray-500 font-medium">স্মার্ট মেস ও মিল ম্যানেজমেন্ট সিস্টেম</p>
+            </div>
+        </div>
+
+        <!-- Top Overview Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-blue-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">💳 মোট খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-expense">0</span></p>
+            </div>
+            <div class="bg-emerald-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">🛒 মোট বাজার খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-bazar">0</span></p>
+            </div>
+            <div class="bg-indigo-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">📠 মোট ফিক্সড খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-fixed">0</span></p>
+            </div>
+            <div class="bg-amber-500 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">🍚 মোট মিল</p>
+                <p class="text-lg md:text-xl font-bold"><span id="total-meals">0</span></p>
+            </div>
+            <div class="bg-rose-500 p-4 rounded text-center shadow-xs text-white col-span-2 md:col-span-1">
+                <p class="text-xs md:text-sm font-medium opacity-90">📈 মিল রেট</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="meal-rate">0.00</span></p>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap gap-2 mb-6 border-b pb-3">
+            <button onclick="switchTab('tab-meals')" id="btn-tab-meals" class="tab-btn px-4 py-2 rounded-md font-medium bg-emerald-600 text-white">🥣 দৈনিক মিল</button>
+            <button onclick="switchTab('tab-bazar')" id="btn-tab-bazar" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🛒 বাজার খরচ</button>
+            <button onclick="switchTab('tab-fixed')" id="btn-tab-fixed" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🏠 ফিক্সড খরচ</button>
+            <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">📊 হিসাব ও রিপোর্ট</button>
+            <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">👥 সদস্যগণ</button>
+        </div>
+
+        <!-- Tab 1: Daily Meals -->
+        <div id="tab-meals" class="tab-content">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">🥣 দৈনিক মিল এন্ট্রি</h2>
+                <div class="space-y-3">
+                    <input id="meal-date" type="date" class="border bg-white p-2 rounded-md w-full">
+                    <select id="meal-member-select" class="border p-2 rounded-md w-full bg-white"></select>
+                    <input id="meal-count" type="number" step="0.5" placeholder="মিলের সংখ্যা (যেমন: ১, ১.৫, ২)" class="border bg-white p-2 rounded-md w-full">
+                    <button onclick="addMeals()" class="w-full bg-amber-500 text-white py-2 rounded-md font-medium hover:bg-amber-600">মিল সংরক্ষণ করুন</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক মিলের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
+                    <button onclick="downloadMealsPDF()" class="bg-amber-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-amber-700 text-sm flex items-center gap-1">
+                        📄 মিল রিপোর্ট PDF ডাউনলোড
+                    </button>
+                </div>
+                <div id="meals-grid-container" class="overflow-x-auto"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Bazar Expenses -->
+        <div id="tab-bazar" class="tab-content hidden">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">🛒 বাজার খরচ যোগ করুন</h2>
+                <div class="space-y-3">
+                    <input id="bazar-date" type="date" class="border bg-white p-2 rounded-md w-full">
+                    <select id="bazar-member-select" class="border p-2 rounded-md w-full bg-white"></select>
+                    <input id="bazar-desc" type="text" placeholder="বাজারের বিবরণ (যেমন: চাল, মুরগি, তেল)" class="border bg-white p-2 rounded-md w-full">
+                    <input id="bazar-amount" type="number" placeholder="টাকার পরিমাণ (টাকা)" class="border bg-white p-2 rounded-md w-full">
+                    <button onclick="addBazar()" class="w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">খরচ যোগ করুন</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">🛒 বাজারের তালিকা (তারিখ অনুযায়ী সর্টিং)</h2>
+                    <button onclick="downloadBazarPDF()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-emerald-700 text-sm flex items-center gap-1">
+                        📄 বাজার রিপোর্ট PDF ডাউনলোড
+                    </button>
+                </div>
+                <table class="w-full text-left border-collapse bg-white mb-3">
+                    <thead>
+                        <tr class="bg-emerald-700 text-white text-sm">
+                            <th class="p-2 border">তারিখ</th>
+                            <th class="p-2 border">সদস্য</th>
+                            <th class="p-2 border">বিবরণ</th>
+                            <th class="p-2 border">টাকা</th>
+                            <th class="p-2 border text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bazar-log-table-body" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-emerald-100 font-bold text-gray-800">
+                            <td colspan="3" class="p-2 border text-right">সর্বমোট বাজার খরচ:</td>
+                            <td class="p-2 border text-emerald-900">৳<span id="table-total-bazar">0</span></td>
+                            <td class="p-2 border"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 3: Fixed Costs -->
+        <div id="tab-fixed" class="tab-content hidden">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-1 text-gray-700">🏠 ফিক্সড খরচ ড্যাশবোর্ড</h2>
+                <p class="text-xs text-gray-500 mb-4">সদস্যদের বাসা ভাড়ার আলাদা পরিমাণ ইনপুট দিন এবং ইউটিলিটি বিলগুলো সবার মধ্যে সমানভাবে বন্টন করুন।</p>
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">🏢 বাসা ভাড়া (ব্যক্তিগত)</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="fixed-rent-inputs"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">⚡ অন্যান্য ইউটিলিটি বিল (সবার মাঝে সমানভাবে বণ্টন হবে)</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">⚡ বিদ্যুৎ বিল</label>
+                                <input type="number" id="bill-electricity" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">🧹 বুয়া বিল</label>
+                                <input type="number" id="bill-maid" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">📶 ওয়াইফাই বিল</label>
+                                <input type="number" id="bill-wifi" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">⚙️ অন্যান্য বিল</label>
+                                <input type="number" id="bill-others" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="saveFixedCosts()" class="mt-5 bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700">ফিক্সড খরচ সংরক্ষণ করুন</button>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2">📋 সদস্যদের ফিক্সড খরচের সমবণ্টন তালিকা</h3>
+                <table class="w-full text-left border-collapse bg-white">
+                    <thead>
+                        <tr class="bg-indigo-700 text-white text-sm">
+                            <th class="p-3 border">সদস্যের নাম</th>
+                            <th class="p-3 border">ব্যক্তিগত বাসা ভাড়া</th>
+                            <th class="p-3 border">ইউটিলিটি শেয়ার (সমবণ্টন)</th>
+                            <th class="p-3 border">সর্বমোট ফিক্সড খরচ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-indigo-100 font-bold text-gray-800 text-sm">
+                            <td class="p-3 border text-right">সর্বমোট:</td>
+                            <td class="p-3 border" id="foot-total-rent">৳0</td>
+                            <td class="p-3 border" id="foot-total-utility">৳0</td>
+                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 4: Summary & All-in-One Report -->
+        <div id="tab-summary" class="tab-content hidden">
+            <div class="overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b pb-3">
+                    <h2 class="text-xl font-bold text-gray-700">📊 মাসিক ব্যালেন্স শীট ও রিপোর্ট</h2>
+                    <button onclick="downloadAllInOnePDF()" class="bg-blue-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-blue-800 text-sm shadow flex items-center gap-2">
+                        📄 সম্পূর্ণ সম্মিলিত রিপোর্ট (All-in-One PDF)
+                    </button>
+                </div>
+                <table class="w-full text-left border-collapse bg-white mb-3">
+                    <thead>
+                        <tr class="bg-blue-900 text-white text-sm">
+                            <th class="p-3 border">সদস্য</th>
+                            <th class="p-3 border">মোট মিল</th>
+                            <th class="p-3 border">মিলের খরচ</th>
+                            <th class="p-3 border">বাসা ভাড়া</th>
+                            <th class="p-3 border">ইউটিলিটি</th>
+                            <th class="p-3 border">মোট খরচ</th>
+                            <th class="p-3 border">জমা (বাজার)</th>
+                            <th class="p-3 border">অবস্থা</th>
+                            <th class="p-3 border text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calculation-table-body" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-blue-100 font-bold text-gray-900 text-sm">
+                            <td class="p-3 border">সর্বমোট:</td>
+                            <td class="p-3 border" id="summary-foot-meals">0</td>
+                            <td class="p-3 border" id="summary-foot-meal-cost">৳0</td>
+                            <td class="p-3 border" id="summary-foot-rent">৳0</td>
+                            <td class="p-3 border" id="summary-foot-utility">৳0</td>
+                            <td class="p-3 border text-blue-900" id="summary-foot-total-cost">৳0</td>
+                            <td class="p-3 border text-emerald-900" id="summary-foot-bazar">৳0</td>
+                            <td class="p-3 border" colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tab 5: Members -->
+        <div id="tab-members" class="tab-content hidden">
+            <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">👥 নতুন সদস্য যোগ করুন (অবশ্যই ইংরেজিতে লিখুন)</h2>
+                <div class="flex gap-2">
+                    <input id="member-name" type="text" placeholder="Member Name in English (e.g., Rahim)" class="border bg-white p-2 rounded-md flex-grow">
+                    <button onclick="addMember()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700">যোগ করুন</button>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h2 class="text-lg font-bold mb-3 text-gray-700">সদস্যের তালিকা</h2>
+                <div id="members-list-container" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Reset Control -->
+        <div class="mt-8 flex justify-end items-center gap-3 pt-4 border-t">
+            <button onclick="resetApp()" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600">
+                সব ডেটা রিসেট করুন
+            </button>
+        </div>
+    </div>
+
+    <script>
+        pdfMake.fonts = {
+            Roboto: {
+                normal: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf',
+                bold: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf',
+                italics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Italic.ttf',
+                bolditalics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-MediumItalic.ttf'
+            }
+        };
+
+        const banglaToEnglishDict = {
+            'চাল': 'Rice', 'ডাল': 'Lentils', 'মুরগি': 'Chicken', 'মাংস': 'Meat', 'গরুর মাংস': 'Beef',
+            'খাসির মাংস': 'Mutton', 'মাছ': 'Fish', 'রুই মাছ': 'Rui Fish', 'ইলিশ মাছ': 'Hilsa Fish',
+            'তেল': 'Oil', 'সয়াবিন তেল': 'Soybean Oil', 'সরিষার তেল': 'Mustard Oil', 'পেঁয়াজ': 'Onion',
+            'রসুন': 'Garlic', 'আদা': 'Ginger', 'আলু': 'Potato', 'টমেটো': 'Tomato', 'কাঁচামরিচ': 'Green Chili',
+            'মরিচ': 'Chili', 'হলুদ': 'Turmeric', 'জিরা': 'Cumin', 'মসলা': 'Spices', 'লবণ': 'Salt',
+            'চিনি': 'Sugar', 'ডিম': 'Egg', 'দুধ': 'Milk', 'সবজি': 'Vegetables', 'শাক': 'Greens',
+            'ধনেপাতা': 'Coriander', 'লেবু': 'Lemon', 'পানি': 'Water', 'সাবান': 'Soap', 'শ্যাম্পু': 'Shampoo'
+        };
+
+        function translateToEnglish(text) {
+            if (!text) return 'General Bazar';
+            let translated = text;
+            for (const [bn, en] of Object.entries(banglaToEnglishDict)) {
+                const regex = new RegExp(bn, 'g');
+                translated = translated.replace(regex, en);
+            }
+            return translated;
+        }
+
+        document.getElementById('meal-date').valueAsDate = new Date();
+        document.getElementById('bazar-date').valueAsDate = new Date();
+
+        let messData = JSON.parse(localStorage.getItem('messAppDataMealKhata')) || {
+            members: [],
+            mealsLog: [],
+            bazarLog: [],
+            fixedCosts: { rent: {} },
+            grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }
+        };
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "toast-notification bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-2";
+            toast.innerHTML = `<span>✅</span> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-emerald-600', 'text-white');
+                el.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
+            activeBtn.classList.add('bg-emerald-600', 'text-white');
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('messAppDataMealKhata', JSON.stringify(messData));
+        }
+
+        function addMember() {
+            const nameInput = document.getElementById('member-name');
+            const name = nameInput.value.trim();
+            if (name === '') return alert('দয়া করে সঠিক নাম লিখুন।');
+            
+            const containsBangla = /[\u0980-\u09FF]/.test(name);
+            if (containsBangla) {
+                return alert('সদস্যের নাম বাধ্যতামুলকভাবে ইংরেজিতে লিখতে হবে (যেমন: Rahim, Karim)।');
+            }
+
+            const newMember = { id: 'mem_' + Date.now(), name: name };
+            messData.members.push(newMember);
+            nameInput.value = '';
+            saveToLocalStorage();
+            updateDropdowns();
+            renderMembersList();
+            renderFixedCostInputs();
+            calculateMess();
+            showToast('সফলভাবে নতুন সদস্য যোগ করা হয়েছে।');
+        }
+
+        function deleteMember(id) {
+            if (confirm('এই সদস্যকে মুছে ফেলতে চান?')) {
+                messData.members = messData.members.filter(m => m.id !== id);
+                messData.mealsLog = messData.mealsLog.filter(l => l.memberId !== id);
+                messData.bazarLog = messData.bazarLog.filter(b => b.memberId !== id);
+                saveToLocalStorage();
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                showToast('সদস্য মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        function renderMembersList() {
+            const container = document.getElementById('members-list-container');
+            container.innerHTML = '';
+            if(messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500">কোনো সদস্য নেই।</p>';
+                return;
+            }
+            messData.members.forEach(m => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-2 rounded border">
+                        <span class="font-medium">${m.name}</span>
+                        <button onclick="deleteMember('${m.id}')" class="bg-red-500 text-white text-xs px-3 py-1 rounded hover:bg-red-600">মুছে ফেলুন</button>
+                    </div>
+                `;
+            });
+        }
+
+        function updateDropdowns() {
+            const mealSelect = document.getElementById('meal-member-select');
+            const bazarSelect = document.getElementById('bazar-member-select');
+            mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            messData.members.forEach(member => {
+                mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+            });
+        }
+
+        function renderFixedCostInputs() {
+            const div = document.getElementById('fixed-rent-inputs');
+            div.innerHTML = '';
+            messData.members.forEach(member => {
+                const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
+                div.innerHTML += `
+                    <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
+                        <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
+                        <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
+                    </div>
+                `;
+            });
+            document.getElementById('bill-electricity').value = messData.grandBills.electricity || '';
+            document.getElementById('bill-maid').value = messData.grandBills.maid || '';
+            document.getElementById('bill-wifi').value = messData.grandBills.wifi || '';
+            document.getElementById('bill-others').value = messData.grandBills.others || '';
+        }
+
+        function addMeals() {
+            const date = document.getElementById('meal-date').value;
+            const memberId = document.getElementById('meal-member-select').value;
+            const count = parseFloat(document.getElementById('meal-count').value);
+
+            if (!date || !memberId || isNaN(count) || count < 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+
+            const existingIndex = messData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
+            if (existingIndex !== -1) {
+                messData.mealsLog[existingIndex].count = count;
+                showToast('মিলের হিসাব আপডেট করা হয়েছে।');
+            } else {
+                messData.mealsLog.push({ id: 'meal_' + Date.now(), date, memberId, count });
+                showToast('মিল অটো-সেভ করা হয়েছে।');
+            }
+
+            document.getElementById('meal-count').value = '';
+            saveToLocalStorage();
+            calculateMess();
+        }
+
+        function deleteMealEntry(date, memberId) {
+            if (confirm('এই দিনের মিলের হিসাবটি মুছে ফেলতে চান?')) {
+                messData.mealsLog = messData.mealsLog.filter(l => !(l.date === date && l.memberId === memberId));
+                saveToLocalStorage();
+                calculateMess();
+                showToast('মিল মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        function addBazar() {
+            const date = document.getElementById('bazar-date').value;
+            const memberId = document.getElementById('bazar-member-select').value;
+            const desc = document.getElementById('bazar-desc').value.trim() || 'সাধারণ বাজার';
+            const amount = parseFloat(document.getElementById('bazar-amount').value);
+
+            if (!date || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+
+            messData.bazarLog.push({ id: 'bazar_' + Date.now(), date, memberId, desc, amount });
+            messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+            document.getElementById('bazar-desc').value = '';
+            document.getElementById('bazar-amount').value = '';
+            saveToLocalStorage();
+            calculateMess();
+            showToast('বাজার খরচ অটো-সেভ করা হয়েছে।');
+        }
+
+        function deleteBazar(id) {
+            if (confirm('এই বাজার খরচের এন্ট্রিটি মুছে ফেলতে চান?')) {
+                messData.bazarLog = messData.bazarLog.filter(b => b.id !== id);
+                saveToLocalStorage();
+                calculateMess();
+                showToast('বাজার এন্ট্রি মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        function saveFixedCosts() {
+            const rentInputs = document.querySelectorAll('.rent-input');
+            rentInputs.forEach(input => {
+                const memId = input.getAttribute('data-mem');
+                const val = input.value === '' ? 0 : parseFloat(input.value);
+                messData.fixedCosts.rent[memId] = val;
+            });
+
+            messData.grandBills.electricity = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            messData.grandBills.maid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            messData.grandBills.wifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            messData.grandBills.others = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            saveToLocalStorage();
+            calculateMess();
+            showToast('ফিক্সড খরচ অটো-সেভ করা হয়েছে।');
+        }
+
+        function calculateMess() {
+            let totalMeals = 0;
+            let totalBazar = 0;
+            let totalFixedAll = 0;
+            let totalRentAll = 0;
+            let totalUtilityAll = 0;
+
+            let memberSummary = {};
+
+            messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            messData.members.forEach(m => {
+                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, fixed: 0, rent: 0, utility: 0 };
+            });
+
+            messData.mealsLog.forEach(log => {
+                if (memberSummary[log.memberId]) {
+                    memberSummary[log.memberId].meals += log.count;
+                    totalMeals += log.count;
+                }
+            });
+
+            messData.bazarLog.forEach(log => {
+                if (memberSummary[log.memberId]) {
+                    memberSummary[log.memberId].bazarSpent += log.amount;
+                    totalBazar += log.amount;
+                }
+            });
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const totalSharedBills = billElec + billMaid + billWifi + billOth;
+            const memberCount = messData.members.length;
+            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+
+            const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
+            fixedBreakdownBody.innerHTML = '';
+
+            messData.members.forEach(m => {
+                const rentInput = document.querySelector(`.rent-input[data-mem="${m.id}"]`);
+                let individualRent = rentInput ? (rentInput.value === '' ? 0 : parseFloat(rentInput.value)) : (messData.fixedCosts.rent[m.id] || 0);
+                const calculatedFixedSum = individualRent + splitBillPerMember;
+                
+                memberSummary[m.id].rent = individualRent;
+                memberSummary[m.id].utility = splitBillPerMember;
+                memberSummary[m.id].fixed = calculatedFixedSum;
+
+                totalRentAll += individualRent;
+                totalUtilityAll += splitBillPerMember;
+                totalFixedAll += calculatedFixedSum;
+
+                fixedBreakdownBody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 border font-semibold">${m.name}</td>
+                        <td class="p-3 border">৳${individualRent.toFixed(1)}</td>
+                        <td class="p-3 border text-gray-600">৳${splitBillPerMember.toFixed(1)}</td>
+                        <td class="p-3 border font-bold text-indigo-700">৳${calculatedFixedSum.toFixed(1)}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('foot-total-rent').innerText = `৳${totalRentAll.toFixed(1)}`;
+            document.getElementById('foot-total-utility').innerText = `৳${totalUtilityAll.toFixed(1)}`;
+            document.getElementById('foot-total-fixed-all').innerText = `৳${totalFixedAll.toFixed(1)}`;
+
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+            const totalExpenseAll = totalBazar + totalFixedAll;
+
+            document.getElementById('total-expense').innerText = totalExpenseAll.toFixed(1);
+            document.getElementById('total-bazar').innerText = totalBazar.toFixed(1);
+            document.getElementById('total-fixed').innerText = totalFixedAll.toFixed(1);
+            document.getElementById('total-meals').innerText = totalMeals;
+            document.getElementById('meal-rate').innerText = mealRate.toFixed(2);
+
+            // --- Render Meals Grid (Date vs Members Matrix) ---
+            renderMealsGrid();
+
+            // --- Render Bazar Table ---
+            document.getElementById('table-total-bazar').innerText = totalBazar.toFixed(1);
+            const bazarTableBody = document.getElementById('bazar-log-table-body');
+            bazarTableBody.innerHTML = '';
+            messData.bazarLog.forEach(b => {
+                const member = messData.members.find(m => m.id === b.memberId);
+                const memName = member ? member.name : 'Unknown';
+                bazarTableBody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-100">
+                        <td class="p-2 border">${b.date}</td>
+                        <td class="p-2 border font-medium">${memName}</td>
+                        <td class="p-2 border">${b.desc}</td>
+                        <td class="p-2 border text-emerald-600 font-bold">৳${b.amount}</td>
+                        <td class="p-2 border text-center">
+                            <button onclick="deleteBazar('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">ডিলিট</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            // --- Render Summary Table ---
+            const tbody = document.getElementById('calculation-table-body');
+            tbody.innerHTML = '';
+
+            let grandMealCostSum = 0;
+            let grandTotalCostSum = 0;
+
+            messData.members.forEach(member => {
+                const s = memberSummary[member.id];
+                const mealCost = s.meals * mealRate;
+                const totalCost = mealCost + s.fixed;
+                const balance = s.bazarSpent - totalCost;
+
+                grandMealCostSum += mealCost;
+                grandTotalCostSum += totalCost;
+
+                let balanceText = balance >= 0 ? 
+                    `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳${balance.toFixed(1)}</span>` : 
+                    `<span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-sm font-bold">দেবে: ৳${Math.abs(balance).toFixed(1)}</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 border font-semibold">${s.name}</td>
+                        <td class="p-3 border">${s.meals}</td>
+                        <td class="p-3 border text-gray-600">৳${mealCost.toFixed(1)}</td>
+                        <td class="p-3 border text-gray-600">৳${s.rent.toFixed(1)}</td>
+                        <td class="p-3 border text-gray-600">৳${s.utility.toFixed(1)}</td>
+                        <td class="p-3 border font-medium text-blue-600">৳${totalCost.toFixed(1)}</td>
+                        <td class="p-3 border text-emerald-600">৳${s.bazarSpent}</td>
+                        <td class="p-3 border">${balanceText}</td>
+                        <td class="p-3 border text-center">
+                            <button onclick="downloadMemberPDF('${member.id}')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700">PDF ডাউনলোড</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('summary-foot-meals').innerText = totalMeals;
+            document.getElementById('summary-foot-meal-cost').innerText = `৳${grandMealCostSum.toFixed(1)}`;
+            document.getElementById('summary-foot-rent').innerText = `৳${totalRentAll.toFixed(1)}`;
+            document.getElementById('summary-foot-utility').innerText = `৳${totalUtilityAll.toFixed(1)}`;
+            document.getElementById('summary-foot-total-cost').innerText = `৳${grandTotalCostSum.toFixed(1)}`;
+            document.getElementById('summary-foot-bazar').innerText = `৳${totalBazar.toFixed(1)}`;
+        }
+
+        // Render Matrix Table for UI
+        function renderMealsGrid() {
+            const container = document.getElementById('meals-grid-container');
+            if (messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
+                return;
+            }
+
+            // Extract unique dates
+            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+
+            let html = `<table class="w-full text-left border-collapse bg-white text-sm">
+                <thead>
+                    <tr class="bg-amber-600 text-white">
+                        <th class="p-2 border min-w-[100px]">তারিখ</th>`;
+            
+            messData.members.forEach(m => {
+                html += `<th class="p-2 border text-center">${m.name}</th>`;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            if (dates.length === 0) {
+                html += `<tr><td colspan="${messData.members.length + 1}" class="p-3 text-center text-gray-500">কোনো মিলের ডাটা পাওয়া যায়নি।</td></tr>`;
+            } else {
+                dates.forEach(date => {
+                    html += `<tr class="border-b hover:bg-amber-50">
+                        <td class="p-2 border font-medium">${date}</td>`;
+                    
+                    messData.members.forEach(m => {
+                        const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                        const countVal = entry ? entry.count : 0;
+                        html += `<td class="p-2 border text-center font-bold ${countVal > 0 ? 'text-amber-700' : 'text-gray-300'}">${countVal}</td>`;
+                    });
+
+                    html += `</tr>`;
+                });
+            }
+
+            html += `</tbody><tfoot><tr class="bg-amber-100 font-bold text-gray-800">
+                <td class="p-2 border text-right">মোট মিল:</td>`;
+
+            let totalAllMeals = 0;
+            messData.members.forEach(m => {
+                let mTotal = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
+                totalAllMeals += mTotal;
+                html += `<td class="p-2 border text-center text-amber-900 font-extrabold">${mTotal}</td>`;
+            });
+
+            html += `</tr></tfoot></table>`;
+            container.innerHTML = html;
+        }
+
+        // --- NEW MATRIX PDF GENERATOR FOR MEALS ---
+        function downloadMealsPDF() {
+            if (messData.members.length === 0) return alert("কোনো সদস্য পাওয়া যায়নি।");
+
+            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+
+            // Column Headers: [Date, Member1, Member2, ...]
+            let headerRow = [
+                { text: 'Date', bold: true, fillColor: '#d97706', color: '#ffffff', alignment: 'center' }
+            ];
+
+            messData.members.forEach(m => {
+                headerRow.push({ text: m.name, bold: true, fillColor: '#d97706', color: '#ffffff', alignment: 'center' });
+            });
+
+            let tableRows = [headerRow];
+
+            // Data Rows (Per Date)
+            dates.forEach(date => {
+                let row = [{ text: date, alignment: 'center', bold: true }];
+                messData.members.forEach(m => {
+                    const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                    const countVal = entry ? entry.count : 0;
+                    row.push({ text: `${countVal}`, alignment: 'center', color: countVal > 0 ? '#b45309' : '#9ca3af' });
+                });
+                tableRows.push(row);
+            });
+
+            // Footer Row (Total per member)
+            let footerRow = [{ text: 'Total Meals', bold: true, alignment: 'right', fillColor: '#fef3c7' }];
+            let grandTotal = 0;
+            messData.members.forEach(m => {
+                let mTotal = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
+                grandTotal += mTotal;
+                footerRow.push({ text: `${mTotal}`, bold: true, alignment: 'center', fillColor: '#fef3c7', color: '#92400e' });
+            });
+            tableRows.push(footerRow);
+
+            // Dynamic width column calculator
+            let widths = ['20%'];
+            let remainingPercent = 80 / messData.members.length;
+            messData.members.forEach(() => {
+                widths.push(`${remainingPercent}%`);
+            });
+
+            let docDefinition = {
+                pageOrientation: messData.members.length > 5 ? 'landscape' : 'portrait',
+                content: [
+                    {
+                        table: {
+                            widths: ['*'],
+                            body: [[{ text: '🥣 MEAL KHATA - DAILY MEAL REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
+                        },
+                        layout: 'noBorders',
+                        fillColor: '#d97706',
+                        margin: [0, 0, 0, 15]
+                    },
+                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 10] },
+                    {
+                        table: {
+                            widths: widths,
+                            body: tableRows
+                        }
+                    }
+                ]
+            };
+            pdfMake.createPdf(docDefinition).download(`Meal_Khata_Meals_Report.pdf`);
+        }
+
+        function downloadBazarPDF() {
+            let totalBazarAmount = 0;
+            const sortedBazar = [...messData.bazarLog].sort((a,b) => new Date(a.date) - new Date(b.date));
+            sortedBazar.forEach(b => totalBazarAmount += b.amount);
+
+            let tableRows = [
+                [
+                    { text: 'Date', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Member Name', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Description', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Amount (BDT)', bold: true, fillColor: '#047857', color: '#ffffff' }
+                ]
+            ];
+
+            sortedBazar.forEach(b => {
+                const mem = messData.members.find(x => x.id === b.memberId);
+                const translatedDesc = translateToEnglish(b.desc);
+                tableRows.push([b.date, mem ? mem.name : 'Unknown', translatedDesc, `TK ${b.amount}`]);
+            });
+
+            tableRows.push([
+                { text: 'Total Bazar Expense:', bold: true, colSpan: 3, alignment: 'right', fillColor: '#d1fae5' },
+                {}, {},
+                { text: `TK ${totalBazarAmount.toFixed(2)}`, bold: true, fillColor: '#d1fae5', color: '#065f46' }
+            ]);
+
+            let docDefinition = {
+                content: [
+                    {
+                        table: {
+                            widths: ['*'],
+                            body: [[{ text: '🛒 MEAL KHATA - BAZAR EXPENSE REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
+                        },
+                        layout: 'noBorders',
+                        fillColor: '#047857',
+                        margin: [0, 0, 0, 15]
+                    },
+                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 10] },
+                    {
+                        table: {
+                            widths: ['20%', '25%', '35%', '20%'],
+                            body: tableRows
+                        }
+                    }
+                ]
+            };
+            pdfMake.createPdf(docDefinition).download(`Meal_Khata_Bazar_Report.pdf`);
+        }
+
+        function downloadMemberPDF(memberId) {
+            let totalMeals = 0; 
+            let totalBazar = 0;
+            messData.mealsLog.forEach(l => totalMeals += l.count);
+            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
+            const member = messData.members.find(m => m.id === memberId);
+            if (!member) return;
+
+            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId).sort((a,b) => new Date(a.date) - new Date(b.date));
+            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const totalSharedBills = billElec + billMaid + billWifi + billOth;
+            const memberCount = messData.members.length;
+            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+
+            let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
+            let myGrandCostFixed = myFixedRent + splitBillPerMember;
+
+            let myTotalMealsCount = 0; 
+            myMeals.forEach(m => myTotalMealsCount += m.count);
+            let myMealCost = myTotalMealsCount * mealRate;
+
+            let myTotalBazarSpent = 0; 
+            myBazar.forEach(b => myTotalBazarSpent += b.amount);
+
+            let myGrandCost = myMealCost + myGrandCostFixed;
+            let finalStatus = myTotalBazarSpent - myGrandCost;
+            let isRefund = finalStatus >= 0;
+
+            let headerBackgroundColor = isRefund ? '#10b981' : '#f43f5e';
+            let statusString = isRefund ? `Refundable Amount (Receivable): TK ${finalStatus.toFixed(2)}` : `Due Amount (Payable): TK ${Math.abs(finalStatus).toFixed(2)}`;
+
+            let totalFixedSumForAllMembers = 0;
+            messData.members.forEach(m => {
+                let mRent = messData.fixedCosts.rent[m.id] || 0;
+                totalFixedSumForAllMembers += (mRent + splitBillPerMember);
+            });
+            let fullMessGrandTotalCost = totalBazar + totalFixedSumForAllMembers;
+
+            let docDefinition = {
+                content: [
+                    {
+                        table: {
+                            widths: ['*'],
+                            body: [
+                                [
+                                    {
+                                        text: isRefund ? '📋 MEAL KHATA - STATEMENT (RECEIVABLE)' : '📋 MEAL KHATA - STATEMENT (PAYABLE)',
+                                        fontSize: 16,
+                                        bold: true,
+                                        color: '#ffffff',
+                                        alignment: 'center',
+                                        margin: [0, 10, 0, 10]
+                                    }
+                                ]
+                            ]
+                        },
+                        layout: 'noBorders',
+                        fillColor: headerBackgroundColor,
+                        margin: [0, 0, 0, 15]
+                    },
+                    { text: `Member Name: ${member.name}`, fontSize: 13, bold: true, color: '#1f2937' },
+                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 2, 0, 15] },
+                    
+                    { text: 'Part 1: Overall Mess Summary', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
+                    { 
+                        table: {
+                            widths: ['65%', '35%'],
+                            body: [
+                                [{ text: 'Total Mess Expense (Bazar + Fixed)', bold: true }, `TK ${fullMessGrandTotalCost.toFixed(2)}`],
+                                [{ text: 'Total Mess Bazar Expense', bold: true }, `TK ${totalBazar.toFixed(2)}`],
+                                [{ text: 'Total Mess Meals', bold: true }, `${totalMeals}`],
+                                [{ text: 'Current Meal Rate', bold: true }, `TK ${mealRate.toFixed(2)}`],
+                                [{ text: 'Electricity Bill', bold: true }, `TK ${billElec.toFixed(2)}`],
+                                [{ text: 'Maid Bill', bold: true }, `TK ${billMaid.toFixed(2)}`],
+                                [{ text: 'WiFi Bill', bold: true }, `TK ${billWifi.toFixed(2)}`],
+                                [{ text: 'Other Bills', bold: true }, `TK ${billOth.toFixed(2)}`],
+                            ]
+                        },
+                        fillColor: '#eff6ff',
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: 'Part 2: Personal Account Summary', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['65%', '35%'],
+                            body: [
+                                ['Total Meals', `${myTotalMealsCount}`],
+                                ['Meal Expense', `TK ${myMealCost.toFixed(2)}`],
+                                ['Personal House Rent', `TK ${myFixedRent.toFixed(2)}`],
+                                ['Shared Utility Bills', `TK ${splitBillPerMember.toFixed(2)}`],
+                                [{ text: 'Grand Total Expense', bold: true }, `TK ${myGrandCost.toFixed(2)}`],
+                                [{ text: 'Total Bazar Contribution', bold: true }, `TK ${myTotalBazarSpent.toFixed(2)}`],
+                            ]
+                        },
+                        margin: [0, 0, 0, 10]
+                    },
+                    {
+                        table: {
+                            widths: ['*'],
+                            body: [
+                                [
+                                    {
+                                        text: statusString,
+                                        fontSize: 12,
+                                        bold: true,
+                                        color: '#ffffff',
+                                        alignment: 'center',
+                                        margin: [0, 6, 0, 6]
+                                    }
+                                ]
+                            ]
+                        },
+                        layout: 'noBorders',
+                        fillColor: headerBackgroundColor,
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: 'Part 3: Personal Bazar Expense History', fontSize: 11, bold: true, color: '#0f766e', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['25%', '50%', '25%'],
+                            body: [
+                                [
+                                    { text: 'Date', bold: true, fillColor: '#0f766e', color: '#ffffff' },
+                                    { text: 'Description', bold: true, fillColor: '#0f766e', color: '#ffffff' },
+                                    { text: 'Amount', bold: true, fillColor: '#0f766e', color: '#ffffff' }
+                                ],
+                                ...(myBazar.length > 0 ? myBazar.map(b => [b.date, translateToEnglish(b.desc), `TK ${b.amount}`]) : [['N/A', 'No Bazar Entries', 'TK 0']])
+                            ]
+                        },
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: 'Part 4: Personal Daily Meal Log', fontSize: 11, bold: true, color: '#b45309', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['50%', '50%'],
+                            body: [
+                                [
+                                    { text: 'Date', bold: true, fillColor: '#b45309', color: '#ffffff' },
+                                    { text: 'Meal Count', bold: true, fillColor: '#b45309', color: '#ffffff' }
+                                ],
+                                ...(myMeals.length > 0 ? myMeals.map(m => [m.date, `${m.count}`]) : [['N/A', 'No Meal Entries']])
+                            ]
+                        }
+                    }
+                ]
+            };
+            pdfMake.createPdf(docDefinition).download(`${member.name}_Meal_Khata_Statement.pdf`);
+        }
+
+        function downloadAllInOnePDF() {
+            let totalMeals = 0;
+            let totalBazar = 0;
+            messData.mealsLog.forEach(l => totalMeals += l.count);
+            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const totalSharedBills = billElec + billMaid + billWifi + billOth;
+            const memberCount = messData.members.length;
+            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+
+            let summaryTableBody = [
+                [
+                    { text: 'Member Name', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Meals', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Meal Cost', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'House Rent', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Utility Share', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Total Cost', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Bazar Paid', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
+                    { text: 'Balance Status', bold: true, fillColor: '#1e3a8a', color: '#ffffff' }
+                ]
+            ];
+
+            let sumMeals = 0;
+            let sumMealCost = 0;
+            let sumRent = 0;
+            let sumUtility = 0;
+            let grandTotalCostSum = 0;
+            let sumBazarPaid = 0;
+
+            messData.members.forEach(m => {
+                let mMeals = 0;
+                let mBazar = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
+                messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
+
+                let mRent = messData.fixedCosts.rent[m.id] || 0;
+                let mUtility = splitBillPerMember;
+                let mFixed = mRent + mUtility;
+                let mMealCost = mMeals * mealRate;
+                let mTotalCost = mMealCost + mFixed;
+                let mBalance = mBazar - mTotalCost;
+
+                sumMeals += mMeals;
+                sumMealCost += mMealCost;
+                sumRent += mRent;
+                sumUtility += mUtility;
+                grandTotalCostSum += mTotalCost;
+                sumBazarPaid += mBazar;
+
+                let statusStr = mBalance >= 0 ? `Receivable: TK ${mBalance.toFixed(1)}` : `Payable: TK ${Math.abs(mBalance).toFixed(1)}`;
+
+                summaryTableBody.push([
+                    m.name,
+                    `${mMeals}`,
+                    `TK ${mMealCost.toFixed(1)}`,
+                    `TK ${mRent.toFixed(1)}`,
+                    `TK ${mUtility.toFixed(1)}`,
+                    `TK ${mTotalCost.toFixed(1)}`,
+                    `TK ${mBazar.toFixed(1)}`,
+                    { text: statusStr, bold: true, color: mBalance >= 0 ? '#047857' : '#be123c' }
+                ]);
+            });
+
+            summaryTableBody.push([
+                { text: 'Total Sum:', bold: true, fillColor: '#dbeafe' },
+                { text: `${sumMeals}`, bold: true, fillColor: '#dbeafe' },
+                { text: `TK ${sumMealCost.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
+                { text: `TK ${sumRent.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
+                { text: `TK ${sumUtility.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
+                { text: `TK ${grandTotalCostSum.toFixed(1)}`, bold: true, fillColor: '#dbeafe', color: '#1e40af' },
+                { text: `TK ${sumBazarPaid.toFixed(1)}`, bold: true, fillColor: '#dbeafe', color: '#065f46' },
+                { text: '', bold: true, fillColor: '#dbeafe' }
+            ]);
+
+            const sortedBazar = [...messData.bazarLog].sort((a,b) => new Date(a.date) - new Date(b.date));
+            let bazarTableBody = [
+                [
+                    { text: 'Date', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Member Name', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Description', bold: true, fillColor: '#047857', color: '#ffffff' },
+                    { text: 'Amount', bold: true, fillColor: '#047857', color: '#ffffff' }
+                ]
+            ];
+            sortedBazar.forEach(b => {
+                const mem = messData.members.find(x => x.id === b.memberId);
+                bazarTableBody.push([b.date, mem ? mem.name : 'Unknown', translateToEnglish(b.desc), `TK ${b.amount}`]);
+            });
+
+            bazarTableBody.push([
+                { text: 'Total Bazar Expense:', bold: true, colSpan: 3, alignment: 'right', fillColor: '#d1fae5' },
+                {}, {},
+                { text: `TK ${totalBazar.toFixed(2)}`, bold: true, fillColor: '#d1fae5', color: '#065f46' }
+            ]);
+
+            // Matrix Meals Table inside All-In-One PDF
+            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let headerRow = [{ text: 'Date', bold: true, fillColor: '#b45309', color: '#ffffff', alignment: 'center' }];
+            messData.members.forEach(m => {
+                headerRow.push({ text: m.name, bold: true, fillColor: '#b45309', color: '#ffffff', alignment: 'center' });
+            });
+            let mealsTableBody = [headerRow];
+
+            dates.forEach(date => {
+                let row = [{ text: date, alignment: 'center', bold: true }];
+                messData.members.forEach(m => {
+                    const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                    const countVal = entry ? entry.count : 0;
+                    row.push({ text: `${countVal}`, alignment: 'center' });
+                });
+                mealsTableBody.push(row);
+            });
+
+            let footerRow = [{ text: 'Total Meals', bold: true, alignment: 'right', fillColor: '#fef3c7' }];
+            messData.members.forEach(m => {
+                let mTotal = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
+                footerRow.push({ text: `${mTotal}`, bold: true, alignment: 'center', fillColor: '#fef3c7', color: '#92400e' });
+            });
+            mealsTableBody.push(footerRow);
+
+            let docDefinition = {
+                pageOrientation: messData.members.length > 5 ? 'landscape' : 'portrait',
+                content: [
+                    {
+                        table: {
+                            widths: ['*'],
+                            body: [[{ text: '📊 MEAL KHATA - ALL-IN-ONE MONTHLY REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
+                        },
+                        layout: 'noBorders',
+                        fillColor: '#1e3a8a',
+                        margin: [0, 0, 0, 15]
+                    },
+                    { text: `Report Generated: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 15] },
+                    
+                    { text: '1. Overall Mess Overview', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['60%', '40%'],
+                            body: [
+                                [{ text: 'Total Mess Expense (Bazar + Fixed)', bold: true }, `TK ${grandTotalCostSum.toFixed(2)}`],
+                                [{ text: 'Total Bazar Expense', bold: true }, `TK ${totalBazar.toFixed(2)}`],
+                                [{ text: 'Total Meals Count', bold: true }, `${totalMeals}`],
+                                [{ text: 'Meal Rate', bold: true }, `TK ${mealRate.toFixed(2)}`],
+                                [{ text: 'Shared Utility Bills Total', bold: true }, `TK ${totalSharedBills.toFixed(2)}`]
+                            ]
+                        },
+                        fillColor: '#eff6ff',
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: '2. Member Summary & Balance Sheet', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['14%', '8%', '13%', '13%', '13%', '14%', '13%', '12%'],
+                            body: summaryTableBody
+                        },
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: '3. Complete Bazar Log History', fontSize: 12, bold: true, color: '#047857', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: ['20%', '25%', '35%', '20%'],
+                            body: bazarTableBody
+                        },
+                        margin: [0, 0, 0, 15]
+                    },
+
+                    { text: '4. Complete Daily Meal Grid History', fontSize: 12, bold: true, color: '#b45309', margin: [0, 5, 0, 5] },
+                    {
+                        table: {
+                            widths: Array(messData.members.length + 1).fill(`${100 / (messData.members.length + 1)}%`),
+                            body: mealsTableBody
+                        }
+                    }
+                ]
+            };
+
+            pdfMake.createPdf(docDefinition).download(`Meal_Khata_All_In_One_Report.pdf`);
+        }
+
+        function resetApp() {
+            if (confirm('আপনি কি নিশ্চিতভাবে সব ডেটা মুছে ফেলতে চান?')) {
+                localStorage.removeItem('messAppDataMealKhata');
+                messData = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent: {} }, grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 } };
+                document.getElementById('bill-electricity').value = '';
+                document.getElementById('bill-maid').value = '';
+                document.getElementById('bill-wifi').value = '';
+                document.getElementById('bill-others').value = '';
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                showToast('সব ডেটা সফলভাবে মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        window.onload = function() {
+            updateDropdowns();
+            renderMembersList();
+            renderFixedCostInputs();
+            calculateMess();
+        };
+    </script>
+</body>
+</html>
