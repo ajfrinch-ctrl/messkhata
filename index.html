@@ -9,6 +9,11 @@
     <!-- pdfMake for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
         body { font-family: 'Noto Sans Bengali', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -36,6 +41,10 @@
             <div class="text-center md:text-left">
                 <h1 class="text-3xl font-bold brand-font text-emerald-600 tracking-wide">Meal Khata</h1>
                 <p class="text-xs text-gray-500 font-medium">স্মার্ট মেস ও মিল ম্যানেজমেন্ট সিস্টেম</p>
+                <!-- Cloud Sync Status Indicator -->
+                <div id="sync-status" class="text-xs font-semibold mt-2 px-2 py-1 rounded inline-block bg-gray-100 text-gray-500">
+                    🔄 Syncing...
+                </div>
             </div>
         </div>
 
@@ -290,13 +299,55 @@
         document.getElementById('meal-date').valueAsDate = new Date();
         document.getElementById('bazar-date').valueAsDate = new Date();
 
-        let messData = JSON.parse(localStorage.getItem('messAppDataMealKhata')) || {
+        // ---------------- FIREBASE CONFIGURATION ----------------
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJUJSYvhXBuW0HC1XBmF_XvkeYJN7DtKE",
+            authDomain: "messkhata-88e98.firebaseapp.com",
+            projectId: "messkhata-88e98",
+            storageBucket: "messkhata-88e98.firebasestorage.app",
+            messagingSenderId: "844029166942",
+            appId: "1:844029166942:web:2bc98d929506ce02813bcf",
+            measurementId: "G-E5E61LPT4X"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const messRef = db.ref('messData');
+        
+        // Anti-loop flag
+        let isApplyingRemoteData = false;
+
+        // Default Data Structure
+        const defaultMessData = {
             members: [],
             mealsLog: [],
             bazarLog: [],
             fixedCosts: { rent: {} },
             grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }
         };
+
+        // Initialize from local storage initially for offline support
+        let messData = JSON.parse(localStorage.getItem('messAppDataMealKhata')) || defaultMessData;
+
+        // Utility: Firebase removes empty arrays, this enforces structural integrity
+        function enforceDataStructure(data) {
+            data.members = data.members || [];
+            data.mealsLog = data.mealsLog || [];
+            data.bazarLog = data.bazarLog || [];
+            data.fixedCosts = data.fixedCosts || { rent: {} };
+            data.fixedCosts.rent = data.fixedCosts.rent || {};
+            data.grandBills = data.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 };
+        }
+        enforceDataStructure(messData);
+
+        // Sync Status UI
+        function updateSyncStatus(text, colorClass) {
+            const el = document.getElementById('sync-status');
+            if(el) {
+                el.innerText = text;
+                el.className = `text-xs font-semibold mt-2 px-2 py-1 rounded inline-block bg-opacity-20 bg-current ${colorClass}`;
+            }
+        }
 
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -322,10 +373,58 @@
             activeBtn.classList.add('bg-emerald-600', 'text-white');
         }
 
+        // ---------------- MODIFIED SAVE LOGIC ----------------
         function saveToLocalStorage() {
             localStorage.setItem('messAppDataMealKhata', JSON.stringify(messData));
+            
+            // Only push to Firebase if this was a local action to prevent infinite loops
+            if (!isApplyingRemoteData) {
+                try {
+                    messRef.set(messData).catch(err => {
+                        console.error("Firebase Sync Error:", err);
+                        updateSyncStatus("☁️ Offline — Local backup active", "text-red-500");
+                    });
+                } catch(e) {
+                    console.error("Database connection issue", e);
+                }
+            }
         }
 
+        // ---------------- REALTIME SYNC LISTENER ----------------
+        function setupFirebaseRealtimeSync() {
+            // Connection Status Observer
+            db.ref('.info/connected').on('value', (snap) => {
+                if (snap.val() === true) {
+                    updateSyncStatus("☁️ Cloud Sync: Connected", "text-emerald-600");
+                } else {
+                    updateSyncStatus("☁️ Cloud Sync: Offline", "text-red-500");
+                }
+            });
+
+            // Remote Data Observer
+            messRef.on('value', (snapshot) => {
+                const remoteData = snapshot.val();
+                if (remoteData) {
+                    isApplyingRemoteData = true; 
+                    
+                    enforceDataStructure(remoteData);
+                    messData = remoteData;
+                    
+                    // Backup remote truth to local storage
+                    localStorage.setItem('messAppDataMealKhata', JSON.stringify(messData));
+                    
+                    // Re-render UI
+                    updateDropdowns();
+                    renderMembersList();
+                    renderFixedCostInputs();
+                    calculateMess();
+                    
+                    isApplyingRemoteData = false;
+                }
+            });
+        }
+
+        // ---------------- CORE FUNCTIONS ----------------
         function addMember() {
             const nameInput = document.getElementById('member-name');
             const name = nameInput.value.trim();
@@ -634,7 +733,6 @@
                 return;
             }
 
-            // Extract unique dates
             const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
 
             let html = `<table class="w-full text-left border-collapse bg-white text-sm">
@@ -680,13 +778,12 @@
             container.innerHTML = html;
         }
 
-        // --- NEW MATRIX PDF GENERATOR FOR MEALS ---
+        // PDF Generation functions (Kept Intact)
         function downloadMealsPDF() {
             if (messData.members.length === 0) return alert("কোনো সদস্য পাওয়া যায়নি।");
 
             const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
 
-            // Column Headers: [Date, Member1, Member2, ...]
             let headerRow = [
                 { text: 'Date', bold: true, fillColor: '#d97706', color: '#ffffff', alignment: 'center' }
             ];
@@ -697,7 +794,6 @@
 
             let tableRows = [headerRow];
 
-            // Data Rows (Per Date)
             dates.forEach(date => {
                 let row = [{ text: date, alignment: 'center', bold: true }];
                 messData.members.forEach(m => {
@@ -708,7 +804,6 @@
                 tableRows.push(row);
             });
 
-            // Footer Row (Total per member)
             let footerRow = [{ text: 'Total Meals', bold: true, alignment: 'right', fillColor: '#fef3c7' }];
             let grandTotal = 0;
             messData.members.forEach(m => {
@@ -719,7 +814,6 @@
             });
             tableRows.push(footerRow);
 
-            // Dynamic width column calculator
             let widths = ['20%'];
             let remainingPercent = 80 / messData.members.length;
             messData.members.forEach(() => {
@@ -1060,7 +1154,6 @@
                 { text: `TK ${totalBazar.toFixed(2)}`, bold: true, fillColor: '#d1fae5', color: '#065f46' }
             ]);
 
-            // Matrix Meals Table inside All-In-One PDF
             const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
             let headerRow = [{ text: 'Date', bold: true, fillColor: '#b45309', color: '#ffffff', alignment: 'center' }];
             messData.members.forEach(m => {
@@ -1147,14 +1240,26 @@
             pdfMake.createPdf(docDefinition).download(`Meal_Khata_All_In_One_Report.pdf`);
         }
 
+        // ---------------- MODIFIED RESET LOGIC ----------------
         function resetApp() {
             if (confirm('আপনি কি নিশ্চিতভাবে সব ডেটা মুছে ফেলতে চান?')) {
+                // Clear local storage
                 localStorage.removeItem('messAppDataMealKhata');
+                
+                // Clear state
                 messData = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent: {} }, grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 } };
                 document.getElementById('bill-electricity').value = '';
                 document.getElementById('bill-maid').value = '';
                 document.getElementById('bill-wifi').value = '';
                 document.getElementById('bill-others').value = '';
+                
+                // Remove from Firebase if user initiated it manually
+                if (!isApplyingRemoteData) {
+                    try {
+                        messRef.remove().catch(e => console.error(e));
+                    } catch(err) {}
+                }
+
                 updateDropdowns();
                 renderMembersList();
                 renderFixedCostInputs();
@@ -1163,11 +1268,48 @@
             }
         }
 
+        // ---------------- WINDOW ONLOAD INITIALIZATION ----------------
         window.onload = function() {
+            // 1. Immediately render local backup data so user does not wait
             updateDropdowns();
             renderMembersList();
             renderFixedCostInputs();
             calculateMess();
+
+            // 2. Begin Firebase Data Fetching
+            messRef.once('value').then((snapshot) => {
+                const remoteData = snapshot.val();
+                
+                if (remoteData) {
+                    // Firebase holds the source of truth
+                    isApplyingRemoteData = true;
+                    enforceDataStructure(remoteData);
+                    messData = remoteData;
+                    
+                    // Keep local up to date
+                    localStorage.setItem('messAppDataMealKhata', JSON.stringify(messData));
+                    
+                    // Render remote data
+                    updateDropdowns();
+                    renderMembersList();
+                    renderFixedCostInputs();
+                    calculateMess();
+                    
+                    isApplyingRemoteData = false;
+                    
+                    setupFirebaseRealtimeSync();
+                } else {
+                    // Firebase is empty, check if we have local data to upload
+                    const localData = localStorage.getItem('messAppDataMealKhata');
+                    if (localData) {
+                        messRef.set(messData); // Upload existing local data
+                    }
+                    setupFirebaseRealtimeSync();
+                }
+            }).catch(err => {
+                console.error("Firebase Initialization Error:", err);
+                updateSyncStatus("☁️ Offline — Local backup active", "text-red-500");
+            });
         };
     </script>
 </body>
