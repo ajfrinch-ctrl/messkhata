@@ -4,11 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meal Khata - Mess Account Manager</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <!-- pdfMake for PDF generation -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
         body { font-family: 'Noto Sans Bengali', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -19,12 +15,70 @@
             to { transform: translateX(0); opacity: 1; }
         }
     </style>
+
+<script>
+/* ===== Date / weekday / helpers ===== */
+function formatLongDate(dateValue) {
+    if (!dateValue) return "";
+    const d = new Date(String(dateValue) + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return String(dateValue);
+    return d.toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+}
+function weekdayName(dateValue) {
+    if (!dateValue) return "";
+    const d = new Date(String(dateValue) + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", {weekday:"long"});
+}
+
+/* ইংরেজি সংখ্যাকে বাংলা সংখ্যায় রূপান্তর করার ফাংশন */
+function convertToBanglaNumber(input) {
+    if (input === null || input === undefined) return "";
+    const numbers = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯', '.': '.'
+    };
+    return input.toString().replace(/[0-9.]/g, match => numbers[match] !== undefined ? numbers[match] : match);
+}
+
+/* তারিখকে কাঙ্ক্ষিত বাংলা ফরম্যাটে রূপান্তর */
+function formatBanglaDate(dateString) {
+    if (!dateString) return "";
+    let dateObj = new Date(String(dateString) + "T00:00:00");
+    if (Number.isNaN(dateObj.getTime())) return dateString;
+    
+    let months = [
+        "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+        "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+    ];
+    
+    let days = [
+        "রবিবার", "সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার"
+    ];
+
+    let dayNum = convertToBanglaNumber(dateObj.getDate());
+    let monthName = months[dateObj.getMonth()];
+    let yearNum = convertToBanglaNumber(dateObj.getFullYear());
+    let dayName = days[dateObj.getDay()];
+
+    return `${dayNum} ${monthName} ${yearNum}, ${dayName}`;
+}
+
+window.formatLongDate = formatLongDate;
+window.weekdayName = weekdayName;
+window.formatBanglaDate = formatBanglaDate;
+window.convertToBanglaNumber = convertToBanglaNumber;
+</script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 </head>
 <body class="bg-gray-100 p-4 md:p-8">
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+    <div id="firebase-sync-status" class="fixed bottom-3 left-3 z-50 bg-white border shadow px-3 py-2 rounded-full text-xs font-semibold text-gray-600">🔄 Firebase Sync...</div>
 
-    <div class="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <!-- Header & Logo Section -->
+
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-lg">
         <div class="flex items-center justify-center gap-3 mb-6 border-b pb-4">
             <svg class="w-10 h-10 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -39,31 +93,29 @@
             </div>
         </div>
 
-        <!-- Top Overview Cards -->
         <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div class="bg-blue-600 p-4 rounded text-center shadow-xs text-white">
                 <p class="text-xs md:text-sm font-medium opacity-90">💳 মোট খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-expense">0</span></p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-expense">০</span></p>
             </div>
             <div class="bg-emerald-600 p-4 rounded text-center shadow-xs text-white">
                 <p class="text-xs md:text-sm font-medium opacity-90">🛒 মোট বাজার খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-bazar">0</span></p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-bazar">০</span></p>
             </div>
             <div class="bg-indigo-600 p-4 rounded text-center shadow-xs text-white">
                 <p class="text-xs md:text-sm font-medium opacity-90">📠 মোট ফিক্সড খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-fixed">0</span></p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-fixed">০</span></p>
             </div>
             <div class="bg-amber-500 p-4 rounded text-center shadow-xs text-white">
                 <p class="text-xs md:text-sm font-medium opacity-90">🍚 মোট মিল</p>
-                <p class="text-lg md:text-xl font-bold"><span id="total-meals">0</span></p>
+                <p class="text-lg md:text-xl font-bold"><span id="total-meals">০</span></p>
             </div>
             <div class="bg-rose-500 p-4 rounded text-center shadow-xs text-white col-span-2 md:col-span-1">
                 <p class="text-xs md:text-sm font-medium opacity-90">📈 মিল রেট</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="meal-rate">0.00</span></p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="meal-rate">০.০০</span></p>
             </div>
         </div>
 
-        <!-- Navigation Tabs -->
         <div class="flex flex-wrap gap-2 mb-6 border-b pb-3">
             <button onclick="switchTab('tab-meals')" id="btn-tab-meals" class="tab-btn px-4 py-2 rounded-md font-medium bg-emerald-600 text-white">🥣 দৈনিক মিল</button>
             <button onclick="switchTab('tab-bazar')" id="btn-tab-bazar" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🛒 বাজার খরচ</button>
@@ -72,7 +124,6 @@
             <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">👥 সদস্যগণ</button>
         </div>
 
-        <!-- Tab 1: Daily Meals -->
         <div id="tab-meals" class="tab-content">
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                 <h2 class="text-lg font-bold mb-2 text-gray-700">🥣 দৈনিক মিল এন্ট্রি</h2>
@@ -86,15 +137,14 @@
             <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক মিলের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
-                    <button onclick="downloadMealsPDF()" class="bg-amber-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-amber-700 text-sm flex items-center gap-1">
-                        📄 মিল রিপোর্ট PDF ডাউনলোড
+                    <button onclick="shareMealsOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
+                        📤 হোয়াটসঅ্যাপে মিল রিপোর্ট শেয়ার
                     </button>
                 </div>
                 <div id="meals-grid-container" class="overflow-x-auto"></div>
             </div>
         </div>
 
-        <!-- Tab 2: Bazar Expenses -->
         <div id="tab-bazar" class="tab-content hidden">
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                 <h2 class="text-lg font-bold mb-2 text-gray-700">🛒 বাজার খরচ যোগ করুন</h2>
@@ -104,13 +154,17 @@
                     <input id="bazar-desc" type="text" placeholder="বাজারের বিবরণ (যেমন: চাল, মুরগি, তেল)" class="border bg-white p-2 rounded-md w-full">
                     <input id="bazar-amount" type="number" placeholder="টাকার পরিমাণ (টাকা)" class="border bg-white p-2 rounded-md w-full">
                     <button onclick="addBazar()" class="w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">খরচ যোগ করুন</button>
+                    
+                    <button id="wa-share-btn" onclick="shareOnWhatsApp()" class="w-full bg-green-500 text-white py-2 rounded-md font-medium hover:bg-green-600 hidden flex items-center justify-center gap-2">
+                        📤 হোয়াটসঅ্যাপ গ্রুপে শেয়ার করুন
+                    </button>
                 </div>
             </div>
             <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-lg font-bold text-gray-700">🛒 বাজারের তালিকা (তারিখ অনুযায়ী সর্টিং)</h2>
-                    <button onclick="downloadBazarPDF()" class="bg-emerald-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-emerald-700 text-sm flex items-center gap-1">
-                        📄 বাজার রিপোর্ট PDF ডাউনলোড
+                    <button onclick="shareBazarListOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
+                        📤 হোয়াটসঅ্যাপে সম্পূর্ণ বাজার তালিকা শেয়ার
                     </button>
                 </div>
                 <table class="w-full text-left border-collapse bg-white mb-3">
@@ -127,15 +181,21 @@
                     <tfoot>
                         <tr class="bg-emerald-100 font-bold text-gray-800">
                             <td colspan="3" class="p-2 border text-right">সর্বমোট বাজার খরচ:</td>
-                            <td class="p-2 border text-emerald-900">৳<span id="table-total-bazar">0</span></td>
-                            <td class="p-2 border"></td>
+                            <td class="p-2 border text-emerald-900" colspan="2">৳<span id="table-total-bazar">০</span></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
+
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক বাজারের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
+                    <span class="text-xs text-gray-500">একই দিনে একাধিক বাজার → আইটেম কমা দিয়ে + মোট টাকা যোগ হবে</span>
+                </div>
+                <div id="bazar-grid-container" class="overflow-x-auto"></div>
+            </div>
         </div>
 
-        <!-- Tab 3: Fixed Costs -->
         <div id="tab-fixed" class="tab-content hidden">
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                 <h2 class="text-lg font-bold mb-1 text-gray-700">🏠 ফিক্সড খরচ ড্যাশবোর্ড</h2>
@@ -185,61 +245,65 @@
                     <tfoot>
                         <tr class="bg-indigo-100 font-bold text-gray-800 text-sm">
                             <td class="p-3 border text-right">সর্বমোট:</td>
-                            <td class="p-3 border" id="foot-total-rent">৳0</td>
-                            <td class="p-3 border" id="foot-total-utility">৳0</td>
-                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳0</td>
+                            <td class="p-3 border" id="foot-total-rent">৳০</td>
+                            <td class="p-3 border" id="foot-total-utility">৳০</td>
+                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳০</td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
         </div>
 
-        <!-- Tab 4: Summary & All-in-One Report -->
         <div id="tab-summary" class="tab-content hidden">
             <div class="overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b pb-3">
                     <h2 class="text-xl font-bold text-gray-700">📊 মাসিক ব্যালেন্স শীট ও রিপোর্ট</h2>
-                    <button onclick="downloadAllInOnePDF()" class="bg-blue-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-blue-800 text-sm shadow flex items-center gap-2">
-                        📄 সম্পূর্ণ সম্মিলিত রিপোর্ট (All-in-One PDF)
+                    <button onclick="shareAllInOneOnWhatsApp()" class="bg-green-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-800 text-sm shadow flex items-center gap-2">
+                        📤 সম্পূর্ণ সম্মিলিত রিপোর্ট হোয়াটসঅ্যাপে শেয়ার
                     </button>
                 </div>
-                <table class="w-full text-left border-collapse bg-white mb-3">
+                <table class="w-full text-left border-collapse bg-white mb-3 text-xs md:text-sm">
                     <thead>
-                        <tr class="bg-blue-900 text-white text-sm">
-                            <th class="p-3 border">সদস্য</th>
-                            <th class="p-3 border">মোট মিল</th>
-                            <th class="p-3 border">মিলের খরচ</th>
-                            <th class="p-3 border">বাসা ভাড়া</th>
-                            <th class="p-3 border">ইউটিলিটি</th>
-                            <th class="p-3 border">মোট খরচ</th>
-                            <th class="p-3 border">জমা (বাজার)</th>
-                            <th class="p-3 border">অবস্থা</th>
-                            <th class="p-3 border text-center">অ্যাকশন</th>
+                        <tr class="bg-blue-900 text-white">
+                            <th class="p-2 border">সদস্য</th>
+                            <th class="p-2 border text-center">মিল</th>
+                            <th class="p-2 border">মিলের খরচ</th>
+                            <th class="p-2 border">বাসা ভাড়া</th>
+                            <th class="p-2 border">বুয়া</th>
+                            <th class="p-2 border">বিদ্যুৎ</th>
+                            <th class="p-2 border">ওয়াইফাই</th>
+                            <th class="p-2 border">অন্যান্য</th>
+                            <th class="p-2 border">মোট খরচ</th>
+                            <th class="p-2 border">বাজার জমা</th>
+                            <th class="p-2 border">অবস্থা</th>
+                            <th class="p-2 border text-center">অ্যাকশন</th>
                         </tr>
                     </thead>
-                    <tbody id="calculation-table-body" class="text-sm"></tbody>
+                    <tbody id="calculation-table-body"></tbody>
                     <tfoot>
-                        <tr class="bg-blue-100 font-bold text-gray-900 text-sm">
-                            <td class="p-3 border">সর্বমোট:</td>
-                            <td class="p-3 border" id="summary-foot-meals">0</td>
-                            <td class="p-3 border" id="summary-foot-meal-cost">৳0</td>
-                            <td class="p-3 border" id="summary-foot-rent">৳0</td>
-                            <td class="p-3 border" id="summary-foot-utility">৳0</td>
-                            <td class="p-3 border text-blue-900" id="summary-foot-total-cost">৳0</td>
-                            <td class="p-3 border text-emerald-900" id="summary-foot-bazar">৳0</td>
-                            <td class="p-3 border" colspan="2"></td>
+                        <tr class="bg-blue-100 font-bold text-gray-900">
+                            <td class="p-2 border">সর্বমোট:</td>
+                            <td class="p-2 border text-center" id="summary-foot-meals">০</td>
+                            <td class="p-2 border" id="summary-foot-meal-cost">৳০</td>
+                            <td class="p-2 border" id="summary-foot-rent">৳০</td>
+                            <td class="p-2 border" id="summary-foot-maid">৳০</td>
+                            <td class="p-2 border" id="summary-foot-elec">৳০</td>
+                            <td class="p-2 border" id="summary-foot-wifi">৳০</td>
+                            <td class="p-2 border" id="summary-foot-oth">৳০</td>
+                            <td class="p-2 border text-blue-900" id="summary-foot-total-cost">৳০</td>
+                            <td class="p-2 border text-emerald-900" id="summary-foot-bazar">৳০</td>
+                            <td class="p-2 border" colspan="2"></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
         </div>
 
-        <!-- Tab 5: Members -->
         <div id="tab-members" class="tab-content hidden">
             <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h2 class="text-lg font-bold mb-2 text-gray-700">👥 নতুন সদস্য যোগ করুন (অবশ্যই ইংরেজিতে লিখুন)</h2>
+                <h2 class="text-lg font-bold mb-2 text-gray-700">👥 নতুন সদস্য যোগ করুন</h2>
                 <div class="flex gap-2">
-                    <input id="member-name" type="text" placeholder="Member Name in English (e.g., Rahim)" class="border bg-white p-2 rounded-md flex-grow">
+                    <input id="member-name" type="text" placeholder="সদস্যের নাম লিখুন (যেমন: রহিম)" class="border bg-white p-2 rounded-md flex-grow">
                     <button onclick="addMember()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700">যোগ করুন</button>
                 </div>
             </div>
@@ -249,7 +313,6 @@
             </div>
         </div>
 
-        <!-- Reset Control -->
         <div class="mt-8 flex justify-end items-center gap-3 pt-4 border-t">
             <button onclick="resetApp()" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600">
                 সব ডেটা রিসেট করুন
@@ -258,35 +321,6 @@
     </div>
 
     <script>
-        pdfMake.fonts = {
-            Roboto: {
-                normal: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf',
-                bold: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Medium.ttf',
-                italics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Italic.ttf',
-                bolditalics: 'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-MediumItalic.ttf'
-            }
-        };
-
-        const banglaToEnglishDict = {
-            'চাল': 'Rice', 'ডাল': 'Lentils', 'মুরগি': 'Chicken', 'মাংস': 'Meat', 'গরুর মাংস': 'Beef',
-            'খাসির মাংস': 'Mutton', 'মাছ': 'Fish', 'রুই মাছ': 'Rui Fish', 'ইলিশ মাছ': 'Hilsa Fish',
-            'তেল': 'Oil', 'সয়াবিন তেল': 'Soybean Oil', 'সরিষার তেল': 'Mustard Oil', 'পেঁয়াজ': 'Onion',
-            'রসুন': 'Garlic', 'আদা': 'Ginger', 'আলু': 'Potato', 'টমেটো': 'Tomato', 'কাঁচামরিচ': 'Green Chili',
-            'মরিচ': 'Chili', 'হলুদ': 'Turmeric', 'জিরা': 'Cumin', 'মসলা': 'Spices', 'লবণ': 'Salt',
-            'চিনি': 'Sugar', 'ডিম': 'Egg', 'দুধ': 'Milk', 'সবজি': 'Vegetables', 'শাক': 'Greens',
-            'ধনেপাতা': 'Coriander', 'লেবু': 'Lemon', 'পানি': 'Water', 'সাবান': 'Soap', 'শ্যাম্পু': 'Shampoo'
-        };
-
-        function translateToEnglish(text) {
-            if (!text) return 'General Bazar';
-            let translated = text;
-            for (const [bn, en] of Object.entries(banglaToEnglishDict)) {
-                const regex = new RegExp(bn, 'g');
-                translated = translated.replace(regex, en);
-            }
-            return translated;
-        }
-
         document.getElementById('meal-date').valueAsDate = new Date();
         document.getElementById('bazar-date').valueAsDate = new Date();
 
@@ -297,6 +331,8 @@
             fixedCosts: { rent: {} },
             grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }
         };
+
+        let lastMarketData = null;
 
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -330,11 +366,6 @@
             const nameInput = document.getElementById('member-name');
             const name = nameInput.value.trim();
             if (name === '') return alert('দয়া করে সঠিক নাম লিখুন।');
-            
-            const containsBangla = /[\u0980-\u09FF]/.test(name);
-            if (containsBangla) {
-                return alert('সদস্যের নাম বাধ্যতামুলকভাবে ইংরেজিতে লিখতে হবে (যেমন: Rahim, Karim)।');
-            }
 
             const newMember = { id: 'mem_' + Date.now(), name: name };
             messData.members.push(newMember);
@@ -428,30 +459,53 @@
             calculateMess();
         }
 
-        function deleteMealEntry(date, memberId) {
-            if (confirm('এই দিনের মিলের হিসাবটি মুছে ফেলতে চান?')) {
-                messData.mealsLog = messData.mealsLog.filter(l => !(l.date === date && l.memberId === memberId));
-                saveToLocalStorage();
-                calculateMess();
-                showToast('মিল মুছে ফেলা হয়েছে।');
-            }
-        }
-
         function addBazar() {
-            const date = document.getElementById('bazar-date').value;
+            const rawDate = document.getElementById('bazar-date').value;
             const memberId = document.getElementById('bazar-member-select').value;
             const desc = document.getElementById('bazar-desc').value.trim() || 'সাধারণ বাজার';
             const amount = parseFloat(document.getElementById('bazar-amount').value);
 
-            if (!date || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+            if (!rawDate || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
 
-            messData.bazarLog.push({ id: 'bazar_' + Date.now(), date, memberId, desc, amount });
+            const formattedDate = formatBanglaDate(rawDate);
+            const memberObj = messData.members.find(m => m.id === memberId);
+            const buyerName = memberObj ? memberObj.name : 'সদস্য';
+
+            messData.bazarLog.push({ id: 'bazar_' + Date.now(), date: rawDate, displayDate: formattedDate, memberId, desc, amount });
             messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
             document.getElementById('bazar-desc').value = '';
             document.getElementById('bazar-amount').value = '';
             saveToLocalStorage();
             calculateMess();
-            showToast('বাজার খরচ অটো-সেভ করা হয়েছে।');
+
+            lastMarketData = { 
+                buyer: buyerName, 
+                date: formattedDate, 
+                list: desc, 
+                amount: convertToBanglaNumber(amount) 
+            };
+            document.getElementById('wa-share-btn').classList.remove('hidden');
+
+            showToast('বাজার খরচ সফলভাবে সংরক্ষিত হয়েছে!');
+        }
+
+        function shareSpecificOnWhatsApp(buyerName, formattedDate, desc, amount) {
+            let banglaAmount = convertToBanglaNumber(amount);
+            let message = `🛒 *বাজার খরচ আপডেট*\n\n` +
+                          `👤 *বাজারকারী:* ${buyerName}\n` +
+                          `📅 *তারিখ:* ${formattedDate}\n` +
+                          `📋 *বাজারের বিবরণ:*\n${desc}\n\n` +
+                          `💵 *টাকার পরিমাণ:* ${banglaAmount} টাকা`;
+
+            let encodedMessage = encodeURIComponent(message);
+            let whatsappUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function shareOnWhatsApp() {
+            if (!lastMarketData) return;
+            shareSpecificOnWhatsApp(lastMarketData.buyer, lastMarketData.date, lastMarketData.list, lastMarketData.amount);
         }
 
         function deleteBazar(id) {
@@ -486,14 +540,17 @@
             let totalBazar = 0;
             let totalFixedAll = 0;
             let totalRentAll = 0;
-            let totalUtilityAll = 0;
+            let totalMaidAll = 0;
+            let totalElecAll = 0;
+            let totalWifiAll = 0;
+            let totalOthAll = 0;
 
             let memberSummary = {};
 
             messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             messData.members.forEach(m => {
-                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, fixed: 0, rent: 0, utility: 0 };
+                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, rent: 0, maid: 0, elec: 0, wifi: 0, oth: 0, fixed: 0 };
             });
 
             messData.mealsLog.forEach(log => {
@@ -515,73 +572,84 @@
             const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
             const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
 
-            const totalSharedBills = billElec + billMaid + billWifi + billOth;
             const memberCount = messData.members.length;
-            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
 
             const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
             fixedBreakdownBody.innerHTML = '';
 
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
             messData.members.forEach(m => {
                 const rentInput = document.querySelector(`.rent-input[data-mem="${m.id}"]`);
                 let individualRent = rentInput ? (rentInput.value === '' ? 0 : parseFloat(rentInput.value)) : (messData.fixedCosts.rent[m.id] || 0);
-                const calculatedFixedSum = individualRent + splitBillPerMember;
+                
+                const calculatedFixedSum = individualRent + splitMaid + splitElec + splitWifi + splitOth;
                 
                 memberSummary[m.id].rent = individualRent;
-                memberSummary[m.id].utility = splitBillPerMember;
+                memberSummary[m.id].maid = splitMaid;
+                memberSummary[m.id].elec = splitElec;
+                memberSummary[m.id].wifi = splitWifi;
+                memberSummary[m.id].oth = splitOth;
                 memberSummary[m.id].fixed = calculatedFixedSum;
 
                 totalRentAll += individualRent;
-                totalUtilityAll += splitBillPerMember;
+                totalMaidAll += splitMaid;
+                totalElecAll += splitElec;
+                totalWifiAll += splitWifi;
+                totalOthAll += splitOth;
                 totalFixedAll += calculatedFixedSum;
 
                 fixedBreakdownBody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3 border font-semibold">${m.name}</td>
-                        <td class="p-3 border">৳${individualRent.toFixed(1)}</td>
-                        <td class="p-3 border text-gray-600">৳${splitBillPerMember.toFixed(1)}</td>
-                        <td class="p-3 border font-bold text-indigo-700">৳${calculatedFixedSum.toFixed(1)}</td>
+                        <td class="p-3 border">৳${convertToBanglaNumber(individualRent.toFixed(1))}</td>
+                        <td class="p-3 border text-gray-600">৳${convertToBanglaNumber((splitMaid + splitElec + splitWifi + splitOth).toFixed(1))}</td>
+                        <td class="p-3 border font-bold text-indigo-700">৳${convertToBanglaNumber(calculatedFixedSum.toFixed(1))}</td>
                     </tr>
                 `;
             });
 
-            document.getElementById('foot-total-rent').innerText = `৳${totalRentAll.toFixed(1)}`;
-            document.getElementById('foot-total-utility').innerText = `৳${totalUtilityAll.toFixed(1)}`;
-            document.getElementById('foot-total-fixed-all').innerText = `৳${totalFixedAll.toFixed(1)}`;
+            document.getElementById('foot-total-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            document.getElementById('foot-total-utility').innerText = `৳${convertToBanglaNumber((totalMaidAll + totalElecAll + totalWifiAll + totalOthAll).toFixed(1))}`;
+            document.getElementById('foot-total-fixed-all').innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
 
-            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
             const totalExpenseAll = totalBazar + totalFixedAll;
 
-            document.getElementById('total-expense').innerText = totalExpenseAll.toFixed(1);
-            document.getElementById('total-bazar').innerText = totalBazar.toFixed(1);
-            document.getElementById('total-fixed').innerText = totalFixedAll.toFixed(1);
-            document.getElementById('total-meals').innerText = totalMeals;
-            document.getElementById('meal-rate').innerText = mealRate.toFixed(2);
+            document.getElementById('total-expense').innerText = convertToBanglaNumber(totalExpenseAll.toFixed(1));
+            document.getElementById('total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
+            document.getElementById('total-fixed').innerText = convertToBanglaNumber(totalFixedAll.toFixed(1));
+            document.getElementById('total-meals').innerText = convertToBanglaNumber(totalMeals);
+            document.getElementById('meal-rate').innerText = convertToBanglaNumber(mealRate.toFixed(2));
 
-            // --- Render Meals Grid (Date vs Members Matrix) ---
             renderMealsGrid();
 
-            // --- Render Bazar Table ---
-            document.getElementById('table-total-bazar').innerText = totalBazar.toFixed(1);
+            document.getElementById('table-total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
             const bazarTableBody = document.getElementById('bazar-log-table-body');
             bazarTableBody.innerHTML = '';
             messData.bazarLog.forEach(b => {
                 const member = messData.members.find(m => m.id === b.memberId);
                 const memName = member ? member.name : 'Unknown';
+                const displayDt = b.displayDate || formatBanglaDate(b.date);
                 bazarTableBody.innerHTML += `
                     <tr class="border-b hover:bg-gray-100">
-                        <td class="p-2 border">${b.date}</td>
+                        <td class="p-2 border">${displayDt}</td>
                         <td class="p-2 border font-medium">${memName}</td>
                         <td class="p-2 border">${b.desc}</td>
-                        <td class="p-2 border text-emerald-600 font-bold">৳${b.amount}</td>
-                        <td class="p-2 border text-center">
+                        <td class="p-2 border text-emerald-600 font-bold">৳${convertToBanglaNumber(b.amount)}</td>
+                        <td class="p-2 border text-center flex gap-1 justify-center">
+                            <button onclick="shareSpecificOnWhatsApp('${memName}', '${displayDt}', '${b.desc.replace(/'/g, "\\'")}', ${b.amount})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">📤 শেয়ার</button>
                             <button onclick="deleteBazar('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">ডিলিট</button>
                         </td>
                     </tr>
                 `;
             });
 
-            // --- Render Summary Table ---
+            renderBazarGrid();
+
             const tbody = document.getElementById('calculation-table-body');
             tbody.innerHTML = '';
 
@@ -598,35 +666,85 @@
                 grandTotalCostSum += totalCost;
 
                 let balanceText = balance >= 0 ? 
-                    `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳${balance.toFixed(1)}</span>` : 
-                    `<span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-sm font-bold">দেবে: ৳${Math.abs(balance).toFixed(1)}</span>`;
+                    `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳${convertToBanglaNumber(balance.toFixed(1))}</span>` : 
+                    `<span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-sm font-bold">দেবে: ৳${convertToBanglaNumber(Math.abs(balance).toFixed(1))}</span>`;
 
                 tbody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3 border font-semibold">${s.name}</td>
-                        <td class="p-3 border">${s.meals}</td>
-                        <td class="p-3 border text-gray-600">৳${mealCost.toFixed(1)}</td>
-                        <td class="p-3 border text-gray-600">৳${s.rent.toFixed(1)}</td>
-                        <td class="p-3 border text-gray-600">৳${s.utility.toFixed(1)}</td>
-                        <td class="p-3 border font-medium text-blue-600">৳${totalCost.toFixed(1)}</td>
-                        <td class="p-3 border text-emerald-600">৳${s.bazarSpent}</td>
-                        <td class="p-3 border">${balanceText}</td>
-                        <td class="p-3 border text-center">
-                            <button onclick="downloadMemberPDF('${member.id}')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded hover:bg-emerald-700">PDF ডাউনলোড</button>
+                        <td class="p-2 border font-semibold">${s.name}</td>
+                        <td class="p-2 border text-center">${convertToBanglaNumber(s.meals)}</td>
+                        <td class="p-2 border text-gray-700">৳${convertToBanglaNumber(mealCost.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.rent.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.maid.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.elec.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.wifi.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.oth.toFixed(1))}</td>
+                        <td class="p-2 border font-bold text-blue-700">৳${convertToBanglaNumber(totalCost.toFixed(1))}</td>
+                        <td class="p-2 border text-emerald-600 font-semibold">৳${convertToBanglaNumber(s.bazarSpent)}</td>
+                        <td class="p-2 border">${balanceText}</td>
+                        <td class="p-2 border text-center">
+                            <button onclick="shareMemberOnWhatsApp('${member.id}')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700">📤 শেয়ার</button>
                         </td>
                     </tr>
                 `;
             });
 
-            document.getElementById('summary-foot-meals').innerText = totalMeals;
-            document.getElementById('summary-foot-meal-cost').innerText = `৳${grandMealCostSum.toFixed(1)}`;
-            document.getElementById('summary-foot-rent').innerText = `৳${totalRentAll.toFixed(1)}`;
-            document.getElementById('summary-foot-utility').innerText = `৳${totalUtilityAll.toFixed(1)}`;
-            document.getElementById('summary-foot-total-cost').innerText = `৳${grandTotalCostSum.toFixed(1)}`;
-            document.getElementById('summary-foot-bazar').innerText = `৳${totalBazar.toFixed(1)}`;
+            document.getElementById('summary-foot-meals').innerText = convertToBanglaNumber(totalMeals);
+            document.getElementById('summary-foot-meal-cost').innerText = `৳${convertToBanglaNumber(grandMealCostSum.toFixed(1))}`;
+            document.getElementById('summary-foot-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            document.getElementById('summary-foot-maid').innerText = `৳${convertToBanglaNumber(totalMaidAll.toFixed(1))}`;
+            document.getElementById('summary-foot-elec').innerText = `৳${convertToBanglaNumber(totalElecAll.toFixed(1))}`;
+            document.getElementById('summary-foot-wifi').innerText = `৳${convertToBanglaNumber(totalWifiAll.toFixed(1))}`;
+            document.getElementById('summary-foot-oth').innerText = `৳${convertToBanglaNumber(totalOthAll.toFixed(1))}`;
+            document.getElementById('summary-foot-total-cost').innerText = `৳${convertToBanglaNumber(grandTotalCostSum.toFixed(1))}`;
+            document.getElementById('summary-foot-bazar').innerText = `৳${convertToBanglaNumber(totalBazar.toFixed(1))}`;
         }
 
-        // Render Matrix Table for UI
+        function renderBazarGrid() {
+            const container = document.getElementById('bazar-grid-container');
+            if (!container) return;
+            if (messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
+                return;
+            }
+
+            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let html = `<table class="w-full text-left border-collapse bg-white text-sm">
+                <thead><tr class="bg-emerald-700 text-white">
+                    <th class="p-2 border min-w-[105px]">তারিখ</th>`;
+            messData.members.forEach(m => {
+                html += `<th class="p-2 border text-center min-w-[150px]">${m.name}</th>`;
+            });
+            html += `<th class="p-2 border text-center min-w-[110px]">মোট</th></tr></thead><tbody>`;
+
+            if (dates.length === 0) {
+                html += `<tr><td colspan="${messData.members.length + 2}" class="p-3 text-center text-gray-500">কোনো বাজারের ডাটা পাওয়া যায়নি।</td></tr>`;
+            } else {
+                dates.forEach(date => {
+                    let dateTotal = 0;
+                    let displayDt = formatBanglaDate(date);
+                    html += `<tr class="border-b hover:bg-emerald-50"><td class="p-2 border font-medium">${displayDt}</td>`;
+                    messData.members.forEach(m => {
+                        const entries = messData.bazarLog.filter(b => b.date === date && b.memberId === m.id);
+                        const subtotal = entries.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                        dateTotal += subtotal;
+                        const items = entries.map(b => b.desc || 'সাধারণ বাজার').join(', ');
+                        html += `<td class="p-2 border align-top">${entries.length ? `<div class="font-medium text-gray-700 break-words">${items}</div><div class="font-bold text-emerald-700 mt-1">৳${convertToBanglaNumber(subtotal.toFixed(1))}</div>` : '<span class="text-gray-300">—</span>'}</td>`;
+                    });
+                    html += `<td class="p-2 border text-center font-extrabold text-emerald-800">৳${convertToBanglaNumber(dateTotal.toFixed(1))}</td></tr>`;
+                });
+            }
+
+            html += `</tbody><tfoot><tr class="bg-emerald-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>`;
+            messData.members.forEach(m => {
+                const memberTotal = messData.bazarLog.filter(b => b.memberId === m.id).reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(memberTotal.toFixed(1))}</td>`;
+            });
+            const grandBazar = messData.bazarLog.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+            html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(grandBazar.toFixed(1))}</td></tr></tfoot></table>`;
+            container.innerHTML = html;
+        }
+
         function renderMealsGrid() {
             const container = document.getElementById('meals-grid-container');
             if (messData.members.length === 0) {
@@ -634,7 +752,6 @@
                 return;
             }
 
-            // Extract unique dates
             const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
 
             let html = `<table class="w-full text-left border-collapse bg-white text-sm">
@@ -652,13 +769,14 @@
                 html += `<tr><td colspan="${messData.members.length + 1}" class="p-3 text-center text-gray-500">কোনো মিলের ডাটা পাওয়া যায়নি।</td></tr>`;
             } else {
                 dates.forEach(date => {
+                    let displayDt = formatBanglaDate(date);
                     html += `<tr class="border-b hover:bg-amber-50">
-                        <td class="p-2 border font-medium">${date}</td>`;
+                        <td class="p-2 border font-medium">${displayDt}</td>`;
                     
                     messData.members.forEach(m => {
                         const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
                         const countVal = entry ? entry.count : 0;
-                        html += `<td class="p-2 border text-center font-bold ${countVal > 0 ? 'text-amber-700' : 'text-gray-300'}">${countVal}</td>`;
+                        html += `<td class="p-2 border text-center font-bold ${countVal > 0 ? 'text-amber-700' : 'text-gray-300'}">${convertToBanglaNumber(countVal)}</td>`;
                     });
 
                     html += `</tr>`;
@@ -673,133 +791,65 @@
                 let mTotal = 0;
                 messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
                 totalAllMeals += mTotal;
-                html += `<td class="p-2 border text-center text-amber-900 font-extrabold">${mTotal}</td>`;
+                html += `<td class="p-2 border text-center text-amber-900 font-extrabold">${convertToBanglaNumber(mTotal)}</td>`;
             });
 
             html += `</tr></tfoot></table>`;
             container.innerHTML = html;
         }
 
-        // --- NEW MATRIX PDF GENERATOR FOR MEALS ---
-        function downloadMealsPDF() {
+        /* হোয়াটসঅ্যাপে বিভিন্ন রিপোর্ট শেয়ার করার ফাংশনসমূহ */
+        function shareMealsOnWhatsApp() {
             if (messData.members.length === 0) return alert("কোনো সদস্য পাওয়া যায়নি।");
-
             const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
-
-            // Column Headers: [Date, Member1, Member2, ...]
-            let headerRow = [
-                { text: 'Date', bold: true, fillColor: '#d97706', color: '#ffffff', alignment: 'center' }
-            ];
-
-            messData.members.forEach(m => {
-                headerRow.push({ text: m.name, bold: true, fillColor: '#d97706', color: '#ffffff', alignment: 'center' });
-            });
-
-            let tableRows = [headerRow];
-
-            // Data Rows (Per Date)
-            dates.forEach(date => {
-                let row = [{ text: date, alignment: 'center', bold: true }];
-                messData.members.forEach(m => {
-                    const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
-                    const countVal = entry ? entry.count : 0;
-                    row.push({ text: `${countVal}`, alignment: 'center', color: countVal > 0 ? '#b45309' : '#9ca3af' });
+            
+            let message = `🥣 *দৈনিক মিলের রিপোর্ট*\n\n`;
+            if (dates.length === 0) {
+                message += `কোনো মিলের ডাটা পাওয়া যায়নি।`;
+            } else {
+                dates.forEach(date => {
+                    message += `📅 *তারিখ:* ${formatBanglaDate(date)}\n`;
+                    messData.members.forEach(m => {
+                        const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                        const countVal = entry ? entry.count : 0;
+                        message += `- ${m.name}: ${convertToBanglaNumber(countVal)} মিল\n`;
+                    });
+                    message += `\n`;
                 });
-                tableRows.push(row);
-            });
+            }
 
-            // Footer Row (Total per member)
-            let footerRow = [{ text: 'Total Meals', bold: true, alignment: 'right', fillColor: '#fef3c7' }];
-            let grandTotal = 0;
-            messData.members.forEach(m => {
-                let mTotal = 0;
-                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
-                grandTotal += mTotal;
-                footerRow.push({ text: `${mTotal}`, bold: true, alignment: 'center', fillColor: '#fef3c7', color: '#92400e' });
-            });
-            tableRows.push(footerRow);
-
-            // Dynamic width column calculator
-            let widths = ['20%'];
-            let remainingPercent = 80 / messData.members.length;
-            messData.members.forEach(() => {
-                widths.push(`${remainingPercent}%`);
-            });
-
-            let docDefinition = {
-                pageOrientation: messData.members.length > 5 ? 'landscape' : 'portrait',
-                content: [
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [[{ text: '🥣 MEAL KHATA - DAILY MEAL REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
-                        },
-                        layout: 'noBorders',
-                        fillColor: '#d97706',
-                        margin: [0, 0, 0, 15]
-                    },
-                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 10] },
-                    {
-                        table: {
-                            widths: widths,
-                            body: tableRows
-                        }
-                    }
-                ]
-            };
-            pdfMake.createPdf(docDefinition).download(`Meal_Khata_Meals_Report.pdf`);
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
 
-        function downloadBazarPDF() {
-            let totalBazarAmount = 0;
-            const sortedBazar = [...messData.bazarLog].sort((a,b) => new Date(a.date) - new Date(b.date));
-            sortedBazar.forEach(b => totalBazarAmount += b.amount);
+        function shareBazarListOnWhatsApp() {
+            if (messData.bazarLog.length === 0) return alert("কোনো বাজার খরচ পাওয়া যায়নি।");
+            
+            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let message = `🛒 *সম্পূর্ণ বাজার তালিকা ও খরচ*\n\n`;
+            let totalBazar = 0;
 
-            let tableRows = [
-                [
-                    { text: 'Date', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Member Name', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Description', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Amount (BDT)', bold: true, fillColor: '#047857', color: '#ffffff' }
-                ]
-            ];
+            dates.forEach(date => {
+                const displayDt = formatBanglaDate(date);
+                message += `📅 *তারিখ:* ${displayDt}\n`;
 
-            sortedBazar.forEach(b => {
-                const mem = messData.members.find(x => x.id === b.memberId);
-                const translatedDesc = translateToEnglish(b.desc);
-                tableRows.push([b.date, mem ? mem.name : 'Unknown', translatedDesc, `TK ${b.amount}`]);
+                messData.members.forEach(m => {
+                    const entries = messData.bazarLog.filter(b => b.date === date && b.memberId === m.id);
+                    if (entries.length > 0) {
+                        const subtotal = entries.reduce((sum, b) => sum + b.amount, 0);
+                        const itemsCombined = entries.map(b => b.desc).join(', ');
+                        totalBazar += subtotal;
+
+                        message += `  👤 ${m.name}: ${itemsCombined} (৳${convertToBanglaNumber(subtotal.toFixed(1))})\n`;
+                    }
+                });
+                message += `------------------\n`;
             });
 
-            tableRows.push([
-                { text: 'Total Bazar Expense:', bold: true, colSpan: 3, alignment: 'right', fillColor: '#d1fae5' },
-                {}, {},
-                { text: `TK ${totalBazarAmount.toFixed(2)}`, bold: true, fillColor: '#d1fae5', color: '#065f46' }
-            ]);
-
-            let docDefinition = {
-                content: [
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [[{ text: '🛒 MEAL KHATA - BAZAR EXPENSE REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
-                        },
-                        layout: 'noBorders',
-                        fillColor: '#047857',
-                        margin: [0, 0, 0, 15]
-                    },
-                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 10] },
-                    {
-                        table: {
-                            widths: ['20%', '25%', '35%', '20%'],
-                            body: tableRows
-                        }
-                    }
-                ]
-            };
-            pdfMake.createPdf(docDefinition).download(`Meal_Khata_Bazar_Report.pdf`);
+            message += `\n💵 *সর্বমোট বাজার খরচ:* ৳${convertToBanglaNumber(totalBazar.toFixed(1))} টাকা`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
 
-        function downloadMemberPDF(memberId) {
+        function shareMemberOnWhatsApp(memberId) {
             let totalMeals = 0; 
             let totalBazar = 0;
             messData.mealsLog.forEach(l => totalMeals += l.count);
@@ -809,20 +859,22 @@
             const member = messData.members.find(m => m.id === memberId);
             if (!member) return;
 
-            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId).sort((a,b) => new Date(a.date) - new Date(b.date));
-            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId).sort((a,b) => new Date(a.date) - new Date(b.date));
+            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId);
+            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId);
 
             const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
             const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
             const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
             const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
 
-            const totalSharedBills = billElec + billMaid + billWifi + billOth;
             const memberCount = messData.members.length;
-            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
 
             let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
-            let myGrandCostFixed = myFixedRent + splitBillPerMember;
+            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth;
 
             let myTotalMealsCount = 0; 
             myMeals.forEach(m => myTotalMealsCount += m.count);
@@ -835,131 +887,26 @@
             let finalStatus = myTotalBazarSpent - myGrandCost;
             let isRefund = finalStatus >= 0;
 
-            let headerBackgroundColor = isRefund ? '#10b981' : '#f43f5e';
-            let statusString = isRefund ? `Refundable Amount (Receivable): TK ${finalStatus.toFixed(2)}` : `Due Amount (Payable): TK ${Math.abs(finalStatus).toFixed(2)}`;
+            let statusStr = isRefund ? `পাবে: ৳${convertToBanglaNumber(finalStatus.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(finalStatus).toFixed(1))}`;
 
-            let totalFixedSumForAllMembers = 0;
-            messData.members.forEach(m => {
-                let mRent = messData.fixedCosts.rent[m.id] || 0;
-                totalFixedSumForAllMembers += (mRent + splitBillPerMember);
-            });
-            let fullMessGrandTotalCost = totalBazar + totalFixedSumForAllMembers;
+            let message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
+                          `👤 *নাম:* ${member.name}\n` +
+                          `🍚 মোট মিল: ${convertToBanglaNumber(myTotalMealsCount)}\n` +
+                          `📈 প্রতি মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n` +
+                          `🍽️ মিলের খরচ: ৳${convertToBanglaNumber(myMealCost.toFixed(1))}\n` +
+                          `🏢 বাসা ভাড়া: ৳${convertToBanglaNumber(myFixedRent.toFixed(1))}\n` +
+                          `🧹 বুয়া বিল: ৳${convertToBanglaNumber(splitMaid.toFixed(1))}\n` +
+                          `⚡ বিদ্যুৎ বিল: ৳${convertToBanglaNumber(splitElec.toFixed(1))}\n` +
+                          `📶 ওয়াইফাই বিল: ৳${convertToBanglaNumber(splitWifi.toFixed(1))}\n` +
+                          `⚙️ অন্যান্য বিল: ৳${convertToBanglaNumber(splitOth.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\n` +
+                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\n` +
+                          `📌 আর্থিক অবস্থা: *${statusStr}*`;
 
-            let docDefinition = {
-                content: [
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [
-                                [
-                                    {
-                                        text: isRefund ? '📋 MEAL KHATA - STATEMENT (RECEIVABLE)' : '📋 MEAL KHATA - STATEMENT (PAYABLE)',
-                                        fontSize: 16,
-                                        bold: true,
-                                        color: '#ffffff',
-                                        alignment: 'center',
-                                        margin: [0, 10, 0, 10]
-                                    }
-                                ]
-                            ]
-                        },
-                        layout: 'noBorders',
-                        fillColor: headerBackgroundColor,
-                        margin: [0, 0, 0, 15]
-                    },
-                    { text: `Member Name: ${member.name}`, fontSize: 13, bold: true, color: '#1f2937' },
-                    { text: `Report Date: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 2, 0, 15] },
-                    
-                    { text: 'Part 1: Overall Mess Summary', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
-                    { 
-                        table: {
-                            widths: ['65%', '35%'],
-                            body: [
-                                [{ text: 'Total Mess Expense (Bazar + Fixed)', bold: true }, `TK ${fullMessGrandTotalCost.toFixed(2)}`],
-                                [{ text: 'Total Mess Bazar Expense', bold: true }, `TK ${totalBazar.toFixed(2)}`],
-                                [{ text: 'Total Mess Meals', bold: true }, `${totalMeals}`],
-                                [{ text: 'Current Meal Rate', bold: true }, `TK ${mealRate.toFixed(2)}`],
-                                [{ text: 'Electricity Bill', bold: true }, `TK ${billElec.toFixed(2)}`],
-                                [{ text: 'Maid Bill', bold: true }, `TK ${billMaid.toFixed(2)}`],
-                                [{ text: 'WiFi Bill', bold: true }, `TK ${billWifi.toFixed(2)}`],
-                                [{ text: 'Other Bills', bold: true }, `TK ${billOth.toFixed(2)}`],
-                            ]
-                        },
-                        fillColor: '#eff6ff',
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: 'Part 2: Personal Account Summary', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['65%', '35%'],
-                            body: [
-                                ['Total Meals', `${myTotalMealsCount}`],
-                                ['Meal Expense', `TK ${myMealCost.toFixed(2)}`],
-                                ['Personal House Rent', `TK ${myFixedRent.toFixed(2)}`],
-                                ['Shared Utility Bills', `TK ${splitBillPerMember.toFixed(2)}`],
-                                [{ text: 'Grand Total Expense', bold: true }, `TK ${myGrandCost.toFixed(2)}`],
-                                [{ text: 'Total Bazar Contribution', bold: true }, `TK ${myTotalBazarSpent.toFixed(2)}`],
-                            ]
-                        },
-                        margin: [0, 0, 0, 10]
-                    },
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [
-                                [
-                                    {
-                                        text: statusString,
-                                        fontSize: 12,
-                                        bold: true,
-                                        color: '#ffffff',
-                                        alignment: 'center',
-                                        margin: [0, 6, 0, 6]
-                                    }
-                                ]
-                            ]
-                        },
-                        layout: 'noBorders',
-                        fillColor: headerBackgroundColor,
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: 'Part 3: Personal Bazar Expense History', fontSize: 11, bold: true, color: '#0f766e', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['25%', '50%', '25%'],
-                            body: [
-                                [
-                                    { text: 'Date', bold: true, fillColor: '#0f766e', color: '#ffffff' },
-                                    { text: 'Description', bold: true, fillColor: '#0f766e', color: '#ffffff' },
-                                    { text: 'Amount', bold: true, fillColor: '#0f766e', color: '#ffffff' }
-                                ],
-                                ...(myBazar.length > 0 ? myBazar.map(b => [b.date, translateToEnglish(b.desc), `TK ${b.amount}`]) : [['N/A', 'No Bazar Entries', 'TK 0']])
-                            ]
-                        },
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: 'Part 4: Personal Daily Meal Log', fontSize: 11, bold: true, color: '#b45309', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['50%', '50%'],
-                            body: [
-                                [
-                                    { text: 'Date', bold: true, fillColor: '#b45309', color: '#ffffff' },
-                                    { text: 'Meal Count', bold: true, fillColor: '#b45309', color: '#ffffff' }
-                                ],
-                                ...(myMeals.length > 0 ? myMeals.map(m => [m.date, `${m.count}`]) : [['N/A', 'No Meal Entries']])
-                            ]
-                        }
-                    }
-                ]
-            };
-            pdfMake.createPdf(docDefinition).download(`${member.name}_Meal_Khata_Statement.pdf`);
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
 
-        function downloadAllInOnePDF() {
+        function shareAllInOneOnWhatsApp() {
             let totalMeals = 0;
             let totalBazar = 0;
             messData.mealsLog.forEach(l => totalMeals += l.count);
@@ -971,29 +918,17 @@
             const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
             const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
 
-            const totalSharedBills = billElec + billMaid + billWifi + billOth;
             const memberCount = messData.members.length;
-            const splitBillPerMember = memberCount > 0 ? (totalSharedBills / memberCount) : 0;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
 
-            let summaryTableBody = [
-                [
-                    { text: 'Member Name', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Meals', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Meal Cost', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'House Rent', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Utility Share', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Total Cost', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Bazar Paid', bold: true, fillColor: '#1e3a8a', color: '#ffffff' },
-                    { text: 'Balance Status', bold: true, fillColor: '#1e3a8a', color: '#ffffff' }
-                ]
-            ];
-
-            let sumMeals = 0;
-            let sumMealCost = 0;
-            let sumRent = 0;
-            let sumUtility = 0;
-            let grandTotalCostSum = 0;
-            let sumBazarPaid = 0;
+            let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট ও ব্যালেন্স শীট*\n\n` +
+                          `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\n` +
+                          `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(totalMeals)}\n` +
+                          `📈 বর্তমান মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n\n` +
+                          `👥 *সদস্যদের হিসাবের সারসংক্ষেপ:*\n`;
 
             messData.members.forEach(m => {
                 let mMeals = 0;
@@ -1002,149 +937,15 @@
                 messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
 
                 let mRent = messData.fixedCosts.rent[m.id] || 0;
-                let mUtility = splitBillPerMember;
-                let mFixed = mRent + mUtility;
                 let mMealCost = mMeals * mealRate;
-                let mTotalCost = mMealCost + mFixed;
+                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth;
                 let mBalance = mBazar - mTotalCost;
+                let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
 
-                sumMeals += mMeals;
-                sumMealCost += mMealCost;
-                sumRent += mRent;
-                sumUtility += mUtility;
-                grandTotalCostSum += mTotalCost;
-                sumBazarPaid += mBazar;
-
-                let statusStr = mBalance >= 0 ? `Receivable: TK ${mBalance.toFixed(1)}` : `Payable: TK ${Math.abs(mBalance).toFixed(1)}`;
-
-                summaryTableBody.push([
-                    m.name,
-                    `${mMeals}`,
-                    `TK ${mMealCost.toFixed(1)}`,
-                    `TK ${mRent.toFixed(1)}`,
-                    `TK ${mUtility.toFixed(1)}`,
-                    `TK ${mTotalCost.toFixed(1)}`,
-                    `TK ${mBazar.toFixed(1)}`,
-                    { text: statusStr, bold: true, color: mBalance >= 0 ? '#047857' : '#be123c' }
-                ]);
+                message += `🔹 *${m.name}* | মিল খরচ: ৳${convertToBanglaNumber(mMealCost.toFixed(1))} | মোট খরচ: ৳${convertToBanglaNumber(mTotalCost.toFixed(1))} | ${statusStr}\n`;
             });
 
-            summaryTableBody.push([
-                { text: 'Total Sum:', bold: true, fillColor: '#dbeafe' },
-                { text: `${sumMeals}`, bold: true, fillColor: '#dbeafe' },
-                { text: `TK ${sumMealCost.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
-                { text: `TK ${sumRent.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
-                { text: `TK ${sumUtility.toFixed(1)}`, bold: true, fillColor: '#dbeafe' },
-                { text: `TK ${grandTotalCostSum.toFixed(1)}`, bold: true, fillColor: '#dbeafe', color: '#1e40af' },
-                { text: `TK ${sumBazarPaid.toFixed(1)}`, bold: true, fillColor: '#dbeafe', color: '#065f46' },
-                { text: '', bold: true, fillColor: '#dbeafe' }
-            ]);
-
-            const sortedBazar = [...messData.bazarLog].sort((a,b) => new Date(a.date) - new Date(b.date));
-            let bazarTableBody = [
-                [
-                    { text: 'Date', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Member Name', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Description', bold: true, fillColor: '#047857', color: '#ffffff' },
-                    { text: 'Amount', bold: true, fillColor: '#047857', color: '#ffffff' }
-                ]
-            ];
-            sortedBazar.forEach(b => {
-                const mem = messData.members.find(x => x.id === b.memberId);
-                bazarTableBody.push([b.date, mem ? mem.name : 'Unknown', translateToEnglish(b.desc), `TK ${b.amount}`]);
-            });
-
-            bazarTableBody.push([
-                { text: 'Total Bazar Expense:', bold: true, colSpan: 3, alignment: 'right', fillColor: '#d1fae5' },
-                {}, {},
-                { text: `TK ${totalBazar.toFixed(2)}`, bold: true, fillColor: '#d1fae5', color: '#065f46' }
-            ]);
-
-            // Matrix Meals Table inside All-In-One PDF
-            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
-            let headerRow = [{ text: 'Date', bold: true, fillColor: '#b45309', color: '#ffffff', alignment: 'center' }];
-            messData.members.forEach(m => {
-                headerRow.push({ text: m.name, bold: true, fillColor: '#b45309', color: '#ffffff', alignment: 'center' });
-            });
-            let mealsTableBody = [headerRow];
-
-            dates.forEach(date => {
-                let row = [{ text: date, alignment: 'center', bold: true }];
-                messData.members.forEach(m => {
-                    const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
-                    const countVal = entry ? entry.count : 0;
-                    row.push({ text: `${countVal}`, alignment: 'center' });
-                });
-                mealsTableBody.push(row);
-            });
-
-            let footerRow = [{ text: 'Total Meals', bold: true, alignment: 'right', fillColor: '#fef3c7' }];
-            messData.members.forEach(m => {
-                let mTotal = 0;
-                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
-                footerRow.push({ text: `${mTotal}`, bold: true, alignment: 'center', fillColor: '#fef3c7', color: '#92400e' });
-            });
-            mealsTableBody.push(footerRow);
-
-            let docDefinition = {
-                pageOrientation: messData.members.length > 5 ? 'landscape' : 'portrait',
-                content: [
-                    {
-                        table: {
-                            widths: ['*'],
-                            body: [[{ text: '📊 MEAL KHATA - ALL-IN-ONE MONTHLY REPORT', fontSize: 16, bold: true, color: '#ffffff', alignment: 'center', margin: [0, 8, 0, 8] }]]
-                        },
-                        layout: 'noBorders',
-                        fillColor: '#1e3a8a',
-                        margin: [0, 0, 0, 15]
-                    },
-                    { text: `Report Generated: ${new Date().toLocaleDateString()}`, fontSize: 10, italic: true, color: '#4b5563', margin: [0, 0, 0, 15] },
-                    
-                    { text: '1. Overall Mess Overview', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['60%', '40%'],
-                            body: [
-                                [{ text: 'Total Mess Expense (Bazar + Fixed)', bold: true }, `TK ${grandTotalCostSum.toFixed(2)}`],
-                                [{ text: 'Total Bazar Expense', bold: true }, `TK ${totalBazar.toFixed(2)}`],
-                                [{ text: 'Total Meals Count', bold: true }, `${totalMeals}`],
-                                [{ text: 'Meal Rate', bold: true }, `TK ${mealRate.toFixed(2)}`],
-                                [{ text: 'Shared Utility Bills Total', bold: true }, `TK ${totalSharedBills.toFixed(2)}`]
-                            ]
-                        },
-                        fillColor: '#eff6ff',
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: '2. Member Summary & Balance Sheet', fontSize: 12, bold: true, color: '#1e3a8a', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['14%', '8%', '13%', '13%', '13%', '14%', '13%', '12%'],
-                            body: summaryTableBody
-                        },
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: '3. Complete Bazar Log History', fontSize: 12, bold: true, color: '#047857', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: ['20%', '25%', '35%', '20%'],
-                            body: bazarTableBody
-                        },
-                        margin: [0, 0, 0, 15]
-                    },
-
-                    { text: '4. Complete Daily Meal Grid History', fontSize: 12, bold: true, color: '#b45309', margin: [0, 5, 0, 5] },
-                    {
-                        table: {
-                            widths: Array(messData.members.length + 1).fill(`${100 / (messData.members.length + 1)}%`),
-                            body: mealsTableBody
-                        }
-                    }
-                ]
-            };
-
-            pdfMake.createPdf(docDefinition).download(`Meal_Khata_All_In_One_Report.pdf`);
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
 
         function resetApp() {
@@ -1155,6 +956,7 @@
                 document.getElementById('bill-maid').value = '';
                 document.getElementById('bill-wifi').value = '';
                 document.getElementById('bill-others').value = '';
+                document.getElementById('wa-share-btn').classList.add('hidden');
                 updateDropdowns();
                 renderMembersList();
                 renderFixedCostInputs();
@@ -1169,6 +971,132 @@
             renderFixedCostInputs();
             calculateMess();
         };
+    </script>
+
+    <!-- ================= FIREBASE REAL-TIME SYNC ================= -->
+    <script>
+    (function () {
+        const FIREBASE_CONFIG = {
+            databaseURL: "https://messkhata-88e98-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        const FIREBASE_PATH = "messKhata";
+        const LOCAL_KEY = "messAppDataMealKhata";
+        let applyingFirebase = false;
+        let firebaseReady = false;
+
+        function firebaseStatus(text, ok) {
+            const el = document.getElementById("firebase-sync-status");
+            if (!el) return;
+            el.textContent = text;
+            el.className = "fixed bottom-3 left-3 z-50 border shadow px-3 py-2 rounded-full text-xs font-semibold " +
+                (ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700");
+        }
+
+        function firebaseToast(text) {
+            if (typeof showToast === "function") showToast(text);
+        }
+
+        if (!window.firebase) {
+            firebaseStatus("🔴 Firebase SDK পাওয়া যায়নি", false);
+            return;
+        }
+
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+            const ref = firebase.database().ref(FIREBASE_PATH);
+
+            // Keep the existing local-save behaviour, then mirror it to Firebase.
+            const originalSaveToLocalStorage = window.saveToLocalStorage;
+            window.saveToLocalStorage = function () {
+                if (typeof originalSaveToLocalStorage === "function") originalSaveToLocalStorage();
+                if (applyingFirebase || !firebaseReady) return;
+
+                ref.set(messData)
+                    .then(() => firebaseStatus("🟢 Firebase Real-time Sync চালু", true))
+                    .catch(err => {
+                        console.error("Firebase write error:", err);
+                        firebaseStatus("🔴 Firebase Save Error", false);
+                    });
+            };
+
+            // Connectivity indicator.
+            firebase.database().ref(".info/connected").on("value", snap => {
+                firebaseStatus(
+                    snap.val() === true ? "🟢 Firebase Real-time Sync চালু" : "🟠 Firebase সংযোগ নেই",
+                    snap.val() === true
+                );
+            });
+
+            // First load: prefer existing Firebase data; if Firebase is empty, upload local data.
+            ref.once("value").then(snapshot => {
+                const cloud = snapshot.val();
+                const local = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
+
+                if (cloud && (cloud.members || cloud.mealsLog || cloud.bazarLog || cloud.fixedCosts || cloud.grandBills)) {
+                    applyingFirebase = true;
+                    messData = {
+                        members: Array.isArray(cloud.members) ? cloud.members : [],
+                        mealsLog: Array.isArray(cloud.mealsLog) ? cloud.mealsLog : [],
+                        bazarLog: Array.isArray(cloud.bazarLog) ? cloud.bazarLog : [],
+                        fixedCosts: cloud.fixedCosts || { rent: {} },
+                        grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 }
+                    };
+                    localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
+                    updateDropdowns();
+                    renderMembersList();
+                    renderFixedCostInputs();
+                    calculateMess();
+                    applyingFirebase = false;
+                } else if (local && local.members) {
+                    ref.set(local).catch(console.error);
+                }
+                firebaseReady = true;
+                firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+            }).catch(err => {
+                console.error("Firebase initial read error:", err);
+                firebaseReady = true;
+                firebaseStatus("🔴 Firebase Read Error", false);
+            });
+
+            // Real-time updates from every other device/browser.
+            ref.on("value", snapshot => {
+                if (!firebaseReady || applyingFirebase) return;
+                const cloud = snapshot.val();
+                if (!cloud) return;
+
+                applyingFirebase = true;
+                messData = {
+                    members: Array.isArray(cloud.members) ? cloud.members : [],
+                    mealsLog: Array.isArray(cloud.mealsLog) ? cloud.mealsLog : [],
+                    bazarLog: Array.isArray(cloud.bazarLog) ? cloud.bazarLog : [],
+                    fixedCosts: cloud.fixedCosts || { rent: {} },
+                    grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 }
+                };
+                localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                applyingFirebase = false;
+                firebaseStatus("🟢 Real-time Sync আপডেট হয়েছে", true);
+            }, err => {
+                console.error("Firebase listener error:", err);
+                firebaseStatus("🔴 Firebase Listener Error", false);
+            });
+
+            // Optional public helper for manual sync testing.
+            window.syncMessDataNow = function () {
+                if (typeof messData === "undefined") return;
+                ref.set(messData)
+                    .then(() => firebaseToast("☁️ Firebase-এ ডাটা সিঙ্ক হয়েছে ✓"))
+                    .catch(() => firebaseToast("❌ Firebase Sync ব্যর্থ"));
+            };
+
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            firebaseStatus("🔴 Firebase Initialization Error", false);
+        }
+    })();
     </script>
 </body>
 </html>
