@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Khata - Mess Account Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
+        body { font-family: 'Noto Sans Bengali', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .brand-font { font-family: 'Poppins', sans-serif; }
+        .toast-notification { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { 
+            from { transform: translateX(100%); opacity: 0; } 
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+
+<script>
+/* ===== Date / weekday / helpers ===== */
+function formatLongDate(dateValue) {
+    if (!dateValue) return "";
+    const d = new Date(String(dateValue) + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return String(dateValue);
+    return d.toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"});
+}
+function weekdayName(dateValue) {
+    if (!dateValue) return "";
+    const d = new Date(String(dateValue) + "T00:00:00");
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("en-GB", {weekday:"long"});
+}
+
+/* ইংরেজি সংখ্যাকে বাংলা সংখ্যায় রূপান্তর করার ফাংশন */
+function convertToBanglaNumber(input) {
+    if (input === null || input === undefined) return "";
+    const numbers = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪',
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯', '.': '.'
+    };
+    return input.toString().replace(/[0-9.]/g, match => numbers[match] !== undefined ? numbers[match] : match);
+}
+
+/* তারিখকে কাঙ্ক্ষিত বাংলা ফরম্যাটে রূপান্তর */
+function formatBanglaDate(dateString) {
+    if (!dateString) return "";
+    let dateObj = new Date(String(dateString) + "T00:00:00");
+    if (Number.isNaN(dateObj.getTime())) return dateString;
+    
+    let months = [
+        "জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন",
+        "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর", "নভেম্বর", "ডিসেম্বর"
+    ];
+    
+    let days = [
+        "রবিবার", "সোমবার", "মঙ্গলবার", "বুধবার", "বৃহস্পতিবার", "শুক্রবার", "শনিবার"
+    ];
+
+    let dayNum = convertToBanglaNumber(dateObj.getDate());
+    let monthName = months[dateObj.getMonth()];
+    let yearNum = convertToBanglaNumber(dateObj.getFullYear());
+    let dayName = days[dateObj.getDay()];
+
+    return `${dayNum} ${monthName} ${yearNum}, ${dayName}`;
+}
+
+window.formatLongDate = formatLongDate;
+window.weekdayName = weekdayName;
+window.formatBanglaDate = formatBanglaDate;
+window.convertToBanglaNumber = convertToBanglaNumber;
+</script>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+        <div class="flex items-center justify-center gap-3 mb-6 border-b pb-4">
+            <svg class="w-10 h-10 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                <path d="M12 6a3 3 0 0 0-3 3v2h6V9a3 3 0 0 0-3-3z"/>
+                <path d="M9 11v3"/>
+                <path d="M15 11v3"/>
+            </svg>
+            <div class="text-center md:text-left">
+                <h1 class="text-3xl font-bold brand-font text-emerald-600 tracking-wide">Meal Khata</h1>
+                <p class="text-xs text-gray-500 font-medium">স্মার্ট মেস ও মিল ম্যানেজমেন্ট সিস্টেম</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="bg-blue-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">💳 মোট খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-expense">০</span></p>
+            </div>
+            <div class="bg-emerald-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">🛒 মোট বাজার খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-bazar">০</span></p>
+            </div>
+            <div class="bg-indigo-600 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">📠 মোট ফিক্সড খরচ</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="total-fixed">০</span></p>
+            </div>
+            <div class="bg-amber-500 p-4 rounded text-center shadow-xs text-white">
+                <p class="text-xs md:text-sm font-medium opacity-90">🍚 মোট মিল</p>
+                <p class="text-lg md:text-xl font-bold"><span id="total-meals">০</span></p>
+            </div>
+            <div class="bg-rose-500 p-4 rounded text-center shadow-xs text-white col-span-2 md:col-span-1">
+                <p class="text-xs md:text-sm font-medium opacity-90">📈 মিল রেট</p>
+                <p class="text-lg md:text-xl font-bold">৳<span id="meal-rate">০.০০</span></p>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-6 border-b pb-3">
+            <button onclick="switchTab('tab-meals')" id="btn-tab-meals" class="tab-btn px-4 py-2 rounded-md font-medium bg-emerald-600 text-white">🥣 দৈনিক মিল</button>
+            <button onclick="switchTab('tab-bazar')" id="btn-tab-bazar" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🛒 বাজার খরচ</button>
+            <button onclick="switchTab('tab-fixed')" id="btn-tab-fixed" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🏠 ফিক্সড খরচ</button>
+            <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">📊 হিসাব ও রিপোর্ট</button>
+            <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">👥 সদস্যগণ</button>
+        </div>
+
+        <div id="tab-meals" class="tab-content">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">🥣 দৈনিক মিল এন্ট্রি</h2>
+                <div class="space-y-3">
+                    <input id="meal-date" type="date" class="border bg-white p-2 rounded-md w-full">
+                    <select id="meal-member-select" class="border p-2 rounded-md w-full bg-white"></select>
+                    <input id="meal-count" type="number" step="0.5" placeholder="মিলের সংখ্যা (যেমন: ১, ১.৫, ২)" class="border bg-white p-2 rounded-md w-full">
+                    <button onclick="addMeals()" class="w-full bg-amber-500 text-white py-2 rounded-md font-medium hover:bg-amber-600">মিল সংরক্ষণ করুন</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক মিলের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
+                    <button onclick="shareMealsOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
+                        📤 হোয়াটসঅ্যাপে মিল রিপোর্ট শেয়ার
+                    </button>
+                </div>
+                <div id="meals-grid-container" class="overflow-x-auto"></div>
+            </div>
+        </div>
+
+        <div id="tab-bazar" class="tab-content hidden">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">🛒 বাজার খরচ যোগ করুন</h2>
+                <div class="space-y-3">
+                    <input id="bazar-date" type="date" class="border bg-white p-2 rounded-md w-full">
+                    <select id="bazar-member-select" class="border p-2 rounded-md w-full bg-white"></select>
+                    <input id="bazar-desc" type="text" placeholder="বাজারের বিবরণ (যেমন: চাল, মুরগি, তেল)" class="border bg-white p-2 rounded-md w-full">
+                    <input id="bazar-amount" type="number" placeholder="টাকার পরিমাণ (টাকা)" class="border bg-white p-2 rounded-md w-full">
+                    <button onclick="addBazar()" class="w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">খরচ যোগ করুন</button>
+                    
+                    <button id="wa-share-btn" onclick="shareOnWhatsApp()" class="w-full bg-green-500 text-white py-2 rounded-md font-medium hover:bg-green-600 hidden flex items-center justify-center gap-2">
+                        📤 হোয়াটসঅ্যাপ গ্রুপে শেয়ার করুন
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">🛒 বাজারের তালিকা (তারিখ অনুযায়ী সর্টিং)</h2>
+                    <button onclick="shareBazarListOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
+                        📤 হোয়াটসঅ্যাপে সম্পূর্ণ বাজার তালিকা শেয়ার
+                    </button>
+                </div>
+                <table class="w-full text-left border-collapse bg-white mb-3">
+                    <thead>
+                        <tr class="bg-emerald-700 text-white text-sm">
+                            <th class="p-2 border">তারিখ</th>
+                            <th class="p-2 border">সদস্য</th>
+                            <th class="p-2 border">বিবরণ</th>
+                            <th class="p-2 border">টাকা</th>
+                            <th class="p-2 border text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bazar-log-table-body" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-emerald-100 font-bold text-gray-800">
+                            <td colspan="3" class="p-2 border text-right">সর্বমোট বাজার খরচ:</td>
+                            <td class="p-2 border text-emerald-900" colspan="2">৳<span id="table-total-bazar">০</span></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক বাজারের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
+                    <span class="text-xs text-gray-500">একই দিনে একাধিক বাজার → আইটেম কমা দিয়ে + মোট টাকা যোগ হবে</span>
+                </div>
+                <div id="bazar-grid-container" class="overflow-x-auto"></div>
+            </div>
+        </div>
+
+        <div id="tab-fixed" class="tab-content hidden">
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+                <h2 class="text-lg font-bold mb-1 text-gray-700">🏠 ফিক্সড খরচ ড্যাশবোর্ড</h2>
+                <p class="text-xs text-gray-500 mb-4">সদস্যদের বাসা ভাড়ার আলাদা পরিমাণ ইনপুট দিন এবং ইউটিলিটি বিলগুলো সবার মধ্যে সমানভাবে বন্টন করুন।</p>
+                <div class="space-y-6">
+                    <div>
+                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">🏢 বাসা ভাড়া (ব্যক্তিগত)</h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="fixed-rent-inputs"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">⚡ অন্যান্য ইউটিলিটি বিল (সবার মাঝে সমানভাবে বণ্টন হবে)</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">⚡ বিদ্যুৎ বিল</label>
+                                <input type="number" id="bill-electricity" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">🧹 বুয়া বিল</label>
+                                <input type="number" id="bill-maid" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">📶 ওয়াইফাই বিল</label>
+                                <input type="number" id="bill-wifi" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
+                                <label class="text-xs font-semibold text-gray-600 mb-1">⚙️ অন্যান্য বিল</label>
+                                <input type="number" id="bill-others" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="saveFixedCosts()" class="mt-5 bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700">ফিক্সড খরচ সংরক্ষণ করুন</button>
+            </div>
+
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2">📋 সদস্যদের ফিক্সড খরচের সমবণ্টন তালিকা</h3>
+                <table class="w-full text-left border-collapse bg-white">
+                    <thead>
+                        <tr class="bg-indigo-700 text-white text-sm">
+                            <th class="p-3 border">সদস্যের নাম</th>
+                            <th class="p-3 border">ব্যক্তিগত বাসা ভাড়া</th>
+                            <th class="p-3 border">ইউটিলিটি শেয়ার (সমবণ্টন)</th>
+                            <th class="p-3 border">সর্বমোট ফিক্সড খরচ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-indigo-100 font-bold text-gray-800 text-sm">
+                            <td class="p-3 border text-right">সর্বমোট:</td>
+                            <td class="p-3 border" id="foot-total-rent">৳০</td>
+                            <td class="p-3 border" id="foot-total-utility">৳০</td>
+                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳০</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-summary" class="tab-content hidden">
+            <div class="overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b pb-3">
+                    <h2 class="text-xl font-bold text-gray-700">📊 মাসিক ব্যালেন্স শীট ও রিপোর্ট</h2>
+                    <button onclick="shareAllInOneOnWhatsApp()" class="bg-green-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-800 text-sm shadow flex items-center gap-2">
+                        📤 সম্পূর্ণ সম্মিলিত রিপোর্ট হোয়াটসঅ্যাপে শেয়ার
+                    </button>
+                </div>
+                <table class="w-full text-left border-collapse bg-white mb-3 text-xs md:text-sm">
+                    <thead>
+                        <tr class="bg-blue-900 text-white">
+                            <th class="p-2 border">সদস্য</th>
+                            <th class="p-2 border text-center">মিল</th>
+                            <th class="p-2 border">মিলের খরচ</th>
+                            <th class="p-2 border">বাসা ভাড়া</th>
+                            <th class="p-2 border">বুয়া</th>
+                            <th class="p-2 border">বিদ্যুৎ</th>
+                            <th class="p-2 border">ওয়াইফাই</th>
+                            <th class="p-2 border">অন্যান্য</th>
+                            <th class="p-2 border">মোট খরচ</th>
+                            <th class="p-2 border">বাজার জমা</th>
+                            <th class="p-2 border">অবস্থা</th>
+                            <th class="p-2 border text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calculation-table-body"></tbody>
+                    <tfoot>
+                        <tr class="bg-blue-100 font-bold text-gray-900">
+                            <td class="p-2 border">সর্বমোট:</td>
+                            <td class="p-2 border text-center" id="summary-foot-meals">০</td>
+                            <td class="p-2 border" id="summary-foot-meal-cost">৳০</td>
+                            <td class="p-2 border" id="summary-foot-rent">৳০</td>
+                            <td class="p-2 border" id="summary-foot-maid">৳০</td>
+                            <td class="p-2 border" id="summary-foot-elec">৳০</td>
+                            <td class="p-2 border" id="summary-foot-wifi">৳০</td>
+                            <td class="p-2 border" id="summary-foot-oth">৳০</td>
+                            <td class="p-2 border text-blue-900" id="summary-foot-total-cost">৳০</td>
+                            <td class="p-2 border text-emerald-900" id="summary-foot-bazar">৳০</td>
+                            <td class="p-2 border" colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-members" class="tab-content hidden">
+            <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h2 class="text-lg font-bold mb-2 text-gray-700">👥 নতুন সদস্য যোগ করুন</h2>
+                <div class="flex gap-2">
+                    <input id="member-name" type="text" placeholder="সদস্যের নাম লিখুন (যেমন: রহিম)" class="border bg-white p-2 rounded-md flex-grow">
+                    <button onclick="addMember()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700">যোগ করুন</button>
+                </div>
+            </div>
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <h2 class="text-lg font-bold mb-3 text-gray-700">সদস্যের তালিকা</h2>
+                <div id="members-list-container" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex justify-end items-center gap-3 pt-4 border-t">
+            <button onclick="resetApp()" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600">
+                সব ডেটা রিসেট করুন
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('meal-date').valueAsDate = new Date();
+        document.getElementById('bazar-date').valueAsDate = new Date();
+
+        let messData = JSON.parse(localStorage.getItem('messAppDataMealKhata')) || {
+            members: [],
+            mealsLog: [],
+            bazarLog: [],
+            fixedCosts: { rent: {} },
+            grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }
+        };
+
+        let lastMarketData = null;
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "toast-notification bg-emerald-600 text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-2";
+            toast.innerHTML = `<span>✅</span> <span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-emerald-600', 'text-white');
+                el.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.remove('bg-gray-200', 'text-gray-700');
+            activeBtn.classList.add('bg-emerald-600', 'text-white');
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('messAppDataMealKhata', JSON.stringify(messData));
+        }
+
+        function addMember() {
+            const nameInput = document.getElementById('member-name');
+            const name = nameInput.value.trim();
+            if (name === '') return alert('দয়া করে সঠিক নাম লিখুন।');
+
+            const newMember = { id: 'mem_' + Date.now(), name: name };
+            messData.members.push(newMember);
+            nameInput.value = '';
+            saveToLocalStorage();
+            updateDropdowns();
+            renderMembersList();
+            renderFixedCostInputs();
+            calculateMess();
+            showToast('সফলভাবে নতুন সদস্য যোগ করা হয়েছে।');
+        }
+
+        function deleteMember(id) {
+            if (confirm('এই সদস্যকে মুছে ফেলতে চান?')) {
+                messData.members = messData.members.filter(m => m.id !== id);
+                messData.mealsLog = messData.mealsLog.filter(l => l.memberId !== id);
+                messData.bazarLog = messData.bazarLog.filter(b => b.memberId !== id);
+                saveToLocalStorage();
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                showToast('সদস্য মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        function renderMembersList() {
+            const container = document.getElementById('members-list-container');
+            container.innerHTML = '';
+            if(messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500">কোনো সদস্য নেই।</p>';
+                return;
+            }
+            messData.members.forEach(m => {
+                container.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-2 rounded border">
+                        <span class="font-medium">${m.name}</span>
+                        <button onclick="deleteMember('${m.id}')" class="bg-red-500 text-white text-xs px-3 py-1 rounded hover:bg-red-600">মুছে ফেলুন</button>
+                    </div>
+                `;
+            });
+        }
+
+        function updateDropdowns() {
+            const mealSelect = document.getElementById('meal-member-select');
+            const bazarSelect = document.getElementById('bazar-member-select');
+            mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            messData.members.forEach(member => {
+                mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+            });
+        }
+
+        function renderFixedCostInputs() {
+            const div = document.getElementById('fixed-rent-inputs');
+            div.innerHTML = '';
+            messData.members.forEach(member => {
+                const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
+                div.innerHTML += `
+                    <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
+                        <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
+                        <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
+                    </div>
+                `;
+            });
+            document.getElementById('bill-electricity').value = messData.grandBills.electricity || '';
+            document.getElementById('bill-maid').value = messData.grandBills.maid || '';
+            document.getElementById('bill-wifi').value = messData.grandBills.wifi || '';
+            document.getElementById('bill-others').value = messData.grandBills.others || '';
+        }
+
+        function addMeals() {
+            const date = document.getElementById('meal-date').value;
+            const memberId = document.getElementById('meal-member-select').value;
+            const count = parseFloat(document.getElementById('meal-count').value);
+
+            if (!date || !memberId || isNaN(count) || count < 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+
+            const existingIndex = messData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
+            if (existingIndex !== -1) {
+                messData.mealsLog[existingIndex].count = count;
+                showToast('মিলের হিসাব আপডেট করা হয়েছে।');
+            } else {
+                messData.mealsLog.push({ id: 'meal_' + Date.now(), date, memberId, count });
+                showToast('মিল অটো-সেভ করা হয়েছে।');
+            }
+
+            document.getElementById('meal-count').value = '';
+            saveToLocalStorage();
+            calculateMess();
+        }
+
+        function addBazar() {
+            const rawDate = document.getElementById('bazar-date').value;
+            const memberId = document.getElementById('bazar-member-select').value;
+            const desc = document.getElementById('bazar-desc').value.trim() || 'সাধারণ বাজার';
+            const amount = parseFloat(document.getElementById('bazar-amount').value);
+
+            if (!rawDate || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+
+            const formattedDate = formatBanglaDate(rawDate);
+            const memberObj = messData.members.find(m => m.id === memberId);
+            const buyerName = memberObj ? memberObj.name : 'সদস্য';
+
+            messData.bazarLog.push({ id: 'bazar_' + Date.now(), date: rawDate, displayDate: formattedDate, memberId, desc, amount });
+            messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            document.getElementById('bazar-desc').value = '';
+            document.getElementById('bazar-amount').value = '';
+            saveToLocalStorage();
+            calculateMess();
+
+            lastMarketData = { 
+                buyer: buyerName, 
+                date: formattedDate, 
+                list: desc, 
+                amount: convertToBanglaNumber(amount) 
+            };
+            document.getElementById('wa-share-btn').classList.remove('hidden');
+
+            showToast('বাজার খরচ সফলভাবে সংরক্ষিত হয়েছে!');
+        }
+
+        function shareSpecificOnWhatsApp(buyerName, formattedDate, desc, amount) {
+            let banglaAmount = convertToBanglaNumber(amount);
+            let message = `🛒 *বাজার খরচ আপডেট*\n\n` +
+                          `👤 *বাজারকারী:* ${buyerName}\n` +
+                          `📅 *তারিখ:* ${formattedDate}\n` +
+                          `📋 *বাজারের বিবরণ:*\n${desc}\n\n` +
+                          `💵 *টাকার পরিমাণ:* ${banglaAmount} টাকা`;
+
+            let encodedMessage = encodeURIComponent(message);
+            let whatsappUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        function shareOnWhatsApp() {
+            if (!lastMarketData) return;
+            shareSpecificOnWhatsApp(lastMarketData.buyer, lastMarketData.date, lastMarketData.list, lastMarketData.amount);
+        }
+
+        function deleteBazar(id) {
+            if (confirm('এই বাজার খরচের এন্ট্রিটি মুছে ফেলতে চান?')) {
+                messData.bazarLog = messData.bazarLog.filter(b => b.id !== id);
+                saveToLocalStorage();
+                calculateMess();
+                showToast('বাজার এন্ট্রি মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        function saveFixedCosts() {
+            const rentInputs = document.querySelectorAll('.rent-input');
+            rentInputs.forEach(input => {
+                const memId = input.getAttribute('data-mem');
+                const val = input.value === '' ? 0 : parseFloat(input.value);
+                messData.fixedCosts.rent[memId] = val;
+            });
+
+            messData.grandBills.electricity = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            messData.grandBills.maid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            messData.grandBills.wifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            messData.grandBills.others = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            saveToLocalStorage();
+            calculateMess();
+            showToast('ফিক্সড খরচ অটো-সেভ করা হয়েছে।');
+        }
+
+        function calculateMess() {
+            let totalMeals = 0;
+            let totalBazar = 0;
+            let totalFixedAll = 0;
+            let totalRentAll = 0;
+            let totalMaidAll = 0;
+            let totalElecAll = 0;
+            let totalWifiAll = 0;
+            let totalOthAll = 0;
+
+            let memberSummary = {};
+
+            messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            messData.members.forEach(m => {
+                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, rent: 0, maid: 0, elec: 0, wifi: 0, oth: 0, fixed: 0 };
+            });
+
+            messData.mealsLog.forEach(log => {
+                if (memberSummary[log.memberId]) {
+                    memberSummary[log.memberId].meals += log.count;
+                    totalMeals += log.count;
+                }
+            });
+
+            messData.bazarLog.forEach(log => {
+                if (memberSummary[log.memberId]) {
+                    memberSummary[log.memberId].bazarSpent += log.amount;
+                    totalBazar += log.amount;
+                }
+            });
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const memberCount = messData.members.length;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+
+            const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
+            fixedBreakdownBody.innerHTML = '';
+
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
+            messData.members.forEach(m => {
+                const rentInput = document.querySelector(`.rent-input[data-mem="${m.id}"]`);
+                let individualRent = rentInput ? (rentInput.value === '' ? 0 : parseFloat(rentInput.value)) : (messData.fixedCosts.rent[m.id] || 0);
+                
+                const calculatedFixedSum = individualRent + splitMaid + splitElec + splitWifi + splitOth;
+                
+                memberSummary[m.id].rent = individualRent;
+                memberSummary[m.id].maid = splitMaid;
+                memberSummary[m.id].elec = splitElec;
+                memberSummary[m.id].wifi = splitWifi;
+                memberSummary[m.id].oth = splitOth;
+                memberSummary[m.id].fixed = calculatedFixedSum;
+
+                totalRentAll += individualRent;
+                totalMaidAll += splitMaid;
+                totalElecAll += splitElec;
+                totalWifiAll += splitWifi;
+                totalOthAll += splitOth;
+                totalFixedAll += calculatedFixedSum;
+
+                fixedBreakdownBody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-3 border font-semibold">${m.name}</td>
+                        <td class="p-3 border">৳${convertToBanglaNumber(individualRent.toFixed(1))}</td>
+                        <td class="p-3 border text-gray-600">৳${convertToBanglaNumber((splitMaid + splitElec + splitWifi + splitOth).toFixed(1))}</td>
+                        <td class="p-3 border font-bold text-indigo-700">৳${convertToBanglaNumber(calculatedFixedSum.toFixed(1))}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('foot-total-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            document.getElementById('foot-total-utility').innerText = `৳${convertToBanglaNumber((totalMaidAll + totalElecAll + totalWifiAll + totalOthAll).toFixed(1))}`;
+            document.getElementById('foot-total-fixed-all').innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
+
+            const totalExpenseAll = totalBazar + totalFixedAll;
+
+            document.getElementById('total-expense').innerText = convertToBanglaNumber(totalExpenseAll.toFixed(1));
+            document.getElementById('total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
+            document.getElementById('total-fixed').innerText = convertToBanglaNumber(totalFixedAll.toFixed(1));
+            document.getElementById('total-meals').innerText = convertToBanglaNumber(totalMeals);
+            document.getElementById('meal-rate').innerText = convertToBanglaNumber(mealRate.toFixed(2));
+
+            renderMealsGrid();
+
+            document.getElementById('table-total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
+            const bazarTableBody = document.getElementById('bazar-log-table-body');
+            bazarTableBody.innerHTML = '';
+            messData.bazarLog.forEach(b => {
+                const member = messData.members.find(m => m.id === b.memberId);
+                const memName = member ? member.name : 'Unknown';
+                const displayDt = b.displayDate || formatBanglaDate(b.date);
+                bazarTableBody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-100">
+                        <td class="p-2 border">${displayDt}</td>
+                        <td class="p-2 border font-medium">${memName}</td>
+                        <td class="p-2 border">${b.desc}</td>
+                        <td class="p-2 border text-emerald-600 font-bold">৳${convertToBanglaNumber(b.amount)}</td>
+                        <td class="p-2 border text-center flex gap-1 justify-center">
+                            <button onclick="shareSpecificOnWhatsApp('${memName}', '${displayDt}', '${b.desc.replace(/'/g, "\\'")}', ${b.amount})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">📤 শেয়ার</button>
+                            <button onclick="deleteBazar('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">ডিলিট</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            renderBazarGrid();
+
+            const tbody = document.getElementById('calculation-table-body');
+            tbody.innerHTML = '';
+
+            let grandMealCostSum = 0;
+            let grandTotalCostSum = 0;
+
+            messData.members.forEach(member => {
+                const s = memberSummary[member.id];
+                const mealCost = s.meals * mealRate;
+                const totalCost = mealCost + s.fixed;
+                const balance = s.bazarSpent - totalCost;
+
+                grandMealCostSum += mealCost;
+                grandTotalCostSum += totalCost;
+
+                let balanceText = balance >= 0 ? 
+                    `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳${convertToBanglaNumber(balance.toFixed(1))}</span>` : 
+                    `<span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-sm font-bold">দেবে: ৳${convertToBanglaNumber(Math.abs(balance).toFixed(1))}</span>`;
+
+                tbody.innerHTML += `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="p-2 border font-semibold">${s.name}</td>
+                        <td class="p-2 border text-center">${convertToBanglaNumber(s.meals)}</td>
+                        <td class="p-2 border text-gray-700">৳${convertToBanglaNumber(mealCost.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.rent.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.maid.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.elec.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.wifi.toFixed(1))}</td>
+                        <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.oth.toFixed(1))}</td>
+                        <td class="p-2 border font-bold text-blue-700">৳${convertToBanglaNumber(totalCost.toFixed(1))}</td>
+                        <td class="p-2 border text-emerald-600 font-semibold">৳${convertToBanglaNumber(s.bazarSpent)}</td>
+                        <td class="p-2 border">${balanceText}</td>
+                        <td class="p-2 border text-center">
+                            <button onclick="shareMemberOnWhatsApp('${member.id}')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700">📤 শেয়ার</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('summary-foot-meals').innerText = convertToBanglaNumber(totalMeals);
+            document.getElementById('summary-foot-meal-cost').innerText = `৳${convertToBanglaNumber(grandMealCostSum.toFixed(1))}`;
+            document.getElementById('summary-foot-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            document.getElementById('summary-foot-maid').innerText = `৳${convertToBanglaNumber(totalMaidAll.toFixed(1))}`;
+            document.getElementById('summary-foot-elec').innerText = `৳${convertToBanglaNumber(totalElecAll.toFixed(1))}`;
+            document.getElementById('summary-foot-wifi').innerText = `৳${convertToBanglaNumber(totalWifiAll.toFixed(1))}`;
+            document.getElementById('summary-foot-oth').innerText = `৳${convertToBanglaNumber(totalOthAll.toFixed(1))}`;
+            document.getElementById('summary-foot-total-cost').innerText = `৳${convertToBanglaNumber(grandTotalCostSum.toFixed(1))}`;
+            document.getElementById('summary-foot-bazar').innerText = `৳${convertToBanglaNumber(totalBazar.toFixed(1))}`;
+        }
+
+        function renderBazarGrid() {
+            const container = document.getElementById('bazar-grid-container');
+            if (!container) return;
+            if (messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
+                return;
+            }
+
+            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let html = `<table class="w-full text-left border-collapse bg-white text-sm">
+                <thead><tr class="bg-emerald-700 text-white">
+                    <th class="p-2 border min-w-[105px]">তারিখ</th>`;
+            messData.members.forEach(m => {
+                html += `<th class="p-2 border text-center min-w-[150px]">${m.name}</th>`;
+            });
+            html += `<th class="p-2 border text-center min-w-[110px]">মোট</th></tr></thead><tbody>`;
+
+            if (dates.length === 0) {
+                html += `<tr><td colspan="${messData.members.length + 2}" class="p-3 text-center text-gray-500">কোনো বাজারের ডাটা পাওয়া যায়নি।</td></tr>`;
+            } else {
+                dates.forEach(date => {
+                    let dateTotal = 0;
+                    let displayDt = formatBanglaDate(date);
+                    html += `<tr class="border-b hover:bg-emerald-50"><td class="p-2 border font-medium">${displayDt}</td>`;
+                    messData.members.forEach(m => {
+                        const entries = messData.bazarLog.filter(b => b.date === date && b.memberId === m.id);
+                        const subtotal = entries.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                        dateTotal += subtotal;
+                        const items = entries.map(b => b.desc || 'সাধারণ বাজার').join(', ');
+                        html += `<td class="p-2 border align-top">${entries.length ? `<div class="font-medium text-gray-700 break-words">${items}</div><div class="font-bold text-emerald-700 mt-1">৳${convertToBanglaNumber(subtotal.toFixed(1))}</div>` : '<span class="text-gray-300">—</span>'}</td>`;
+                    });
+                    html += `<td class="p-2 border text-center font-extrabold text-emerald-800">৳${convertToBanglaNumber(dateTotal.toFixed(1))}</td></tr>`;
+                });
+            }
+
+            html += `</tbody><tfoot><tr class="bg-emerald-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>`;
+            messData.members.forEach(m => {
+                const memberTotal = messData.bazarLog.filter(b => b.memberId === m.id).reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(memberTotal.toFixed(1))}</td>`;
+            });
+            const grandBazar = messData.bazarLog.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+            html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(grandBazar.toFixed(1))}</td></tr></tfoot></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderMealsGrid() {
+            const container = document.getElementById('meals-grid-container');
+            if (messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
+                return;
+            }
+
+            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+
+            let html = `<table class="w-full text-left border-collapse bg-white text-sm">
+                <thead>
+                    <tr class="bg-amber-600 text-white">
+                        <th class="p-2 border min-w-[100px]">তারিখ</th>`;
+            
+            messData.members.forEach(m => {
+                html += `<th class="p-2 border text-center">${m.name}</th>`;
+            });
+
+            html += `</tr></thead><tbody>`;
+
+            if (dates.length === 0) {
+                html += `<tr><td colspan="${messData.members.length + 1}" class="p-3 text-center text-gray-500">কোনো মিলের ডাটা পাওয়া যায়নি।</td></tr>`;
+            } else {
+                dates.forEach(date => {
+                    let displayDt = formatBanglaDate(date);
+                    html += `<tr class="border-b hover:bg-amber-50">
+                        <td class="p-2 border font-medium">${displayDt}</td>`;
+                    
+                    messData.members.forEach(m => {
+                        const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                        const countVal = entry ? entry.count : 0;
+                        html += `<td class="p-2 border text-center font-bold ${countVal > 0 ? 'text-amber-700' : 'text-gray-300'}">${convertToBanglaNumber(countVal)}</td>`;
+                    });
+
+                    html += `</tr>`;
+                });
+            }
+
+            html += `</tbody><tfoot><tr class="bg-amber-100 font-bold text-gray-800">
+                <td class="p-2 border text-right">মোট মিল:</td>`;
+
+            let totalAllMeals = 0;
+            messData.members.forEach(m => {
+                let mTotal = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
+                totalAllMeals += mTotal;
+                html += `<td class="p-2 border text-center text-amber-900 font-extrabold">${convertToBanglaNumber(mTotal)}</td>`;
+            });
+
+            html += `</tr></tfoot></table>`;
+            container.innerHTML = html;
+        }
+
+        /* হোয়াটসঅ্যাপে বিভিন্ন রিপোর্ট শেয়ার করার ফাংশনসমূহ */
+        function shareMealsOnWhatsApp() {
+            if (messData.members.length === 0) return alert("কোনো সদস্য পাওয়া যায়নি।");
+            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            
+            let message = `🥣 *দৈনিক মিলের রিপোর্ট*\n\n`;
+            if (dates.length === 0) {
+                message += `কোনো মিলের ডাটা পাওয়া যায়নি।`;
+            } else {
+                dates.forEach(date => {
+                    message += `📅 *তারিখ:* ${formatBanglaDate(date)}\n`;
+                    messData.members.forEach(m => {
+                        const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                        const countVal = entry ? entry.count : 0;
+                        message += `- ${m.name}: ${convertToBanglaNumber(countVal)} মিল\n`;
+                    });
+                    message += `\n`;
+                });
+            }
+
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function shareBazarListOnWhatsApp() {
+            if (messData.bazarLog.length === 0) return alert("কোনো বাজার খরচ পাওয়া যায়নি।");
+            
+            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let message = `🛒 *সম্পূর্ণ বাজার তালিকা ও খরচ*\n\n`;
+            let totalBazar = 0;
+
+            dates.forEach(date => {
+                const displayDt = formatBanglaDate(date);
+                message += `📅 *তারিখ:* ${displayDt}\n`;
+
+                messData.members.forEach(m => {
+                    const entries = messData.bazarLog.filter(b => b.date === date && b.memberId === m.id);
+                    if (entries.length > 0) {
+                        const subtotal = entries.reduce((sum, b) => sum + b.amount, 0);
+                        const itemsCombined = entries.map(b => b.desc).join(', ');
+                        totalBazar += subtotal;
+
+                        message += `  👤 ${m.name}: ${itemsCombined} (৳${convertToBanglaNumber(subtotal.toFixed(1))})\n`;
+                    }
+                });
+                message += `------------------\n`;
+            });
+
+            message += `\n💵 *সর্বমোট বাজার খরচ:* ৳${convertToBanglaNumber(totalBazar.toFixed(1))} টাকা`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function shareMemberOnWhatsApp(memberId) {
+            let totalMeals = 0; 
+            let totalBazar = 0;
+            messData.mealsLog.forEach(l => totalMeals += l.count);
+            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
+            const member = messData.members.find(m => m.id === memberId);
+            if (!member) return;
+
+            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId);
+            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId);
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const memberCount = messData.members.length;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+
+            let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
+            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth;
+
+            let myTotalMealsCount = 0; 
+            myMeals.forEach(m => myTotalMealsCount += m.count);
+            let myMealCost = myTotalMealsCount * mealRate;
+
+            let myTotalBazarSpent = 0; 
+            myBazar.forEach(b => myTotalBazarSpent += b.amount);
+
+            let myGrandCost = myMealCost + myGrandCostFixed;
+            let finalStatus = myTotalBazarSpent - myGrandCost;
+            let isRefund = finalStatus >= 0;
+
+            let statusStr = isRefund ? `পাবে: ৳${convertToBanglaNumber(finalStatus.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(finalStatus).toFixed(1))}`;
+
+            let message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
+                          `👤 *নাম:* ${member.name}\n` +
+                          `🍚 মোট মিল: ${convertToBanglaNumber(myTotalMealsCount)}\n` +
+                          `📈 প্রতি মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n` +
+                          `🍽️ মিলের খরচ: ৳${convertToBanglaNumber(myMealCost.toFixed(1))}\n` +
+                          `🏢 বাসা ভাড়া: ৳${convertToBanglaNumber(myFixedRent.toFixed(1))}\n` +
+                          `🧹 বুয়া বিল: ৳${convertToBanglaNumber(splitMaid.toFixed(1))}\n` +
+                          `⚡ বিদ্যুৎ বিল: ৳${convertToBanglaNumber(splitElec.toFixed(1))}\n` +
+                          `📶 ওয়াইফাই বিল: ৳${convertToBanglaNumber(splitWifi.toFixed(1))}\n` +
+                          `⚙️ অন্যান্য বিল: ৳${convertToBanglaNumber(splitOth.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\n` +
+                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\n` +
+                          `📌 আর্থিক অবস্থা: *${statusStr}*`;
+
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function shareAllInOneOnWhatsApp() {
+            let totalMeals = 0;
+            let totalBazar = 0;
+            messData.mealsLog.forEach(l => totalMeals += l.count);
+            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+
+            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+
+            const memberCount = messData.members.length;
+            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+
+            let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট ও ব্যালেন্স শীট*\n\n` +
+                          `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\n` +
+                          `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(totalMeals)}\n` +
+                          `📈 বর্তমান মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n\n` +
+                          `👥 *সদস্যদের হিসাবের সারসংক্ষেপ:*\n`;
+
+            messData.members.forEach(m => {
+                let mMeals = 0;
+                let mBazar = 0;
+                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
+                messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
+
+                let mRent = messData.fixedCosts.rent[m.id] || 0;
+                let mMealCost = mMeals * mealRate;
+                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth;
+                let mBalance = mBazar - mTotalCost;
+                let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
+
+                message += `🔹 *${m.name}* | মিল খরচ: ৳${convertToBanglaNumber(mMealCost.toFixed(1))} | মোট খরচ: ৳${convertToBanglaNumber(mTotalCost.toFixed(1))} | ${statusStr}\n`;
+            });
+
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        function resetApp() {
+            if (confirm('আপনি কি নিশ্চিতভাবে সব ডেটা মুছে ফেলতে চান?')) {
+                localStorage.removeItem('messAppDataMealKhata');
+                messData = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent: {} }, grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 } };
+                document.getElementById('bill-electricity').value = '';
+                document.getElementById('bill-maid').value = '';
+                document.getElementById('bill-wifi').value = '';
+                document.getElementById('bill-others').value = '';
+                document.getElementById('wa-share-btn').classList.add('hidden');
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                showToast('সব ডেটা সফলভাবে মুছে ফেলা হয়েছে।');
+            }
+        }
+
+        window.onload = function() {
+            updateDropdowns();
+            renderMembersList();
+            renderFixedCostInputs();
+            calculateMess();
+        };
+    </script>
+</body>
+</html>
