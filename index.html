@@ -297,22 +297,20 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <div>
                         <h2 class="text-xl font-bold text-gray-700">📊 মাসিক ব্যালেন্স শীট ও রিপোর্ট</h2>
                         <p class="text-xs text-gray-500 mt-1" id="summary-month-label"></p>
+                        <p class="text-[11px] text-gray-500 mt-1">💡 ফিক্সড খরচের বিস্তারিত (ভাড়া/বুয়া/বিদ্যুৎ) টেবিলের “ফিক্সড খরচ” সেলে হোভার করলে দেখা যাবে। পুরো ডাটাবেজ মাসভিত্তিক আলাদা — প্রতি মাসের মিল/বাজার/ফিক্সড জমা শুধু সেই মাসের হিসাবে গণ্য হয়।</p>
                     </div>
                     <button onclick="shareAllInOneOnWhatsApp()" class="bg-green-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-800 text-sm shadow flex items-center gap-2">
                         📤 সম্পূর্ণ সম্মিলিত রিপোর্ট হোয়াটসঅ্যাপে শেয়ার
                     </button>
                 </div>
+                <div id="summary-stats-bar" class="flex flex-wrap gap-2 mb-3 text-[11px]"></div>
                 <table class="w-full text-left border-collapse bg-white mb-3 text-xs md:text-sm">
                     <thead>
                         <tr class="bg-blue-900 text-white">
                             <th class="p-2 border">সদস্য</th>
                             <th class="p-2 border text-center">মিল</th>
                             <th class="p-2 border">মিলের খরচ</th>
-                            <th class="p-2 border">বাসা ভাড়া</th>
-                            <th class="p-2 border">বুয়া</th>
-                            <th class="p-2 border">বিদ্যুৎ</th>
-                            <th class="p-2 border">ওয়াইফাই</th>
-                            <th class="p-2 border">অন্যান্য</th>
+                            <th class="p-2 border">ফিক্সড খরচ</th>
                             <th class="p-2 border">মোট খরচ</th>
                             <th class="p-2 border">বাজার জমা</th>
                             <th class="p-2 border">ফিক্সড জমা</th>
@@ -327,11 +325,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <td class="p-2 border">সর্বমোট:</td>
                             <td class="p-2 border text-center" id="summary-foot-meals">০</td>
                             <td class="p-2 border" id="summary-foot-meal-cost">৳০</td>
-                            <td class="p-2 border" id="summary-foot-rent">৳০</td>
-                            <td class="p-2 border" id="summary-foot-maid">৳০</td>
-                            <td class="p-2 border" id="summary-foot-elec">৳০</td>
-                            <td class="p-2 border" id="summary-foot-wifi">৳০</td>
-                            <td class="p-2 border" id="summary-foot-oth">৳০</td>
+                            <td class="p-2 border" id="summary-foot-fixed">৳০</td>
                             <td class="p-2 border text-blue-900" id="summary-foot-total-cost">৳০</td>
                             <td class="p-2 border text-emerald-900" id="summary-foot-bazar">৳০</td>
                             <td class="p-2 border text-indigo-900" id="summary-foot-fixed-log">৳০</td>
@@ -1694,7 +1688,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             let grandTotalDepositSum = 0;
 
             if(messData.members.length===0){
-                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-gray-400">কোনো সদস্য নেই — সদস্য যোগ করুন।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="p-4 text-center text-gray-400">কোনো সদস্য নেই — সদস্য যোগ করুন।</td></tr>`;
             } else {
                 messData.members.forEach(member => {
                     const s = memberSummary[member.id];
@@ -1718,11 +1712,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <td class="p-2 border font-semibold">${s.name}</td>
                             <td class="p-2 border text-center">${convertToBanglaNumber(s.meals)}</td>
                             <td class="p-2 border text-gray-700">৳${convertToBanglaNumber(mealCost.toFixed(1))}</td>
-                            <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.rent.toFixed(1))}</td>
-                            <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.maid.toFixed(1))}</td>
-                            <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.elec.toFixed(1))}</td>
-                            <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.wifi.toFixed(1))}</td>
-                            <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.oth.toFixed(1))}</td>
+                            <td class="p-2 border text-indigo-700 font-semibold" title="ভাড়া ৳${convertToBanglaNumber(s.rent.toFixed(1))} + বুয়া ৳${convertToBanglaNumber(s.maid.toFixed(1))} + বিদ্যুৎ ৳${convertToBanglaNumber(s.elec.toFixed(1))} + ওয়াইফাই ৳${convertToBanglaNumber(s.wifi.toFixed(1))} + অন্যান্য ৳${convertToBanglaNumber(s.oth.toFixed(1))}">৳${convertToBanglaNumber(s.fixed.toFixed(1))}</td>
                             <td class="p-2 border font-bold text-blue-700">৳${convertToBanglaNumber(totalCost.toFixed(1))}</td>
                             <td class="p-2 border text-emerald-600 font-semibold">৳${convertToBanglaNumber(s.bazarSpent)}</td>
                             <td class="p-2 border text-indigo-600 font-semibold">৳${convertToBanglaNumber(s.fixedSpent)}</td>
@@ -1738,17 +1728,32 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             document.getElementById('summary-foot-meals').innerText = convertToBanglaNumber(totalMeals);
             document.getElementById('summary-foot-meal-cost').innerText = `৳${convertToBanglaNumber(grandMealCostSum.toFixed(1))}`;
-            document.getElementById('summary-foot-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
-            document.getElementById('summary-foot-maid').innerText = `৳${convertToBanglaNumber(totalMaidAll.toFixed(1))}`;
-            document.getElementById('summary-foot-elec').innerText = `৳${convertToBanglaNumber(totalElecAll.toFixed(1))}`;
-            document.getElementById('summary-foot-wifi').innerText = `৳${convertToBanglaNumber(totalWifiAll.toFixed(1))}`;
-            document.getElementById('summary-foot-oth').innerText = `৳${convertToBanglaNumber(totalOthAll.toFixed(1))}`;
+            const footFixed = document.getElementById('summary-foot-fixed');
+            if(footFixed) footFixed.innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
             document.getElementById('summary-foot-total-cost').innerText = `৳${convertToBanglaNumber(grandTotalCostSum.toFixed(1))}`;
             document.getElementById('summary-foot-bazar').innerText = `৳${convertToBanglaNumber(grandBazarSum.toFixed(1))}`;
             const footFixedLog = document.getElementById('summary-foot-fixed-log');
             if(footFixedLog) footFixedLog.innerText = `৳${convertToBanglaNumber(grandFixedDepositSum.toFixed(1))}`;
             const footTotalDep = document.getElementById('summary-foot-total-deposit');
             if(footTotalDep) footTotalDep.innerText = `৳${convertToBanglaNumber(grandTotalDepositSum.toFixed(1))}`;
+            // সারাংশ বার — পুরো ডাটাবেজের স্ন্যাপশট
+            const summaryBar = document.getElementById('summary-stats-bar');
+            if(summaryBar){
+                const totalDepositAll = grandBazarSum + grandFixedDepositSum;
+                const totalDue = Math.max(0, grandTotalCostSum - totalDepositAll);
+                const totalRefund = Math.max(0, totalDepositAll - grandTotalCostSum);
+                summaryBar.innerHTML = `
+                    <span class="bg-white border border-amber-200 px-2.5 py-1 rounded-full font-semibold">🍚 মোট মিল: ${convertToBanglaNumber(totalMeals)}</span>
+                    <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">🛒 বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}</span>
+                    <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🏠 ফিক্সড খরচ: ৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}</span>
+                    <span class="bg-white border border-blue-200 px-2.5 py-1 rounded-full font-semibold">💳 মোট খরচ: ৳${convertToBanglaNumber(grandTotalCostSum.toFixed(1))}</span>
+                    <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">🛒 জমা বাজার: ৳${convertToBanglaNumber(grandBazarSum.toFixed(1))}</span>
+                    <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🔧 জমা ফিক্সড: ৳${convertToBanglaNumber(grandFixedDepositSum.toFixed(1))}</span>
+                    <span class="bg-white border border-blue-200 px-2.5 py-1 rounded-full font-semibold">💰 মোট জমা: ৳${convertToBanglaNumber(totalDepositAll.toFixed(1))}</span>
+                    <span class="bg-white border ${totalDue>0?'border-rose-200 text-rose-700':'border-gray-200 text-gray-600'} px-2.5 py-1 rounded-full font-semibold">📉 সদস্যদের দেবে: ৳${convertToBanglaNumber(totalDue.toFixed(1))}</span>
+                    <span class="bg-white border ${totalRefund>0?'border-emerald-300 text-emerald-700':'border-gray-200 text-gray-600'} px-2.5 py-1 rounded-full font-semibold">📈 সদস্যদের পাবে: ৳${convertToBanglaNumber(totalRefund.toFixed(1))}</span>
+                `;
+            }
         }
 
         function renderBazarGrid() {
