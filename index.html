@@ -292,6 +292,59 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     </tfoot>
                 </table>
             </div>
+
+            <!-- ========= ফিক্সড খরচ এন্ট্রি — বাজার খরচের মত হুবহু ========= -->
+            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                <h2 class="text-lg font-bold mb-1 text-gray-700">🔧 ফিক্সড খরচ এন্ট্রি <span class="text-xs font-normal text-gray-500" id="fixed-log-month-hint"></span></h2>
+                <p class="text-xs text-gray-500 mb-3">বাজার খরচের মতোই — তারিখ, সদস্য, বিবরণ ও টাকা দিয়ে এন্ট্রি করুন। যে খরচ করবে তার <b>জমা</b> হিসাবে গণ্য হবে।</p>
+                <div class="space-y-3">
+                    <input id="fixed-date" type="date" class="border bg-white p-2 rounded-md w-full">
+                    <select id="fixed-member-select" class="border p-2 rounded-md w-full bg-white"></select>
+                    <input id="fixed-desc" type="text" placeholder="ফিক্সড খরচের বিবরণ (যেমন: বাসা ভাড়া, বিদ্যুৎ বিল, গ্যাস)" class="border bg-white p-2 rounded-md w-full">
+                    <input id="fixed-amount" type="number" placeholder="টাকার পরিমাণ (টাকা)" class="border bg-white p-2 rounded-md w-full">
+                    <div class="flex gap-2">
+                        <button onclick="addFixed()" id="fixed-submit-btn" class="flex-1 bg-indigo-600 text-white py-2 rounded-md font-bold hover:bg-indigo-700">ফিক্সড খরচ যোগ করুন</button>
+                        <button onclick="cancelFixedEdit()" id="fixed-cancel-btn" class="hidden px-4 py-2 rounded-md font-medium bg-white border hover:bg-gray-50 text-sm">বাতিল</button>
+                        <button onclick="clearFixedForm()" class="px-4 py-2 rounded-md font-medium bg-white border hover:bg-gray-50 text-sm">ক্লিয়ার</button>
+                    </div>
+                    <button id="fixed-wa-share-btn" onclick="shareFixedOnWhatsApp()" class="w-full bg-green-500 text-white py-2 rounded-md font-medium hover:bg-green-600 hidden flex items-center justify-center gap-2">
+                        📤 হোয়াটসঅ্যাপ গ্রুপে শেয়ার করুন
+                    </button>
+                </div>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                    <h2 class="text-lg font-bold text-gray-700">🔧 ফিক্সড খরচের তালিকা (তারিখ অনুযায়ী)</h2>
+                    <button onclick="shareFixedListOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
+                        📤 হোয়াটসঅ্যাপে সম্পূর্ণ ফিক্সড তালিকা শেয়ার
+                    </button>
+                </div>
+                <table class="w-full text-left border-collapse bg-white mb-3">
+                    <thead>
+                        <tr class="bg-indigo-700 text-white text-sm">
+                            <th class="p-2 border">তারিখ</th>
+                            <th class="p-2 border">সদস্য</th>
+                            <th class="p-2 border">বিবরণ</th>
+                            <th class="p-2 border">টাকা</th>
+                            <th class="p-2 border text-center">অ্যাকশন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="fixed-log-table-body" class="text-sm"></tbody>
+                    <tfoot>
+                        <tr class="bg-indigo-100 font-bold text-gray-800">
+                            <td colspan="3" class="p-2 border text-right">সর্বমোট ফিক্সড জমা:</td>
+                            <td class="p-2 border text-indigo-900" colspan="2">৳<span id="table-total-fixed-log">০</span></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
+                <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক ফিক্সড খরচের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
+                    <span class="text-xs text-gray-500">একই দিনে একাধিক ফিক্সড → আইটেম কমা দিয়ে + মোট টাকা যোগ হবে</span>
+                </div>
+                <div id="fixed-grid-container" class="overflow-x-auto"></div>
+            </div>
         </div>
 
         <div id="tab-summary" class="tab-content hidden">
@@ -318,6 +371,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <th class="p-2 border">অন্যান্য</th>
                             <th class="p-2 border">মোট খরচ</th>
                             <th class="p-2 border">বাজার জমা</th>
+                            <th class="p-2 border">ফিক্সড জমা</th>
+                            <th class="p-2 border">মোট জমা</th>
                             <th class="p-2 border">অবস্থা</th>
                             <th class="p-2 border text-center">অ্যাকশন</th>
                         </tr>
@@ -335,6 +390,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <td class="p-2 border" id="summary-foot-oth">৳০</td>
                             <td class="p-2 border text-blue-900" id="summary-foot-total-cost">৳০</td>
                             <td class="p-2 border text-emerald-900" id="summary-foot-bazar">৳০</td>
+                            <td class="p-2 border text-indigo-900" id="summary-foot-fixed-log">৳০</td>
+                            <td class="p-2 border text-blue-900" id="summary-foot-total-deposit">৳০</td>
                             <td class="p-2 border" colspan="2"></td>
                         </tr>
                     </tfoot>
@@ -380,6 +437,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     <script>
         document.getElementById('meal-date').valueAsDate = new Date();
         document.getElementById('bazar-date').valueAsDate = new Date();
+        if(document.getElementById('fixed-date')) document.getElementById('fixed-date').valueAsDate = new Date();
 
         /* ===================== মাসভিত্তিক স্টোরেজ লজিক ===================== */
         const STORE_KEY = 'messKhataMonthly_v2';
@@ -424,21 +482,22 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     members: JSON.parse(JSON.stringify(template.members||[])),
                     mealsLog: [],
                     bazarLog: [],
+                    fixedLog: [],
                     fixedCosts: JSON.parse(JSON.stringify(template.fixedCosts||{rent:{}})),
                     grandBills: { electricity:0, maid:0, wifi:0, others:0 }
                 };
             } else {
-                store.months[monthId] = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent:{} }, grandBills:{ electricity:0, maid:0, wifi:0, others:0 } };
+                store.months[monthId] = { members: [], mealsLog: [], bazarLog: [], fixedLog: [], fixedCosts: { rent:{} }, grandBills:{ electricity:0, maid:0, wifi:0, others:0 } };
             }
         }
 
         /* ====== আগস্ট-সহ ভুল বাকেটে থাকা ডাটা স্বয়ংক্রিয় মেরামত ====== */
         function repairMonthlyBuckets(store){
             if(!store || !store.months) return {movedMeals:0, movedBazar:0, createdMonths:[]};
-            let movedMeals=0, movedBazar=0;
+            let movedMeals=0, movedBazar=0, movedFixed=0;
             const created=[];
             const allIds = Object.keys(store.months);
-            let toMoveMeals=[], toMoveBazar=[];
+            let toMoveMeals=[], toMoveBazar=[], toMoveFixed=[];
             allIds.forEach(mid=>{
                 const m = store.months[mid];
                 if(!m.mealsLog) m.mealsLog=[];
@@ -461,6 +520,17 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                         toMoveBazar.push({entry:e, from:mid, target});
                         m.bazarLog.splice(i,1);
                         movedBazar++;
+                    }
+                }
+                if(!m.fixedLog) m.fixedLog=[];
+                for(let i=m.fixedLog.length-1; i>=0; i--){
+                    const e=m.fixedLog[i];
+                    if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) continue;
+                    const target=e.date.slice(0,7);
+                    if(target!==mid){
+                        toMoveFixed.push({entry:e, from:mid, target});
+                        m.fixedLog.splice(i,1);
+                        movedFixed = (typeof movedFixed!=='undefined'?movedFixed:0)+1;
                     }
                 }
             });
@@ -497,12 +567,24 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 }
                 store.months[target].bazarLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
             });
+            toMoveFixed.forEach(({entry,from,target})=>{
+                if(!store.months[target]){
+                    ensureMonth(store, target, from);
+                    if(!created.includes(target)) created.push(target);
+                } else ensureMemberInTarget(target, entry, from);
+                if(!store.months[target].fixedLog) store.months[target].fixedLog=[];
+                if(!store.months[target].fixedLog.find(x=>x.id===entry.id)){
+                    store.months[target].fixedLog.push(entry);
+                }
+                store.months[target].fixedLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+            });
             // legacy key থেকে অতিরিক্ত ডাটা (যদি থাকে) মার্জ — আগস্ট উদ্ধারে সাহায্য
             try{
                 const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)||'null');
                 if(legacy && (legacy.mealsLog||legacy.bazarLog)){
                     const extraMeals = Array.isArray(legacy.mealsLog)?legacy.mealsLog:[];
                     const extraBazar = Array.isArray(legacy.bazarLog)?legacy.bazarLog:[];
+                    const extraFixed = Array.isArray(legacy.fixedLog)?legacy.fixedLog:[];
                     extraMeals.forEach(e=>{
                         if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
                         const target=e.date.slice(0,7);
@@ -529,17 +611,31 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             movedBazar++;
                         }
                     });
+                    extraFixed.forEach(e=>{
+                        if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
+                        const target=e.date.slice(0,7);
+                        if(!store.months[target]){
+                            ensureMonth(store, target);
+                            if(!created.includes(target)) created.push(target);
+                        }
+                        if(!store.months[target].fixedLog) store.months[target].fixedLog=[];
+                        const exists = store.months[target].fixedLog.find(x=> x.id===e.id || (x.date===e.date && x.memberId===e.memberId && String(x.amount)===String(e.amount)));
+                        if(!exists){
+                            store.months[target].fixedLog.push({...e, id:e.id||'fixed_'+Date.now()+Math.random().toString(36).slice(2)});
+                            movedFixed++;
+                        }
+                    });
                 }
             }catch(e){ console.warn("legacy merge in repair", e); }
-            if(movedMeals>0 || movedBazar>0) console.log(`[Repair] moved ${movedMeals} meals, ${movedBazar} bazar, created ${created.join(',')}`);
-            return {movedMeals, movedBazar, createdMonths:created};
+            if(movedMeals>0 || movedBazar>0 || movedFixed>0) console.log(`[Repair] moved ${movedMeals} meals, ${movedBazar} bazar, ${movedFixed} fixed, created ${created.join(',')}`);
+            return {movedMeals, movedBazar, movedFixed, createdMonths:created};
         }
         // Manual repair trigger for user
         function triggerManualRepair(){
             const backupKey = STORE_KEY + "_backup_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
             try{ localStorage.setItem(backupKey, JSON.stringify(appStore)); console.log("Backup saved", backupKey); }catch(e){}
             const res = repairMonthlyBuckets(appStore);
-            if(res.movedMeals===0 && res.movedBazar===0){
+            if(res.movedMeals===0 && res.movedBazar===0 && (res.movedFixed||0)===0){
                 showToast("✅ কোনো ভুল বাকেট পাওয়া যায়নি — আগস্টসহ সব মাস ঠিক আছে");
                 return;
             }
@@ -553,7 +649,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 if(typeof calculateMess==='function') calculateMess();
                 if(typeof updateDropdowns==='function') updateDropdowns();
             }catch(e){}
-            showToast(`♻️ মেরামত সম্পন্ন — ${res.movedMeals} মিল, ${res.movedBazar} বাজার সঠিক মাসে সরানো হয়েছে (${res.createdMonths.join(', ')||'কোনো নতুন মাস নয়'}) — Firebase এও সিঙ্ক হবে`);
+            showToast(`♻️ মেরামত সম্পন্ন — ${res.movedMeals} মিল, ${res.movedBazar} বাজার, ${res.movedFixed||0} ফিক্সড সঠিক মাসে সরানো হয়েছে (${res.createdMonths.join(', ')||'কোনো নতুন মাস নয়'}) — Firebase এও সিঙ্ক হবে`);
             // Try firebase sync if ready
             if(typeof window.syncMessDataNow==='function'){
                 try{ window.syncMessDataNow(); }catch(e){}
@@ -575,30 +671,33 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 // তারিখ অনুযায়ী মাস আলাদা করে মাইগ্রেট — যাতে ড্যাশবোর্ড শুধু সেই মাসের ডাটা দেখায়
                 const legacyMeals = Array.isArray(legacy.mealsLog)?legacy.mealsLog:[];
                 const legacyBazar = Array.isArray(legacy.bazarLog)?legacy.bazarLog:[];
+                const legacyFixed = Array.isArray(legacy.fixedLog)?legacy.fixedLog:[];
                 const members = Array.isArray(legacy.members)?legacy.members:[];
                 const fixedCosts = legacy.fixedCosts || { rent:{} };
                 const grandBills = legacy.grandBills || { electricity:0, maid:0, wifi:0, others:0 };
                 const monthIds = new Set();
                 legacyMeals.forEach(l=>{ if(l.date && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) monthIds.add(l.date.slice(0,7)); });
                 legacyBazar.forEach(l=>{ if(l.date && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) monthIds.add(l.date.slice(0,7)); });
+                legacyFixed.forEach(l=>{ if(l.date && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) monthIds.add(l.date.slice(0,7)); });
                 if(monthIds.size===0) monthIds.add(cur);
                 monthIds.forEach(mid=>{
                     appStore.months[mid] = {
                         members: JSON.parse(JSON.stringify(members)),
                         mealsLog: legacyMeals.filter(l=> (l.date||'').slice(0,7)===mid),
                         bazarLog: legacyBazar.filter(l=> (l.date||'').slice(0,7)===mid),
+                        fixedLog: legacyFixed.filter(l=> (l.date||'').slice(0,7)===mid),
                         fixedCosts: JSON.parse(JSON.stringify(fixedCosts)),
                         grandBills: JSON.parse(JSON.stringify(grandBills))
                     };
                 });
                 // চলতি মাস না থাকলে তৈরি
                 if(!appStore.months[cur]){
-                    appStore.months[cur] = { members: JSON.parse(JSON.stringify(members)), mealsLog: [], bazarLog: [], fixedCosts: JSON.parse(JSON.stringify(fixedCosts)), grandBills: { electricity:0, maid:0, wifi:0, others:0 } };
+                    appStore.months[cur] = { members: JSON.parse(JSON.stringify(members)), mealsLog: [], bazarLog: [], fixedLog: [], fixedCosts: JSON.parse(JSON.stringify(fixedCosts)), grandBills: { electricity:0, maid:0, wifi:0, others:0 } };
                 }
                 // সব মাসে অন্তত একটি খালি মাস নিশ্চিত, যাতে আগের মাস দেখা যায়
             } else {
                 appStore = { activeMonth: cur, months: {} };
-                appStore.months[cur] = { members: [], mealsLog: [], bazarLog: [], fixedCosts:{rent:{}}, grandBills:{electricity:0,maid:0,wifi:0,others:0}};
+                appStore.months[cur] = { members: [], mealsLog: [], bazarLog: [], fixedLog: [], fixedCosts:{rent:{}}, grandBills:{electricity:0,maid:0,wifi:0,others:0}};
             }
             localStorage.setItem(STORE_KEY, JSON.stringify(appStore));
         }
@@ -607,12 +706,21 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         let activeMonth = localStorage.getItem(ACTIVE_MONTH_KEY) || appStore.activeMonth;
         if(!appStore.months[activeMonth]) ensureMonth(appStore, activeMonth);
         appStore.activeMonth = activeMonth;
+        // নিশ্চিত করুন প্রতিটি মাসে fixedLog আছে (পুরনো ডাটা মাইগ্রেশন)
+        Object.keys(appStore.months).forEach(mid=>{
+            if(!appStore.months[mid].fixedLog) appStore.months[mid].fixedLog=[];
+            if(!appStore.months[mid].mealsLog) appStore.months[mid].mealsLog=[];
+            if(!appStore.months[mid].bazarLog) appStore.months[mid].bazarLog=[];
+            if(!appStore.months[mid].fixedCosts) appStore.months[mid].fixedCosts={rent:{}};
+            if(!appStore.months[mid].grandBills) appStore.months[mid].grandBills={electricity:0,maid:0,wifi:0,others:0};
+        });
         let messData = appStore.months[activeMonth];
+        if(!messData.fixedLog) messData.fixedLog=[];
 
         // স্বয়ংক্রিয় মেরামত: ভুল মাসে থাকা আগস্ট ডাটা উদ্ধার (প্রথম লোডে একবার)
         try{
             const repairRes = repairMonthlyBuckets(appStore);
-            if(repairRes.movedMeals>0 || repairRes.movedBazar>0 || repairRes.createdMonths.length>0){
+            if(repairRes.movedMeals>0 || repairRes.movedBazar>0 || (repairRes.movedFixed||0)>0 || repairRes.createdMonths.length>0){
                 console.log("[AutoRepair] August data recovered", repairRes);
                 // activeMonth ঠিক থাকলে messData রিফ্রেশ
                 if(appStore.months[activeMonth]) messData = appStore.months[activeMonth];
@@ -622,7 +730,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 // নোট: window.onload এ রেন্ডার হবে, এখানে টোস্ট দেখাতে একটু দেরি
                 setTimeout(()=>{
                     try{
-                        if(typeof showToast==='function') showToast(`♻️ আগস্টসহ ${repairRes.movedMeals} মিল ও ${repairRes.movedBazar} বাজার সঠিক মাসে ফেরানো হয়েছে${repairRes.createdMonths.length? ' — নতুন মাস: '+repairRes.createdMonths.join(', '):''}`);
+                        if(typeof showToast==='function') showToast(`♻️ আগস্টসহ ${repairRes.movedMeals} মিল, ${repairRes.movedBazar} বাজার ও ${repairRes.movedFixed||0} ফিক্সড সঠিক মাসে ফেরানো হয়েছে${repairRes.createdMonths.length? ' — নতুন মাস: '+repairRes.createdMonths.join(', '):''}`);
                     }catch(e){}
                 }, 1200);
             }
@@ -630,6 +738,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
         let lastMarketData = null;
         let _editingBazarId = null;
+        let lastFixedData = null;
+        let _editingFixedId = null;
 
         function persistStore(){
             localStorage.setItem(STORE_KEY, JSON.stringify(appStore));
@@ -703,22 +813,25 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             // stats — শুধু সক্রিয় মাসের ডাটা (তারিখ ফিল্টার)
             const m = appStore.months[activeMonth];
+            if(!m.fixedLog) m.fixedLog=[];
             const mealCount = m.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.count)||0),0);
             const bazarTotal = m.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0);
+            const fixedLogTotal = m.fixedLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0);
             const membersCount = m.members.length;
             const fixedTotal = (()=>{ let t=0; const c = m.grandBills||{}; const cnt=m.members.length||1; t+=Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0); t+=Number(c.electricity||0); t+=Number(c.maid||0); t+=Number(c.wifi||0); t+=Number(c.others||0); return t; })();
             statsBar.innerHTML = `
                 <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">👥 সদস্য: ${convertToBanglaNumber(membersCount)} জন</span>
                 <span class="bg-white border border-amber-200 px-2.5 py-1 rounded-full font-semibold">🍚 মিল: ${convertToBanglaNumber(mealCount)}</span>
                 <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">🛒 বাজার: ৳${convertToBanglaNumber(bazarTotal.toFixed(1))}</span>
-                <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🏠 ফিক্সড: ৳${convertToBanglaNumber(fixedTotal.toFixed(1))}</span>
+                <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🔧 ফিক্সড জমা: ৳${convertToBanglaNumber(fixedLogTotal.toFixed(1))}</span>
+                <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🏠 ফিক্সড খরচ: ৳${convertToBanglaNumber(fixedTotal.toFixed(1))}</span>
                 <span class="bg-white border border-gray-200 px-2.5 py-1 rounded-full text-gray-600">📦 মোট মাস: ${convertToBanglaNumber(Object.keys(appStore.months).length)} টি</span>
             `;
             infoBar.innerHTML = isCurrent
                 ? `এটি <b>চলমান মাস</b>। এখানে যোগ করা মিল/বাজার/ফিক্সড খরচ শুধু <b>${formatMonthLabel(activeMonth)}</b> এর হিসাবে জমা হবে। আগের মাস দেখতে ড্রপডাউন বা ‹ › বাটন ব্যবহার করুন।`
                 : `আপনি <b>${formatMonthLabel(activeMonth)}</b> এর <b>আর্কাইভ</b> দেখছেন। এই মাসের ডাটা আলাদাভাবে সংরক্ষিত। এখানেও নতুন এন্ট্রি যোগ, এডিট বা ডিলিট করতে পারবেন।`;
             // hints in forms
-            ['meal-form-month-hint','bazar-form-month-hint','fixed-form-month-hint','member-form-month-hint'].forEach(id=>{
+            ['meal-form-month-hint','bazar-form-month-hint','fixed-form-month-hint','fixed-log-month-hint','member-form-month-hint'].forEach(id=>{
                 const el=document.getElementById(id);
                 if(el) el.textContent = `— ${formatMonthLabel(activeMonth)} (${activeMonth})`;
             });
@@ -736,7 +849,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             appStore.activeMonth = monthId;
             messData = appStore.months[monthId];
             _editingBazarId = null;
+            _editingFixedId = null;
             updateBazarFormState();
+            if(typeof updateFixedFormState==='function') updateFixedFormState();
             persistStore();
             updateDropdowns();
             renderMembersList();
@@ -747,6 +862,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             try{
                 const mealDateInput = document.getElementById('meal-date');
                 const bazarDateInput = document.getElementById('bazar-date');
+                const fixedDateInput = document.getElementById('fixed-date');
                 if(mealDateInput){
                     if(activeMonth === getCurrentMonthId()) mealDateInput.valueAsDate = new Date();
                     else mealDateInput.value = activeMonth + '-01';
@@ -754,6 +870,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 if(bazarDateInput){
                     if(activeMonth === getCurrentMonthId()) bazarDateInput.valueAsDate = new Date();
                     else bazarDateInput.value = activeMonth + '-01';
+                }
+                if(fixedDateInput){
+                    if(activeMonth === getCurrentMonthId()) fixedDateInput.valueAsDate = new Date();
+                    else fixedDateInput.value = activeMonth + '-01';
                 }
             }catch(e){}
             if(!opts.silent) showToast(`📅 ${formatMonthLabel(monthId)} -এর হিসাব লোড করা হয়েছে`);
@@ -817,6 +937,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if(!confirm(`আপনি কি ${formatMonthLabel(activeMonth)} মাসের সব মিল, বাজার ও ফিক্সড খরচ মুছতে চান? (সদস্য থাকবে)`)) return;
             messData.mealsLog = [];
             messData.bazarLog = [];
+            if(!messData.fixedLog) messData.fixedLog=[];
+            messData.fixedLog = [];
             messData.grandBills = { electricity:0, maid:0, wifi:0, others:0 };
             // keep rent? reset bills only; meals/bazar cleared
             // optionally keep rent as is
@@ -830,7 +952,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if(!confirm('দ্বিতীয়বার নিশ্চিত করুন — সব মাস মুছে যাবে!')) return;
             const cur = getCurrentMonthId();
             appStore = { activeMonth: cur, months: {} };
-            appStore.months[cur] = { members: [], mealsLog: [], bazarLog: [], fixedCosts:{rent:{}}, grandBills:{electricity:0,maid:0,wifi:0,others:0}};
+            appStore.months[cur] = { members: [], mealsLog: [], bazarLog: [], fixedLog: [], fixedCosts:{rent:{}}, grandBills:{electricity:0,maid:0,wifi:0,others:0}};
             activeMonth = cur;
             messData = appStore.months[cur];
             _editingBazarId = null;
@@ -869,6 +991,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 messData.members = messData.members.filter(m => m.id !== id);
                 messData.mealsLog = messData.mealsLog.filter(l => l.memberId !== id);
                 messData.bazarLog = messData.bazarLog.filter(b => b.memberId !== id);
+                if(messData.fixedLog) messData.fixedLog = messData.fixedLog.filter(b => b.memberId !== id);
                 if(messData.fixedCosts.rent) delete messData.fixedCosts.rent[id];
                 saveToLocalStorage();
                 updateDropdowns();
@@ -901,11 +1024,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function updateDropdowns() {
             const mealSelect = document.getElementById('meal-member-select');
             const bazarSelect = document.getElementById('bazar-member-select');
+            const fixedSelect = document.getElementById('fixed-member-select');
             mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
             bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            if(fixedSelect) fixedSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
             messData.members.forEach(member => {
                 mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
                 bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if(fixedSelect) fixedSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
             });
         }
 
@@ -1013,7 +1139,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             document.getElementById('bazar-desc').value='';
             document.getElementById('bazar-amount').value='';
             _editingBazarId = null;
+            _editingFixedId = null;
             updateBazarFormState();
+            if(typeof updateFixedFormState==='function') updateFixedFormState();
         }
         function cancelBazarEdit(){
             _editingBazarId = null;
@@ -1199,6 +1327,213 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             }
         }
 
+        /* ===================== ফিক্সড খরচ লগ — বাজার খরচের মত হুবহু ===================== */
+        function clearFixedForm(){
+            document.getElementById('fixed-desc').value='';
+            document.getElementById('fixed-amount').value='';
+            _editingFixedId = null;
+            updateFixedFormState();
+        }
+        function cancelFixedEdit(){
+            _editingFixedId = null;
+            clearFixedForm();
+        }
+        function updateFixedFormState(){
+            const btn = document.getElementById('fixed-submit-btn');
+            const cancel = document.getElementById('fixed-cancel-btn');
+            if(!btn || !cancel) return;
+            if(_editingFixedId){
+                btn.textContent = '✏️ আপডেট করুন';
+                btn.classList.remove('bg-indigo-600');
+                btn.classList.add('bg-blue-600');
+                cancel.classList.remove('hidden');
+            } else {
+                btn.textContent = 'ফিক্সড খরচ যোগ করুন';
+                btn.classList.add('bg-indigo-600');
+                btn.classList.remove('bg-blue-600');
+                cancel.classList.add('hidden');
+            }
+        }
+        function editFixed(id){
+            const f = (messData.fixedLog||[]).find(x=>x.id===id);
+            if(!f) return;
+            document.getElementById('fixed-date').value = f.date;
+            document.getElementById('fixed-member-select').value = f.memberId;
+            document.getElementById('fixed-desc').value = f.desc;
+            document.getElementById('fixed-amount').value = f.amount;
+            _editingFixedId = id;
+            updateFixedFormState();
+            switchTab('tab-fixed');
+            document.getElementById('fixed-desc').focus();
+            showToast('ফিক্সড এন্ট্রি এডিট মোডে লোড হয়েছে');
+        }
+        function deleteFixed(id){
+            if (confirm('এই ফিক্সড খরচের এন্ট্রিটি মুছে ফেলতে চান?')) {
+                if(_editingFixedId===id){ _editingFixedId=null; updateFixedFormState();}
+                messData.fixedLog = (messData.fixedLog||[]).filter(b => b.id !== id);
+                saveToLocalStorage();
+                calculateMess();
+                showToast('ফিক্সড এন্ট্রি মুছে ফেলা হয়েছে।');
+            }
+        }
+        function addFixed(){
+            const rawDate = document.getElementById('fixed-date').value;
+            const memberId = document.getElementById('fixed-member-select').value;
+            const desc = document.getElementById('fixed-desc').value.trim() || 'ফিক্সড খরচ';
+            const amount = parseFloat(document.getElementById('fixed-amount').value);
+            if (!rawDate || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+            const formattedDate = formatBanglaDate(rawDate);
+            const dateMonth = rawDate.slice(0,7);
+            if(!messData.fixedLog) messData.fixedLog=[];
+            // এডিট মোড
+            if(_editingFixedId){
+                let oldMonthId=null, oldIdx=-1, oldEntry=null;
+                for(const mid of Object.keys(appStore.months)){
+                    const arr = appStore.months[mid].fixedLog||[];
+                    const idx = arr.findIndex(b=>b.id===_editingFixedId);
+                    if(idx!==-1){ oldMonthId=mid; oldIdx=idx; oldEntry=arr[idx]; break; }
+                }
+                if(oldEntry){
+                    if(oldMonthId !== dateMonth){
+                        appStore.months[oldMonthId].fixedLog.splice(oldIdx,1);
+                        if(!appStore.months[dateMonth]){
+                            ensureMonth(appStore, dateMonth, oldMonthId);
+                            if(!appStore.months[dateMonth].fixedLog) appStore.months[dateMonth].fixedLog=[];
+                        }
+                        if(!appStore.months[dateMonth].members.find(m=>m.id===memberId)){
+                            const src = (appStore.months[oldMonthId].members.find(m=>m.id===memberId) || messData.members.find(m=>m.id===memberId));
+                            if(src) appStore.months[dateMonth].members.push(JSON.parse(JSON.stringify(src)));
+                        }
+                        if(!appStore.months[dateMonth].fixedLog) appStore.months[dateMonth].fixedLog=[];
+                        appStore.months[dateMonth].fixedLog.push({ id:_editingFixedId, date: rawDate, displayDate: formattedDate, memberId, desc, amount });
+                        appStore.months[dateMonth].fixedLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+                        if(dateMonth !== activeMonth){
+                            if(confirm(`${formatMonthLabel(dateMonth)} মাসে আপডেট করা হয়েছে। সেই মাসে যেতে চান?`)){
+                                switchToMonth(dateMonth);
+                            } else {
+                                persistStore();
+                                calculateMess();
+                                showToast(`✏️ ${formatMonthLabel(dateMonth)} মাসে আপডেট হয়েছে`);
+                            }
+                        } else {
+                            messData = appStore.months[activeMonth];
+                            persistStore();
+                            calculateMess();
+                            showToast('ফিক্সড খরচ আপডেট করা হয়েছে — ' + formatMonthLabel(dateMonth));
+                        }
+                    } else {
+                        const targetData = appStore.months[dateMonth];
+                        if(!targetData.fixedLog) targetData.fixedLog=[];
+                        const idx2 = targetData.fixedLog.findIndex(b=>b.id===_editingFixedId);
+                        if(idx2!==-1){
+                            targetData.fixedLog[idx2].date = rawDate;
+                            targetData.fixedLog[idx2].displayDate = formattedDate;
+                            targetData.fixedLog[idx2].memberId = memberId;
+                            targetData.fixedLog[idx2].desc = desc;
+                            targetData.fixedLog[idx2].amount = amount;
+                            targetData.fixedLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+                            if(dateMonth !== activeMonth){
+                                persistStore();
+                                calculateMess();
+                            } else {
+                                saveToLocalStorage();
+                                calculateMess();
+                            }
+                            showToast('ফিক্সড খরচ আপডেট করা হয়েছে — ' + formatMonthLabel(dateMonth));
+                        }
+                    }
+                }
+                _editingFixedId=null;
+                updateFixedFormState();
+                document.getElementById('fixed-desc').value='';
+                document.getElementById('fixed-amount').value='';
+                return;
+            }
+            // নতুন এন্ট্রি
+            if(!appStore.months[dateMonth]){
+                ensureMonth(appStore, dateMonth, activeMonth);
+                if(!appStore.months[dateMonth].fixedLog) appStore.months[dateMonth].fixedLog=[];
+            }
+            if(!appStore.months[dateMonth].fixedLog) appStore.months[dateMonth].fixedLog=[];
+            if(!appStore.months[dateMonth].members.find(m=>m.id===memberId)){
+                const srcMem = messData.members.find(m=>m.id===memberId);
+                if(srcMem) appStore.months[dateMonth].members.push(JSON.parse(JSON.stringify(srcMem)));
+            }
+            let switched=false;
+            if(dateMonth !== activeMonth){
+                if(confirm(`তারিখটি ${formatMonthLabel(dateMonth)} (${dateMonth}) মাসের। এই এন্ট্রি ${formatMonthLabel(dateMonth)} মাসে সংরক্ষণ করা হবে। সেই মাসে যেতে চান?`)){
+                    activeMonth = dateMonth;
+                    appStore.activeMonth = dateMonth;
+                    messData = appStore.months[dateMonth];
+                    switched=true;
+                    persistStore();
+                    updateDropdowns();
+                    renderMembersList();
+                    renderFixedCostInputs();
+                }
+            }
+            const targetForNew = appStore.months[dateMonth];
+            if(!targetForNew.fixedLog) targetForNew.fixedLog=[];
+            const memberObj = targetForNew.members.find(m=>m.id===memberId) || messData.members.find(m=>m.id===memberId);
+            const payerName = memberObj ? memberObj.name : 'সদস্য';
+            targetForNew.fixedLog.push({ id: 'fixed_'+Date.now(), date: rawDate, displayDate: formattedDate, memberId, desc, amount });
+            targetForNew.fixedLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+            if(dateMonth !== activeMonth && !switched){
+                lastFixedData = { payer: payerName, date: formattedDate, list: desc, amount: convertToBanglaNumber(amount) };
+                const btn=document.getElementById('fixed-wa-share-btn');
+                if(btn) btn.classList.remove('hidden');
+                persistStore();
+                calculateMess();
+                showToast(`🔧 ${formatMonthLabel(dateMonth)} মাসে সংরক্ষিত — সেই মাসে গিয়ে দেখুন`);
+            } else {
+                messData = appStore.months[activeMonth];
+                lastFixedData = { payer: payerName, date: formattedDate, list: desc, amount: convertToBanglaNumber(amount) };
+                const btn=document.getElementById('fixed-wa-share-btn');
+                if(btn) btn.classList.remove('hidden');
+                saveToLocalStorage();
+                calculateMess();
+                showToast('ফিক্সড খরচ সফলভাবে সংরক্ষিত — ' + formatMonthLabel(dateMonth));
+            }
+            document.getElementById('fixed-desc').value='';
+            document.getElementById('fixed-amount').value='';
+        }
+        function shareFixedSpecificOnWhatsApp(payerName, formattedDate, desc, amount){
+            let banglaAmount = convertToBanglaNumber(amount);
+            let message = `🔧 *ফিক্সড খরচ আপডেট*\n\n` +
+                          `👤 *পরিশোধকারী:* ${payerName}\n` +
+                          `📅 *তারিখ:* ${formattedDate}\n` +
+                          `📋 *বিবরণ:*\n${desc}\n\n` +
+                          `💵 *টাকার পরিমাণ:* ${banglaAmount} টাকা`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+        function shareFixedOnWhatsApp(){
+            if(!lastFixedData) return;
+            shareFixedSpecificOnWhatsApp(lastFixedData.payer, lastFixedData.date, lastFixedData.list, lastFixedData.amount);
+        }
+        function shareFixedListOnWhatsApp(){
+            const monthFixedShare = (messData.fixedLog||[]).filter(l => (l.date||'').slice(0,7)===activeMonth);
+            if(monthFixedShare.length===0) return alert("এই মাসে কোনো ফিক্সড খরচ পাওয়া যায়নি।");
+            const dates = [...new Set(monthFixedShare.map(l=>l.date))].sort((a,b)=> new Date(a)-new Date(b));
+            let message = `🔧 *সম্পূর্ণ ফিক্সড খরচের তালিকা — ${formatMonthLabel(activeMonth)} (${activeMonth})*\n\n`;
+            let total=0;
+            dates.forEach(date=>{
+                const displayDt = formatBanglaDate(date);
+                message += `📅 *তারিখ:* ${displayDt}\n`;
+                messData.members.forEach(m=>{
+                    const entries = monthFixedShare.filter(b=> b.date===date && b.memberId===m.id);
+                    if(entries.length>0){
+                        const subtotal = entries.reduce((s,b)=> s + (Number(b.amount)||0), 0);
+                        const items = entries.map(b=> b.desc).join(', ');
+                        total+=subtotal;
+                        message += `  👤 ${m.name}: ${items} (৳${convertToBanglaNumber(subtotal.toFixed(1))})\n`;
+                    }
+                });
+                message += `------------------\n`;
+            });
+            message += `\n💵 *সর্বমোট ফিক্সড জমা:* ৳${convertToBanglaNumber(total.toFixed(1))} টাকা`;
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
         function saveFixedCosts() {
             const rentInputs = document.querySelectorAll('.rent-input');
             rentInputs.forEach(input => {
@@ -1220,6 +1555,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function calculateMess() {
             let totalMeals = 0;
             let totalBazar = 0;
+            let totalFixedLogDeposit = 0;
             let totalFixedAll = 0;
             let totalRentAll = 0;
             let totalMaidAll = 0;
@@ -1229,15 +1565,18 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             let memberSummary = {};
 
+            if(!messData.fixedLog) messData.fixedLog=[];
             messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+            messData.fixedLog.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             messData.members.forEach(m => {
-                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, rent: 0, maid: 0, elec: 0, wifi: 0, oth: 0, fixed: 0 };
+                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, fixedSpent: 0, rent: 0, maid: 0, elec: 0, wifi: 0, oth: 0, fixed: 0 };
             });
 
             // ড্যাশবোর্ডে শুধু সক্রিয় মাসের ডাটা দেখানো — তারিখের মাস ফিল্টার (বাকেটে ভুল মাসের ডাটা থাকলেও ফিল্টার হবে)
             const monthMealsForCalc = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             const monthBazarForCalc = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthFixedForCalc = messData.fixedLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             monthMealsForCalc.forEach(log => {
                 if (memberSummary[log.memberId]) {
                     memberSummary[log.memberId].meals += log.count;
@@ -1249,6 +1588,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 if (memberSummary[log.memberId]) {
                     memberSummary[log.memberId].bazarSpent += log.amount;
                     totalBazar += log.amount;
+                }
+            });
+            monthFixedForCalc.forEach(log => {
+                if (memberSummary[log.memberId]) {
+                    memberSummary[log.memberId].fixedSpent += Number(log.amount)||0;
+                    totalFixedLogDeposit += Number(log.amount)||0;
                 }
             });
 
@@ -1264,7 +1609,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
 
             const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
-            fixedBreakdownBody.innerHTML = '';
+            if(fixedBreakdownBody) fixedBreakdownBody.innerHTML = '';
 
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
@@ -1288,7 +1633,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 totalOthAll += splitOth;
                 totalFixedAll += calculatedFixedSum;
 
-                fixedBreakdownBody.innerHTML += `
+                if(fixedBreakdownBody) fixedBreakdownBody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3 border font-semibold">${m.name}</td>
                         <td class="p-3 border">৳${convertToBanglaNumber(individualRent.toFixed(1))}</td>
@@ -1298,9 +1643,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 `;
             });
 
-            document.getElementById('foot-total-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
-            document.getElementById('foot-total-utility').innerText = `৳${convertToBanglaNumber((totalMaidAll + totalElecAll + totalWifiAll + totalOthAll).toFixed(1))}`;
-            document.getElementById('foot-total-fixed-all').innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
+            const footRent = document.getElementById('foot-total-rent');
+            if(footRent) footRent.innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            const footUtil = document.getElementById('foot-total-utility');
+            if(footUtil) footUtil.innerText = `৳${convertToBanglaNumber((totalMaidAll + totalElecAll + totalWifiAll + totalOthAll).toFixed(1))}`;
+            const footAll = document.getElementById('foot-total-fixed-all');
+            if(footAll) footAll.innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
 
             const totalExpenseAll = totalBazar + totalFixedAll;
 
@@ -1314,54 +1662,97 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             document.getElementById('table-total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
             const bazarTableBody = document.getElementById('bazar-log-table-body');
-            bazarTableBody.innerHTML = '';
-            // শুধু সক্রিয় মাসের বাজার দেখানো
-            const monthBazarForTable = monthBazarForCalc;
-            if(monthBazarForTable.length===0){
-                bazarTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">এই মাসে কোনো বাজার এন্ট্রি নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>`;
-            } else {
-                monthBazarForTable.forEach(b => {
-                    const member = messData.members.find(m => m.id === b.memberId);
-                    const memName = member ? member.name : 'Unknown';
-                    const displayDt = b.displayDate || formatBanglaDate(b.date);
-                    const isEditing = _editingBazarId===b.id;
-                    bazarTableBody.innerHTML += `
-                        <tr class="border-b hover:bg-gray-100 ${isEditing?'bg-blue-50':''}">
-                            <td class="p-2 border">${displayDt}</td>
-                            <td class="p-2 border font-medium">${memName}</td>
-                            <td class="p-2 border">${b.desc}</td>
-                            <td class="p-2 border text-emerald-600 font-bold">৳${convertToBanglaNumber(b.amount)}</td>
-                            <td class="p-2 border text-center">
-                                <div class="flex gap-1 justify-center flex-wrap">
-                                    <button onclick="editBazar('${b.id}')" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">✏️ এডিট</button>
-                                    <button onclick="shareSpecificOnWhatsApp('${memName}', '${displayDt}', '${b.desc.replace(/'/g, "\\'")}', ${b.amount})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">📤 শেয়ার</button>
-                                    <button onclick="deleteBazar('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">🗑️ ডিলিট</button>
-                                </div>
-                            </td>
-                        </tr>
-                    `;
-                });
+            if(bazarTableBody){
+                bazarTableBody.innerHTML = '';
+                // শুধু সক্রিয় মাসের বাজার দেখানো
+                const monthBazarForTable = monthBazarForCalc;
+                if(monthBazarForTable.length===0){
+                    bazarTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">এই মাসে কোনো বাজার এন্ট্রি নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>`;
+                } else {
+                    monthBazarForTable.forEach(b => {
+                        const member = messData.members.find(m => m.id === b.memberId);
+                        const memName = member ? member.name : 'Unknown';
+                        const displayDt = b.displayDate || formatBanglaDate(b.date);
+                        const isEditing = _editingBazarId===b.id;
+                        bazarTableBody.innerHTML += `
+                            <tr class="border-b hover:bg-gray-100 ${isEditing?'bg-blue-50':''}">
+                                <td class="p-2 border">${displayDt}</td>
+                                <td class="p-2 border font-medium">${memName}</td>
+                                <td class="p-2 border">${b.desc}</td>
+                                <td class="p-2 border text-emerald-600 font-bold">৳${convertToBanglaNumber(b.amount)}</td>
+                                <td class="p-2 border text-center">
+                                    <div class="flex gap-1 justify-center flex-wrap">
+                                        <button onclick="editBazar('${b.id}')" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">✏️ এডিট</button>
+                                        <button onclick="shareSpecificOnWhatsApp('${memName}', '${displayDt}', '${b.desc.replace(/'/g, "\\'")}', ${b.amount})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">📤 শেয়ার</button>
+                                        <button onclick="deleteBazar('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">🗑️ ডিলিট</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
             }
 
             renderBazarGrid();
+
+            // ===== ফিক্সড লগ টেবিল ও গ্রিড রেন্ডার =====
+            const totalFixedLogEl = document.getElementById('table-total-fixed-log');
+            if(totalFixedLogEl) totalFixedLogEl.innerText = convertToBanglaNumber(totalFixedLogDeposit.toFixed(1));
+            const fixedTableBody = document.getElementById('fixed-log-table-body');
+            if(fixedTableBody){
+                fixedTableBody.innerHTML = '';
+                if(monthFixedForCalc.length===0){
+                    fixedTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">এই মাসে কোনো ফিক্সড এন্ট্রি নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>`;
+                } else {
+                    monthFixedForCalc.forEach(b => {
+                        const member = messData.members.find(m => m.id === b.memberId);
+                        const memName = member ? member.name : 'Unknown';
+                        const displayDt = b.displayDate || formatBanglaDate(b.date);
+                        const isEditing = _editingFixedId===b.id;
+                        fixedTableBody.innerHTML += `
+                            <tr class="border-b hover:bg-gray-100 ${isEditing?'bg-blue-50':''}">
+                                <td class="p-2 border">${displayDt}</td>
+                                <td class="p-2 border font-medium">${memName}</td>
+                                <td class="p-2 border">${b.desc}</td>
+                                <td class="p-2 border text-indigo-600 font-bold">৳${convertToBanglaNumber(b.amount)}</td>
+                                <td class="p-2 border text-center">
+                                    <div class="flex gap-1 justify-center flex-wrap">
+                                        <button onclick="editFixed('${b.id}')" class="bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600">✏️ এডিট</button>
+                                        <button onclick="shareFixedSpecificOnWhatsApp('${memName}', '${displayDt}', '${b.desc.replace(/'/g, "\\'")}', ${b.amount})" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700">📤 শেয়ার</button>
+                                        <button onclick="deleteFixed('${b.id}')" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600">🗑️ ডিলিট</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+            if(typeof renderFixedGrid==='function') renderFixedGrid();
 
             const tbody = document.getElementById('calculation-table-body');
             tbody.innerHTML = '';
 
             let grandMealCostSum = 0;
             let grandTotalCostSum = 0;
+            let grandBazarSum = 0;
+            let grandFixedDepositSum = 0;
+            let grandTotalDepositSum = 0;
 
             if(messData.members.length===0){
-                tbody.innerHTML = `<tr><td colspan="12" class="p-4 text-center text-gray-400">কোনো সদস্য নেই — সদস্য যোগ করুন।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="p-4 text-center text-gray-400">কোনো সদস্য নেই — সদস্য যোগ করুন।</td></tr>`;
             } else {
                 messData.members.forEach(member => {
                     const s = memberSummary[member.id];
                     const mealCost = s.meals * mealRate;
                     const totalCost = mealCost + s.fixed;
-                    const balance = s.bazarSpent - totalCost;
+                    const totalDeposit = s.bazarSpent + s.fixedSpent;
+                    const balance = totalDeposit - totalCost;
 
                     grandMealCostSum += mealCost;
                     grandTotalCostSum += totalCost;
+                    grandBazarSum += s.bazarSpent;
+                    grandFixedDepositSum += s.fixedSpent;
+                    grandTotalDepositSum += totalDeposit;
 
                     let balanceText = balance >= 0 ? 
                         `<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳${convertToBanglaNumber(balance.toFixed(1))}</span>` : 
@@ -1379,6 +1770,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <td class="p-2 border text-gray-600">৳${convertToBanglaNumber(s.oth.toFixed(1))}</td>
                             <td class="p-2 border font-bold text-blue-700">৳${convertToBanglaNumber(totalCost.toFixed(1))}</td>
                             <td class="p-2 border text-emerald-600 font-semibold">৳${convertToBanglaNumber(s.bazarSpent)}</td>
+                            <td class="p-2 border text-indigo-600 font-semibold">৳${convertToBanglaNumber(s.fixedSpent)}</td>
+                            <td class="p-2 border font-bold text-blue-900">৳${convertToBanglaNumber(totalDeposit)}</td>
                             <td class="p-2 border">${balanceText}</td>
                             <td class="p-2 border text-center">
                                 <button onclick="shareMemberOnWhatsApp('${member.id}')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded hover:bg-green-700">📤 শেয়ার</button>
@@ -1396,7 +1789,11 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             document.getElementById('summary-foot-wifi').innerText = `৳${convertToBanglaNumber(totalWifiAll.toFixed(1))}`;
             document.getElementById('summary-foot-oth').innerText = `৳${convertToBanglaNumber(totalOthAll.toFixed(1))}`;
             document.getElementById('summary-foot-total-cost').innerText = `৳${convertToBanglaNumber(grandTotalCostSum.toFixed(1))}`;
-            document.getElementById('summary-foot-bazar').innerText = `৳${convertToBanglaNumber(totalBazar.toFixed(1))}`;
+            document.getElementById('summary-foot-bazar').innerText = `৳${convertToBanglaNumber(grandBazarSum.toFixed(1))}`;
+            const footFixedLog = document.getElementById('summary-foot-fixed-log');
+            if(footFixedLog) footFixedLog.innerText = `৳${convertToBanglaNumber(grandFixedDepositSum.toFixed(1))}`;
+            const footTotalDep = document.getElementById('summary-foot-total-deposit');
+            if(footTotalDep) footTotalDep.innerText = `৳${convertToBanglaNumber(grandTotalDepositSum.toFixed(1))}`;
         }
 
         function renderBazarGrid() {
@@ -1442,6 +1839,52 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
             const grandBazar = monthBazarGrid.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
             html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(grandBazar.toFixed(1))}</td></tr></tfoot></table>`;
+            container.innerHTML = html;
+        }
+
+        function renderFixedGrid() {
+            const container = document.getElementById('fixed-grid-container');
+            if (!container) return;
+            if (messData.members.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
+                return;
+            }
+            if(!messData.fixedLog) messData.fixedLog=[];
+            const monthFixedGrid = messData.fixedLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const dates = [...new Set(monthFixedGrid.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            let html = `<table class="w-full text-left border-collapse bg-white text-sm">
+                <thead><tr class="bg-indigo-700 text-white">
+                    <th class="p-2 border min-w-[105px]">তারিখ</th>`;
+            messData.members.forEach(m => {
+                html += `<th class="p-2 border text-center min-w-[150px]">${m.name}</th>`;
+            });
+            html += `<th class="p-2 border text-center min-w-[110px]">মোট</th></tr></thead><tbody>`;
+
+            if (dates.length === 0) {
+                html += `<tr><td colspan="${messData.members.length + 2}" class="p-3 text-center text-gray-500">এই মাসে কোনো ফিক্সড ডাটা পাওয়া যায়নি।</td></tr>`;
+            } else {
+                dates.forEach(date => {
+                    let dateTotal = 0;
+                    let displayDt = formatBanglaDate(date);
+                    html += `<tr class="border-b hover:bg-indigo-50"><td class="p-2 border font-medium">${displayDt}</td>`;
+                    messData.members.forEach(m => {
+                        const entries = messData.fixedLog.filter(b => b.date === date && b.memberId === m.id);
+                        const subtotal = entries.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                        dateTotal += subtotal;
+                        const items = entries.map(b => b.desc || 'ফিক্সড খরচ').join(', ');
+                        html += `<td class="p-2 border align-top">${entries.length ? `<div class="font-medium text-gray-700 break-words">${items}</div><div class="font-bold text-indigo-700 mt-1">৳${convertToBanglaNumber(subtotal.toFixed(1))}</div>` : '<span class="text-gray-300">—</span>'}</td>`;
+                    });
+                    html += `<td class="p-2 border text-center font-extrabold text-indigo-800">৳${convertToBanglaNumber(dateTotal.toFixed(1))}</td></tr>`;
+                });
+            }
+
+            html += `</tbody><tfoot><tr class="bg-indigo-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>`;
+            messData.members.forEach(m => {
+                const memberTotal = monthFixedGrid.filter(b => b.memberId === m.id).reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                html += `<td class="p-2 border text-center text-indigo-900">৳${convertToBanglaNumber(memberTotal.toFixed(1))}</td>`;
+            });
+            const grandFixed = monthFixedGrid.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+            html += `<td class="p-2 border text-center text-indigo-900">৳${convertToBanglaNumber(grandFixed.toFixed(1))}</td></tr></tfoot></table>`;
             container.innerHTML = html;
         }
 
@@ -1544,8 +1987,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             list.innerHTML='';
             months.forEach(mid=>{
                 const m = appStore.months[mid];
+                if(!m.fixedLog) m.fixedLog=[];
                 const meals = m.mealsLog.reduce((s,l)=>s+(Number(l.count)||0),0);
                 const bazar = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
+                const fixedDep = m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const mealRate = meals? (bazar/meals):0;
                 const fixed = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
                 const isActive = mid===activeMonth;
@@ -1563,13 +2008,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                                 <span>👥 ${convertToBanglaNumber(m.members.length)} জন</span>
                                 <span>🍚 ${convertToBanglaNumber(meals)} মিল</span>
                                 <span>🛒 ৳${convertToBanglaNumber(bazar.toFixed(1))}</span>
+                                <span>🔧 ফিক্সড জমা ৳${convertToBanglaNumber(fixedDep.toFixed(1))}</span>
                                 <span>📈 রেট ৳${convertToBanglaNumber(mealRate.toFixed(2))}</span>
-                                <span>🏠 ফিক্সড ৳${convertToBanglaNumber(fixed.toFixed(1))}</span>
+                                <span>🏠 ফিক্সড খরচ ৳${convertToBanglaNumber(fixed.toFixed(1))}</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
                             <button onclick="switchToMonth('${mid}')" class="bg-emerald-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-emerald-700">${isActive?'✅ দেখছেন':'👁️ দেখুন'}</button>
-                            <button onclick="if(confirm('এই মাসটি মুছতে চান?')){ delete appStore.months['${mid}']; if(activeMonth==='${mid}'){ const latest=Object.keys(appStore.months).sort().pop(); if(latest) switchToMonth(latest); else { const cur=getCurrentMonthId(); appStore.months[cur]={members:[],mealsLog:[],bazarLog:[],fixedCosts:{rent:{}},grandBills:{electricity:0,maid:0,wifi:0,others:0}}; switchToMonth(cur);} } else { persistStore(); calculateMess(); renderHistory(); } showToast('মাস মুছে ফেলা হয়েছে'); }" class="bg-white border border-rose-200 text-rose-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-50">🗑️ মুছুন</button>
+                            <button onclick="if(confirm('এই মাসটি মুছতে চান?')){ delete appStore.months['${mid}']; if(activeMonth==='${mid}'){ const latest=Object.keys(appStore.months).sort().pop(); if(latest) switchToMonth(latest); else { const cur=getCurrentMonthId(); appStore.months[cur]={members:[],mealsLog:[],bazarLog:[],fixedLog:[],fixedCosts:{rent:{}},grandBills:{electricity:0,maid:0,wifi:0,others:0}}; switchToMonth(cur);} } else { persistStore(); calculateMess(); renderHistory(); } showToast('মাস মুছে ফেলা হয়েছে'); }" class="bg-white border border-rose-200 text-rose-600 text-xs px-3 py-1.5 rounded font-bold hover:bg-rose-50">🗑️ মুছুন</button>
                             <button onclick="shareMonthReport('${mid}')" class="bg-green-600 text-white text-xs px-3 py-1.5 rounded font-bold hover:bg-green-700">📤 শেয়ার</button>
                         </div>
                     </div>
@@ -1577,15 +2023,17 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
 
             // compare table
-            let html = `<table class="w-full text-left border-collapse bg-white text-xs md:text-sm"><thead><tr class="bg-gray-800 text-white"><th class="p-2 border">মাস</th><th class="p-2 border">সদস্য</th><th class="p-2 border">মিল</th><th class="p-2 border">বাজার</th><th class="p-2 border">মিল রেট</th><th class="p-2 border">ফিক্সড</th><th class="p-2 border">মোট খরচ</th></tr></thead><tbody>`;
+            let html = `<table class="w-full text-left border-collapse bg-white text-xs md:text-sm"><thead><tr class="bg-gray-800 text-white"><th class="p-2 border">মাস</th><th class="p-2 border">সদস্য</th><th class="p-2 border">মিল</th><th class="p-2 border">বাজার</th><th class="p-2 border">ফিক্সড জমা</th><th class="p-2 border">মিল রেট</th><th class="p-2 border">ফিক্সড খরচ</th><th class="p-2 border">মোট খরচ</th></tr></thead><tbody>`;
             months.forEach(mid=>{
                 const m = appStore.months[mid];
+                if(!m.fixedLog) m.fixedLog=[];
                 const meals = m.mealsLog.reduce((s,l)=>s+(Number(l.count)||0),0);
                 const bazar = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
+                const fixedDep = m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const rate = meals? (bazar/meals):0;
                 const fixed = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
                 const total = bazar+fixed;
-                html += `<tr class="border-b hover:bg-gray-50 ${mid===activeMonth?'bg-emerald-50 font-bold':''}"><td class="p-2 border">${formatMonthLabel(mid)}<br><span class="text-[10px] text-gray-500">${mid}</span></td><td class="p-2 border text-center">${convertToBanglaNumber(m.members.length)}</td><td class="p-2 border text-center">${convertToBanglaNumber(meals)}</td><td class="p-2 border">৳${convertToBanglaNumber(bazar.toFixed(1))}</td><td class="p-2 border">৳${convertToBanglaNumber(rate.toFixed(2))}</td><td class="p-2 border">৳${convertToBanglaNumber(fixed.toFixed(1))}</td><td class="p-2 border font-bold">৳${convertToBanglaNumber(total.toFixed(1))}</td></tr>`;
+                html += `<tr class="border-b hover:bg-gray-50 ${mid===activeMonth?'bg-emerald-50 font-bold':''}"><td class="p-2 border">${formatMonthLabel(mid)}<br><span class="text-[10px] text-gray-500">${mid}</span></td><td class="p-2 border text-center">${convertToBanglaNumber(m.members.length)}</td><td class="p-2 border text-center">${convertToBanglaNumber(meals)}</td><td class="p-2 border">৳${convertToBanglaNumber(bazar.toFixed(1))}</td><td class="p-2 border text-indigo-700">৳${convertToBanglaNumber(fixedDep.toFixed(1))}</td><td class="p-2 border">৳${convertToBanglaNumber(rate.toFixed(2))}</td><td class="p-2 border">৳${convertToBanglaNumber(fixed.toFixed(1))}</td><td class="p-2 border font-bold">৳${convertToBanglaNumber(total.toFixed(1))}</td></tr>`;
             });
             html += `</tbody></table>`;
             comp.innerHTML = html;
@@ -1594,12 +2042,16 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function shareMonthReport(monthId){
             const m = appStore.months[monthId];
             if(!m) return;
+            if(!m.fixedLog) m.fixedLog=[];
             let totalMeals = m.mealsLog.reduce((s,l)=>s+(Number(l.count)||0),0);
             let totalBazar = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
+            let totalFixedDep = m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
             const rate = totalMeals? (totalBazar/totalMeals):0;
             let msg = `📊 *${formatMonthLabel(monthId)} (${monthId}) - মেস রিপোর্ট*\\n\\n`;
             msg += `🍚 মোট মিল: ${convertToBanglaNumber(totalMeals)}\\n`;
             msg += `🛒 মোট বাজার: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\\n`;
+            msg += `🔧 মোট ফিক্সড জমা: ৳${convertToBanglaNumber(totalFixedDep.toFixed(1))}\\n`;
+            msg += `💰 মোট জমা: ৳${convertToBanglaNumber((totalBazar+totalFixedDep).toFixed(1))}\\n`;
             msg += `📈 মিল রেট: ৳${convertToBanglaNumber(rate.toFixed(2))}\\n\\n`;
             msg += `👥 সদস্যদের হিসাব:\\n`;
             const memberCount = m.members.length;
@@ -1610,13 +2062,15 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             m.members.forEach(mem=>{
                 const meals = m.mealsLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.count)||0),0);
                 const bazarSpent = m.bazarLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.amount)||0),0);
+                const fixedSpent = m.fixedLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.amount)||0),0);
+                const deposit = bazarSpent + fixedSpent;
                 const rent = Number(m.fixedCosts.rent[mem.id]||0);
                 const fixed = rent + splitMaid + splitElec + splitWifi + splitOth;
                 const mealCost = meals*rate;
                 const total = mealCost + fixed;
-                const bal = bazarSpent - total;
+                const bal = deposit - total;
                 const status = bal>=0 ? `পাবে ৳${convertToBanglaNumber(bal.toFixed(1))}` : `দেবে ৳${convertToBanglaNumber(Math.abs(bal).toFixed(1))}`;
-                msg += `🔹 ${mem.name} — মিল ${convertToBanglaNumber(meals)}, খরচ ৳${convertToBanglaNumber(total.toFixed(1))}, জমা ৳${convertToBanglaNumber(bazarSpent)} → ${status}\\n`;
+                msg += `🔹 ${mem.name} — মিল ${convertToBanglaNumber(meals)}, খরচ ৳${convertToBanglaNumber(total.toFixed(1))}, জমা ৳${convertToBanglaNumber(deposit)} (বাজার ৳${convertToBanglaNumber(bazarSpent)} + ফিক্সড ৳${convertToBanglaNumber(fixedSpent)}) → ${status}\\n`;
             });
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
         }
@@ -1677,6 +2131,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function shareMemberOnWhatsApp(memberId) {
             const monthMealsAll = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             const monthBazarAll = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthFixedAll = (messData.fixedLog||[]).filter(l => (l.date||'').slice(0,7)===activeMonth);
             let totalMeals = 0; 
             let totalBazar = 0;
             monthMealsAll.forEach(l => totalMeals += l.count);
@@ -1688,6 +2143,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             const myMeals = monthMealsAll.filter(l => l.memberId === memberId);
             const myBazar = monthBazarAll.filter(l => l.memberId === memberId);
+            const myFixed = monthFixedAll.filter(l => l.memberId === memberId);
 
             const billElec = messData.grandBills.electricity || 0;
             const billMaid = messData.grandBills.maid || 0;
@@ -1709,9 +2165,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             let myTotalBazarSpent = 0; 
             myBazar.forEach(b => myTotalBazarSpent += b.amount);
+            let myTotalFixedSpent = 0;
+            myFixed.forEach(b => myTotalFixedSpent += Number(b.amount)||0);
+            let myTotalDeposit = myTotalBazarSpent + myTotalFixedSpent;
 
             let myGrandCost = myMealCost + myGrandCostFixed;
-            let finalStatus = myTotalBazarSpent - myGrandCost;
+            let finalStatus = myTotalDeposit - myGrandCost;
             let isRefund = finalStatus >= 0;
 
             let statusStr = isRefund ? `পাবে: ৳${convertToBanglaNumber(finalStatus.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(finalStatus).toFixed(1))}`;
@@ -1727,7 +2186,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                           `📶 ওয়াইফাই বিল: ৳${convertToBanglaNumber(splitWifi.toFixed(1))}\\n` +
                           `⚙️ অন্যান্য বিল: ৳${convertToBanglaNumber(splitOth.toFixed(1))}\\n` +
                           `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\\n` +
-                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\\n` +
+                          `🛒 বাজার জমা: ৳${convertToBanglaNumber(myTotalBazarSpent)}\\n` +
+                          `🔧 ফিক্সড জমা: ৳${convertToBanglaNumber(myTotalFixedSpent)}\\n` +
+                          `💰 মোট জমা: ৳${convertToBanglaNumber(myTotalDeposit)}\\n` +
                           `📌 আর্থিক অবস্থা: *${statusStr}*`;
 
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
@@ -1736,10 +2197,13 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function shareAllInOneOnWhatsApp() {
             const monthMealsAll2 = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             const monthBazarAll2 = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthFixedAll2 = (messData.fixedLog||[]).filter(l => (l.date||'').slice(0,7)===activeMonth);
             let totalMeals = 0;
             let totalBazar = 0;
+            let totalFixedDep = 0;
             monthMealsAll2.forEach(l => totalMeals += l.count);
             monthBazarAll2.forEach(l => totalBazar += l.amount);
+            monthFixedAll2.forEach(l => totalFixedDep += Number(l.amount)||0);
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
             const billElec = messData.grandBills.electricity || 0;
@@ -1755,6 +2219,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট — ${formatMonthLabel(activeMonth)} (${activeMonth})*\\n\\n` +
                           `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\\n` +
+                          `🔧 মোট ফিক্সড জমা: ৳${convertToBanglaNumber(totalFixedDep.toFixed(1))}\\n` +
+                          `💰 মোট জমা: ৳${convertToBanglaNumber((totalBazar+totalFixedDep).toFixed(1))}\\n` +
                           `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(totalMeals)}\\n` +
                           `📈 বর্তমান মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\\n\\n` +
                           `👥 *সদস্যদের হিসাবের সারসংক্ষেপ:*\\n`;
@@ -1762,16 +2228,19 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             messData.members.forEach(m => {
                 let mMeals = 0;
                 let mBazar = 0;
+                let mFixed = 0;
                 monthMealsAll2.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
                 monthBazarAll2.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
+                monthFixedAll2.filter(b => b.memberId === m.id).forEach(b => mFixed += Number(b.amount)||0);
+                let mDeposit = mBazar + mFixed;
 
                 let mRent = messData.fixedCosts.rent[m.id] || 0;
                 let mMealCost = mMeals * mealRate;
                 let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth;
-                let mBalance = mBazar - mTotalCost;
+                let mBalance = mDeposit - mTotalCost;
                 let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
 
-                message += `🔹 *${m.name}* | মিল খরচ: ৳${convertToBanglaNumber(mMealCost.toFixed(1))} | মোট খরচ: ৳${convertToBanglaNumber(mTotalCost.toFixed(1))} | ${statusStr}\\n`;
+                message += `🔹 *${m.name}* | মিল খরচ: ৳${convertToBanglaNumber(mMealCost.toFixed(1))} | জমা: বাজার ৳${convertToBanglaNumber(mBazar)} + ফিক্সড ৳${convertToBanglaNumber(mFixed)} = ৳${convertToBanglaNumber(mDeposit)} | মোট খরচ: ৳${convertToBanglaNumber(mTotalCost.toFixed(1))} | ${statusStr}\\n`;
             });
 
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
@@ -1929,10 +2398,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 appStore.months = incoming;
                 // ভুল বাকেটে থাকা ক্লাউড ডাটা (আগস্ট → সেপ্টেম্বর) থাকলে সঠিক মাসে সরান
                 try{
+                    // নিশ্চিত করুন fixedLog আছে
+                    Object.keys(appStore.months).forEach(mid=>{ if(!appStore.months[mid].fixedLog) appStore.months[mid].fixedLog=[]; });
                     const fn = window.repairMonthlyBuckets || (typeof repairMonthlyBuckets!=='undefined' ? repairMonthlyBuckets : null);
                     if(fn){
                         const r = fn(appStore);
-                        if(r && (r.movedMeals>0 || r.movedBazar>0 || r.createdMonths.length>0)){
+                        if(r && (r.movedMeals>0 || r.movedBazar>0 || (r.movedFixed||0)>0 || r.createdMonths.length>0)){
                             console.log("[Firebase] cloud repair applied", r);
                             // মেরামতের পর ক্লাউডেও ঠিক ডাটা ব্যাক-সিঙ্ক করবে (পরবর্তী persist)
                             setTimeout(()=>{ try{ if(!applyingFirebase) window.syncMessDataNow && window.syncMessDataNow(); }catch(e){} }, 800);
@@ -2057,6 +2528,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             members: Array.isArray(legacyCloud.members)?legacyCloud.members:[],
                             mealsLog: Array.isArray(legacyCloud.mealsLog)?legacyCloud.mealsLog:[],
                             bazarLog: Array.isArray(legacyCloud.bazarLog)?legacyCloud.bazarLog:[],
+                            fixedLog: Array.isArray(legacyCloud.fixedLog)?legacyCloud.fixedLog:[],
                             fixedCosts: legacyCloud.fixedCosts||{rent:{}},
                             grandBills: legacyCloud.grandBills||{electricity:0,maid:0,wifi:0,others:0}
                         };
