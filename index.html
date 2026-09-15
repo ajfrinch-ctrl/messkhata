@@ -237,63 +237,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         </div>
 
         <div id="tab-fixed" class="tab-content hidden">
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                <h2 class="text-lg font-bold mb-1 text-gray-700">🏠 ফিক্সড খরচ ড্যাশবোর্ড <span class="text-xs font-normal text-gray-500" id="fixed-form-month-hint"></span></h2>
-                <p class="text-xs text-gray-500 mb-4">সদস্যদের বাসা ভাড়ার আলাদা পরিমাণ ইনপুট দিন এবং ইউটিলিটি বিলগুলো সবার মধ্যে সমানভাবে বন্টন করুন। এই মাসের জন্য আলাদাভাবে সংরক্ষিত হবে।</p>
-                <div class="space-y-6">
-                    <div>
-                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">🏢 বাসা ভাড়া (ব্যক্তিগত)</h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="fixed-rent-inputs"></div>
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">⚡ অন্যান্য ইউটিলিটি বিল (সবার মাঝে সমানভাবে বণ্টন হবে)</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">⚡ বিদ্যুৎ বিল</label>
-                                <input type="number" id="bill-electricity" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">🧹 বুয়া বিল</label>
-                                <input type="number" id="bill-maid" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">📶 ওয়াইফাই বিল</label>
-                                <input type="number" id="bill-wifi" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">⚙️ অন্যান্য বিল</label>
-                                <input type="number" id="bill-others" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <button onclick="saveFixedCosts()" class="mt-5 bg-indigo-600 text-white px-6 py-2 rounded-md font-bold hover:bg-indigo-700">ফিক্সড খরচ সংরক্ষণ করুন</button>
-            </div>
-
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2">📋 সদস্যদের ফিক্সড খরচের সমবণ্টন তালিকা</h3>
-                <table class="w-full text-left border-collapse bg-white">
-                    <thead>
-                        <tr class="bg-indigo-700 text-white text-sm">
-                            <th class="p-3 border">সদস্যের নাম</th>
-                            <th class="p-3 border">ব্যক্তিগত বাসা ভাড়া</th>
-                            <th class="p-3 border">ইউটিলিটি শেয়ার (সমবণ্টন)</th>
-                            <th class="p-3 border">সর্বমোট ফিক্সড খরচ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
-                    <tfoot>
-                        <tr class="bg-indigo-100 font-bold text-gray-800 text-sm">
-                            <td class="p-3 border text-right">সর্বমোট:</td>
-                            <td class="p-3 border" id="foot-total-rent">৳০</td>
-                            <td class="p-3 border" id="foot-total-utility">৳০</td>
-                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳০</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-
-            <!-- ========= ফিক্সড খরচ এন্ট্রি — বাজার খরচের মত হুবহু ========= -->
+            <!-- ========= ফিক্সড খরচ এন্ট্রি — বাজার খরচের মত হুবহু (সর্বশেষ) ========= -->
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
                 <h2 class="text-lg font-bold mb-1 text-gray-700">🔧 ফিক্সড খরচ এন্ট্রি <span class="text-xs font-normal text-gray-500" id="fixed-log-month-hint"></span></h2>
                 <p class="text-xs text-gray-500 mb-3">বাজার খরচের মতোই — তারিখ, সদস্য, বিবরণ ও টাকা দিয়ে এন্ট্রি করুন। যে খরচ করবে তার <b>জমা</b> হিসাবে গণ্য হবে।</p>
@@ -1037,20 +981,26 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
         function renderFixedCostInputs() {
             const div = document.getElementById('fixed-rent-inputs');
-            div.innerHTML = '';
-            messData.members.forEach(member => {
-                const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
-                div.innerHTML += `
-                    <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
-                        <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
-                        <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
-                    </div>
-                `;
-            });
-            document.getElementById('bill-electricity').value = messData.grandBills.electricity || '';
-            document.getElementById('bill-maid').value = messData.grandBills.maid || '';
-            document.getElementById('bill-wifi').value = messData.grandBills.wifi || '';
-            document.getElementById('bill-others').value = messData.grandBills.others || '';
+            if(div){
+                div.innerHTML = '';
+                messData.members.forEach(member => {
+                    const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
+                    div.innerHTML += `
+                        <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
+                            <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
+                            <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
+                        </div>
+                    `;
+                });
+            }
+            const elElec = document.getElementById('bill-electricity');
+            if(elElec) elElec.value = messData.grandBills.electricity || '';
+            const elMaid = document.getElementById('bill-maid');
+            if(elMaid) elMaid.value = messData.grandBills.maid || '';
+            const elWifi = document.getElementById('bill-wifi');
+            if(elWifi) elWifi.value = messData.grandBills.wifi || '';
+            const elOth = document.getElementById('bill-others');
+            if(elOth) elOth.value = messData.grandBills.others || '';
         }
 
         function clearMealForm(){
@@ -1536,16 +1486,21 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
         function saveFixedCosts() {
             const rentInputs = document.querySelectorAll('.rent-input');
-            rentInputs.forEach(input => {
-                const memId = input.getAttribute('data-mem');
-                const val = input.value === '' ? 0 : parseFloat(input.value);
-                messData.fixedCosts.rent[memId] = val;
-            });
-
-            messData.grandBills.electricity = parseFloat(document.getElementById('bill-electricity').value) || 0;
-            messData.grandBills.maid = parseFloat(document.getElementById('bill-maid').value) || 0;
-            messData.grandBills.wifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
-            messData.grandBills.others = parseFloat(document.getElementById('bill-others').value) || 0;
+            if(rentInputs.length>0){
+                rentInputs.forEach(input => {
+                    const memId = input.getAttribute('data-mem');
+                    const val = input.value === '' ? 0 : parseFloat(input.value);
+                    messData.fixedCosts.rent[memId] = val;
+                });
+            }
+            const eElec = document.getElementById('bill-electricity');
+            const eMaid = document.getElementById('bill-maid');
+            const eWifi = document.getElementById('bill-wifi');
+            const eOth = document.getElementById('bill-others');
+            if(eElec) messData.grandBills.electricity = parseFloat(eElec.value) || 0;
+            if(eMaid) messData.grandBills.maid = parseFloat(eMaid.value) || 0;
+            if(eWifi) messData.grandBills.wifi = parseFloat(eWifi.value) || 0;
+            if(eOth) messData.grandBills.others = parseFloat(eOth.value) || 0;
 
             saveToLocalStorage();
             calculateMess();
@@ -1597,10 +1552,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 }
             });
 
-            const billElec = parseFloat(document.getElementById('bill-electricity').value) || messData.grandBills.electricity || 0;
-            const billMaid = parseFloat(document.getElementById('bill-maid').value) || messData.grandBills.maid || 0;
-            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || messData.grandBills.wifi || 0;
-            const billOth = parseFloat(document.getElementById('bill-others').value) || messData.grandBills.others || 0;
+            const billElec = parseFloat(document.getElementById('bill-electricity')?.value) || messData.grandBills.electricity || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid')?.value) || messData.grandBills.maid || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi')?.value) || messData.grandBills.wifi || 0;
+            const billOth = parseFloat(document.getElementById('bill-others')?.value) || messData.grandBills.others || 0;
 
             const memberCount = messData.members.length;
             const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
