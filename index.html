@@ -756,13 +756,15 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const bazarTotal = m.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0);
             const fixedLogTotal = m.fixedLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0);
             const membersCount = m.members.length;
-            const fixedTotal = (()=>{ let t=0; const c = m.grandBills||{}; const cnt=m.members.length||1; t+=Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0); t+=Number(c.electricity||0); t+=Number(c.maid||0); t+=Number(c.wifi||0); t+=Number(c.others||0); return t; })();
+            const fixedTotalAlloc = (()=>{ let t=0; const c = m.grandBills||{}; const cnt=m.members.length||1; t+=Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0); t+=Number(c.electricity||0); t+=Number(c.maid||0); t+=Number(c.wifi||0); t+=Number(c.others||0); return t; })();
+            const fixedTotal = fixedTotalAlloc + fixedLogTotal;
+            const perHeadFixed = membersCount>0 ? (fixedTotal / membersCount) : 0;
             statsBar.innerHTML = `
                 <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">👥 সদস্য: ${convertToBanglaNumber(membersCount)} জন</span>
                 <span class="bg-white border border-amber-200 px-2.5 py-1 rounded-full font-semibold">🍚 মিল: ${convertToBanglaNumber(mealCount)}</span>
                 <span class="bg-white border border-emerald-200 px-2.5 py-1 rounded-full font-semibold">🛒 বাজার: ৳${convertToBanglaNumber(bazarTotal.toFixed(1))}</span>
                 <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🔧 ফিক্সড জমা: ৳${convertToBanglaNumber(fixedLogTotal.toFixed(1))}</span>
-                <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🏠 ফিক্সড খরচ: ৳${convertToBanglaNumber(fixedTotal.toFixed(1))}</span>
+                <span class="bg-white border border-indigo-200 px-2.5 py-1 rounded-full font-semibold">🏠 ফিক্সড খরচ (ভাগ): ৳${convertToBanglaNumber(fixedTotal.toFixed(1))} <span class="text-[10px] text-gray-500">(${convertToBanglaNumber(perHeadFixed.toFixed(1))}/জন)</span></span>
                 <span class="bg-white border border-gray-200 px-2.5 py-1 rounded-full text-gray-600">📦 মোট মাস: ${convertToBanglaNumber(Object.keys(appStore.months).length)} টি</span>
             `;
             infoBar.innerHTML = isCurrent
@@ -1556,6 +1558,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+            const shareLogAll = memberCount > 0 ? (totalFixedDep / memberCount) : 0;
 
             const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
             if(fixedBreakdownBody) fixedBreakdownBody.innerHTML = '';
@@ -1566,7 +1569,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const rentInput = document.querySelector(`.rent-input[data-mem="${m.id}"]`);
                 let individualRent = rentInput ? (rentInput.value === '' ? 0 : parseFloat(rentInput.value)) : (messData.fixedCosts.rent[m.id] || 0);
                 
-                const calculatedFixedSum = individualRent + splitMaid + splitElec + splitWifi + splitOth;
+                const calculatedFixedSum = individualRent + splitMaid + splitElec + splitWifi + splitOth + fixedShareLog;
                 
                 memberSummary[m.id].rent = individualRent;
                 memberSummary[m.id].maid = splitMaid;
@@ -1712,7 +1715,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <td class="p-2 border font-semibold">${s.name}</td>
                             <td class="p-2 border text-center">${convertToBanglaNumber(s.meals)}</td>
                             <td class="p-2 border text-gray-700">৳${convertToBanglaNumber(mealCost.toFixed(1))}</td>
-                            <td class="p-2 border text-indigo-700 font-semibold" title="ভাড়া ৳${convertToBanglaNumber(s.rent.toFixed(1))} + বুয়া ৳${convertToBanglaNumber(s.maid.toFixed(1))} + বিদ্যুৎ ৳${convertToBanglaNumber(s.elec.toFixed(1))} + ওয়াইফাই ৳${convertToBanglaNumber(s.wifi.toFixed(1))} + অন্যান্য ৳${convertToBanglaNumber(s.oth.toFixed(1))}">৳${convertToBanglaNumber(s.fixed.toFixed(1))}</td>
+                            <td class="p-2 border text-indigo-700 font-semibold" title="ভাড়া ৳${convertToBanglaNumber(s.rent.toFixed(1))} + বুয়া ৳${convertToBanglaNumber(s.maid.toFixed(1))} + বিদ্যুৎ ৳${convertToBanglaNumber(s.elec.toFixed(1))} + ওয়াইফাই ৳${convertToBanglaNumber(s.wifi.toFixed(1))} + অন্যান্য ৳${convertToBanglaNumber(s.oth.toFixed(1))} + ফিক্সড ভাগ ৳${convertToBanglaNumber(fixedShareLog.toFixed(1))} (মোট ফিক্সড জমা ৳${convertToBanglaNumber(totalFixedLogDeposit.toFixed(1))} ÷ ${convertToBanglaNumber(memberCount)} জন)">৳${convertToBanglaNumber(s.fixed.toFixed(1))}</td>
                             <td class="p-2 border font-bold text-blue-700">৳${convertToBanglaNumber(totalCost.toFixed(1))}</td>
                             <td class="p-2 border text-emerald-600 font-semibold">৳${convertToBanglaNumber(s.bazarSpent)}</td>
                             <td class="p-2 border text-indigo-600 font-semibold">৳${convertToBanglaNumber(s.fixedSpent)}</td>
@@ -1952,7 +1955,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const bazar = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const fixedDep = m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const mealRate = meals? (bazar/meals):0;
-                const fixed = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
+                const fixedAlloc = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
+                const fixed = fixedAlloc + fixedDep;
                 const isActive = mid===activeMonth;
                 const isCurrent = mid===getCurrentMonthId();
                 list.innerHTML += `
@@ -1970,7 +1974,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                                 <span>🛒 ৳${convertToBanglaNumber(bazar.toFixed(1))}</span>
                                 <span>🔧 ফিক্সড জমা ৳${convertToBanglaNumber(fixedDep.toFixed(1))}</span>
                                 <span>📈 রেট ৳${convertToBanglaNumber(mealRate.toFixed(2))}</span>
-                                <span>🏠 ফিক্সড খরচ ৳${convertToBanglaNumber(fixed.toFixed(1))}</span>
+                                <span>🏠 ফিক্সড খরচ (ভাগ) ৳${convertToBanglaNumber(fixed.toFixed(1))}</span>
                             </div>
                         </div>
                         <div class="flex gap-2 flex-wrap">
@@ -1991,7 +1995,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const bazar = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const fixedDep = m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const rate = meals? (bazar/meals):0;
-                const fixed = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
+                const fixedAlloc2 = Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0) + Number(m.grandBills.electricity||0)+Number(m.grandBills.maid||0)+Number(m.grandBills.wifi||0)+Number(m.grandBills.others||0);
+                const fixed = fixedAlloc2 + fixedDep;
                 const total = bazar+fixed;
                 html += `<tr class="border-b hover:bg-gray-50 ${mid===activeMonth?'bg-emerald-50 font-bold':''}"><td class="p-2 border">${formatMonthLabel(mid)}<br><span class="text-[10px] text-gray-500">${mid}</span></td><td class="p-2 border text-center">${convertToBanglaNumber(m.members.length)}</td><td class="p-2 border text-center">${convertToBanglaNumber(meals)}</td><td class="p-2 border">৳${convertToBanglaNumber(bazar.toFixed(1))}</td><td class="p-2 border text-indigo-700">৳${convertToBanglaNumber(fixedDep.toFixed(1))}</td><td class="p-2 border">৳${convertToBanglaNumber(rate.toFixed(2))}</td><td class="p-2 border">৳${convertToBanglaNumber(fixed.toFixed(1))}</td><td class="p-2 border font-bold">৳${convertToBanglaNumber(total.toFixed(1))}</td></tr>`;
             });
@@ -2019,13 +2024,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount? (Number(m.grandBills.electricity||0)/memberCount):0;
             const splitWifi = memberCount? (Number(m.grandBills.wifi||0)/memberCount):0;
             const splitOth = memberCount? (Number(m.grandBills.others||0)/memberCount):0;
+            const shareLog = memberCount? (m.fixedLog.reduce((s,l)=>s+(Number(l.amount)||0),0)/memberCount):0;
             m.members.forEach(mem=>{
                 const meals = m.mealsLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.count)||0),0);
                 const bazarSpent = m.bazarLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const fixedSpent = m.fixedLog.filter(l=>l.memberId===mem.id).reduce((s,l)=>s+(Number(l.amount)||0),0);
                 const deposit = bazarSpent + fixedSpent;
                 const rent = Number(m.fixedCosts.rent[mem.id]||0);
-                const fixed = rent + splitMaid + splitElec + splitWifi + splitOth;
+                const fixed = rent + splitMaid + splitElec + splitWifi + splitOth + shareLog;
                 const mealCost = meals*rate;
                 const total = mealCost + fixed;
                 const bal = deposit - total;
@@ -2115,9 +2121,11 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+            const shareLogAll = memberCount > 0 ? (totalFixedDep / memberCount) : 0;
 
             let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
-            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth;
+            const myFixedShareLog = memberCount > 0 ? ((messData.fixedLog||[]).filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0) / memberCount) : 0;
+            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth + myFixedShareLog;
 
             let myTotalMealsCount = 0; 
             myMeals.forEach(m => myTotalMealsCount += m.count);
@@ -2145,6 +2153,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                           `⚡ বিদ্যুৎ বিল: ৳${convertToBanglaNumber(splitElec.toFixed(1))}\\n` +
                           `📶 ওয়াইফাই বিল: ৳${convertToBanglaNumber(splitWifi.toFixed(1))}\\n` +
                           `⚙️ অন্যান্য বিল: ৳${convertToBanglaNumber(splitOth.toFixed(1))}\\n` +
+                          `🔧 ফিক্সড ভাগ (জমা ভাগ): ৳${convertToBanglaNumber(myFixedShareLog.toFixed(1))}\\n` +
                           `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\\n` +
                           `🛒 বাজার জমা: ৳${convertToBanglaNumber(myTotalBazarSpent)}\\n` +
                           `🔧 ফিক্সড জমা: ৳${convertToBanglaNumber(myTotalFixedSpent)}\\n` +
@@ -2176,10 +2185,11 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+            const shareLogAll = memberCount > 0 ? (totalFixedDep / memberCount) : 0;
 
             let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট — ${formatMonthLabel(activeMonth)} (${activeMonth})*\\n\\n` +
                           `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\\n` +
-                          `🔧 মোট ফিক্সড জমা: ৳${convertToBanglaNumber(totalFixedDep.toFixed(1))}\\n` +
+                          `🔧 মোট ফিক্সড জমা: ৳${convertToBanglaNumber(totalFixedDep.toFixed(1))} (প্রতি জন ভাগ ৳${convertToBanglaNumber(shareLogAll.toFixed(1))})\\n` +
                           `💰 মোট জমা: ৳${convertToBanglaNumber((totalBazar+totalFixedDep).toFixed(1))}\\n` +
                           `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(totalMeals)}\\n` +
                           `📈 বর্তমান মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\\n\\n` +
@@ -2196,7 +2206,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
                 let mRent = messData.fixedCosts.rent[m.id] || 0;
                 let mMealCost = mMeals * mealRate;
-                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth;
+                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth + shareLogAll;
                 let mBalance = mDeposit - mTotalCost;
                 let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
 
