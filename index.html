@@ -1671,7 +1671,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         };
     </script>
 
-    <!-- ================= FIREBASE REAL-TIME SYNC (মাসভিত্তিক) ================= -->
+    <!-- ================= FIREBASE REAL-TIME SYNC (মাসভিত্তিক - Robust) ================= -->
     <script>
     (function () {
         const FIREBASE_CONFIG = {
@@ -1683,21 +1683,47 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         const LOCAL_KEY_LEGACY = "messAppDataMealKhata";
         let applyingFirebase = false;
         let firebaseReady = false;
+        let firebaseConnected = null;
+        let syncErrorCount = 0;
+        let lastFirebaseError = null;
 
-        function firebaseStatus(text, ok) {
+        function firebaseStatus(text, ok, detail) {
             const el = document.getElementById("firebase-sync-status");
             if (!el) return;
-            el.textContent = text;
-            el.className = "fixed bottom-3 left-3 z-50 border shadow px-3 py-2 rounded-full text-xs font-semibold " +
-                (ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700");
+            // detail দেখার জন্য title + রিট্রাই বাটন
+            el.title = detail ? detail : text;
+            if (ok) {
+                el.innerHTML = text;
+                el.className = "fixed bottom-3 left-3 z-50 border shadow px-3 py-2 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 flex items-center gap-2";
+            } else {
+                const retryBtn = `<button onclick="window.retryFirebaseSync && window.retryFirebaseSync()" class="ml-2 bg-white border border-rose-200 text-rose-700 px-2 py-0.5 rounded-full text-[11px] font-bold hover:bg-rose-50">🔄 Retry</button>`;
+                const detailBtn = detail ? `<span class="opacity-60 text-[10px]">(${detail.slice(0,120)})</span>` : '';
+                el.innerHTML = `<span>${text}</span>${retryBtn}`;
+                el.className = "fixed bottom-3 left-3 z-50 border shadow px-3 py-2 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 flex items-center gap-2";
+            }
         }
-
+        // helper to show full error in console + toast
+        function logFirebaseError(context, err){
+            lastFirebaseError = err;
+            const code = err && err.code ? err.code : (err && err.message ? err.message : String(err));
+            const msg = err && err.message ? err.message : code;
+            console.error("[Firebase] "+context+" :", code, err);
+            return code + " — " + msg;
+        }
         function firebaseToast(text) {
             if (typeof showToast === "function") showToast(text);
         }
+        function isPermissionError(err){
+            return err && (err.code === 'PERMISSION_DENIED' || (err.message && err.message.toLowerCase().includes('permission')));
+        }
+        function isNetworkError(err){
+            if(!err) return true;
+            const m = (err.message||err.code||'').toLowerCase();
+            return m.includes('network') || m.includes('ssl') || m.includes('eof') || m.includes('disconnect') || m.includes('unavailable') || m.includes('timeout');
+        }
 
         if (!window.firebase) {
-            firebaseStatus("🔴 Firebase SDK পাওয়া যায়নি", false);
+            firebaseStatus("🔴 Firebase SDK পাওয়া যায়নি", false, "firebase compat SDK load failed");
             return;
         }
 
@@ -1705,46 +1731,85 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
             const refNew = firebase.database().ref(FIREBASE_PATH_MONTHLY);
             const refLegacy = firebase.database().ref(FIREBASE_PATH_LEGACY);
+            const connectedRef = firebase.database().ref(".info/connected");
 
-            // Wrap save to also sync to Firebase (monthly)
+            // Wrap persistStore: local always saves, Firebase is best-effort with fallback
             const originalPersist = window.persistStore;
             window.persistStore = function(){
                 if(typeof originalPersist === 'function') originalPersist();
-                if (applyingFirebase || !firebaseReady) return;
+                if (applyingFirebase) return;
+                if (!firebaseReady){
+                    // still save locally, but queue firebase for later — show offline mode
+                    if(syncErrorCount===0) firebaseStatus("🟠 অফলাইন — লোকাল সেভ হয়েছে", false, "Firebase not ready, will sync when connected");
+                    return;
+                }
                 const payload = { _v: 2, updatedAt: Date.now(), months: appStore.months };
-                refNew.set(payload)
-                    .then(() => firebaseStatus("🟢 Firebase Real-time Sync চালু", true))
-                    .catch(err => {
-                        console.error("Firebase write error:", err);
-                        firebaseStatus("🔴 Firebase Save Error", false);
-                    });
-                // keep legacy path in sync for backward compat (write current month to old path)
-                try{ refLegacy.set(messData); }catch(e){}
+                // Try new path first
+                refNew.set(payload).then(() => {
+                    syncErrorCount = 0;
+                    firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+                    // keep legacy in sync for old clients — best effort
+                    try{ refLegacy.set(messData); }catch(e){}
+                }).catch(err => {
+                    syncErrorCount++;
+                    const detail = logFirebaseError("write refNew", err);
+                    if(isPermissionError(err)){
+                        // Rules allow only legacy path — fallback to legacy with monthly payload
+                        firebaseStatus("🟡 Sync (fallback) — Permission", false, detail + " | নতুন path-এ অনুমতি নেই, legacy-তে fallback");
+                        // store monthly inside legacy path so other new clients reading legacy can get it
+                        refLegacy.set(payload).then(()=>{
+                            firebaseStatus("🟢 Firebase Sync (legacy path) চালু", true);
+                            firebaseToast("⚠️ নতুন Firebase path-এ permission নেই — legacy path-এ সিঙ্ক হয়েছে। Rules এ messKhata_monthly_v2 অনুমতি দিন।");
+                        }).catch(e2=>{
+                            const d2 = logFirebaseError("fallback write refLegacy", e2);
+                            firebaseStatus("🔴 Firebase Save Error: " + (e2.code||"unknown"), false, d2);
+                        });
+                        // also try to keep old shape for very old clients
+                        try{ refLegacy.set(messData); }catch(e){}
+                    } else if(isNetworkError(err)){
+                        firebaseStatus("🟠 নেটওয়ার্ক সমস্যা — লোকাল সেভ হয়েছে", false, detail + " | ইন্টারনেট চেক করুন, অটো রিট্রাই হবে");
+                    } else {
+                        firebaseStatus("🔴 Firebase Save Error: " + (err.code||"unknown"), false, detail);
+                    }
+                });
+                // For old clients still reading legacy single-month shape, keep it updated (don't block on it)
+                if(syncErrorCount===0){
+                    try{ refLegacy.set(messData); }catch(e){}
+                }
             };
-            // also keep saveToLocalStorage alias
             const origSave = window.saveToLocalStorage;
             window.saveToLocalStorage = function(){
-                if(typeof origSave==='function') origSave();
-                else window.persistStore();
+                if(typeof origSave==='function') {
+                    // origSave already calls persistStore internally, so our wrapped persistStore will fire
+                    origSave();
+                } else {
+                    window.persistStore();
+                }
             };
 
-            // Connectivity indicator.
-            firebase.database().ref(".info/connected").on("value", snap => {
-                firebaseStatus(
-                    snap.val() === true ? "🟢 Firebase Real-time Sync চালু" : "🟠 Firebase সংযোগ নেই",
-                    snap.val() === true
-                );
+            // Connectivity indicator — but don't override error details too aggressively
+            connectedRef.on("value", snap => {
+                firebaseConnected = snap.val() === true;
+                if(firebaseConnected){
+                    if(firebaseReady && syncErrorCount===0) firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+                    else if(!firebaseReady) firebaseStatus("🟡 Firebase সংযুক্ত হচ্ছে...", false, "Connected, loading data");
+                } else {
+                    firebaseStatus("🟠 Firebase সংযোগ নেই — অফলাইন মোড", false, "No internet / Firebase disconnected — data saved locally");
+                    // ensure local saves still work
+                    firebaseReady = true;
+                }
+            }, err=>{
+                logFirebaseError("connected listener", err);
             });
 
             function applyCloudMonthly(cloud){
                 if(!cloud || !cloud.months) return false;
-                // merge: keep local months that are newer? simple replace but preserve local activeMonth selection
                 const incoming = cloud.months;
                 const hasData = Object.keys(incoming).length>0;
                 if(!hasData) return false;
                 applyingFirebase = true;
+                // Deep merge: keep activeMonth selection if possible
                 appStore.months = incoming;
-                // ensure activeMonth still exists, else switch to latest cloud month
                 if(!appStore.months[activeMonth]){
                     const latest = Object.keys(appStore.months).sort().pop();
                     if(latest){
@@ -1758,93 +1823,233 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 localStorage.setItem(LOCAL_KEY_NEW, JSON.stringify(appStore));
                 localStorage.setItem(LOCAL_KEY_LEGACY, JSON.stringify(messData));
                 localStorage.setItem(ACTIVE_MONTH_KEY, activeMonth);
-                updateDropdowns();
-                renderMembersList();
-                renderFixedCostInputs();
-                calculateMess();
-                renderMonthSelector();
-                renderHistory();
+                try{
+                    updateDropdowns();
+                    renderMembersList();
+                    renderFixedCostInputs();
+                    calculateMess();
+                    renderMonthSelector();
+                    renderHistory();
+                }catch(e){ console.error("applyCloud render error", e); }
                 applyingFirebase = false;
                 return true;
             }
+            // Helper to detect monthly payload stored inside legacy path (fallback case)
+            function isMonthlyPayload(obj){
+                return obj && obj.months && typeof obj.months === 'object' && Object.keys(obj.months).length>0;
+            }
 
-            // First load: try monthly path, fallback to legacy
-            refNew.once("value").then(snapshot => {
-                const cloud = snapshot.val();
-                if (cloud && cloud.months && Object.keys(cloud.months).length>0){
-                    applyCloudMonthly(cloud);
-                    firebaseReady = true;
-                    firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
-                } else {
-                    // try legacy path to migrate
-                    return refLegacy.once("value").then(snap2=>{
-                        const legacyCloud = snap2.val();
-                        if(legacyCloud && (legacyCloud.members || legacyCloud.mealsLog)){
-                            // migrate legacy cloud to current month if not already present
-                            const cur = getCurrentMonthId();
-                            if(!appStore.months[cur] || appStore.months[cur].members.length===0){
-                                // if local is empty, adopt legacy
-                                applyingFirebase = true;
-                                appStore.months[cur] = {
-                                    members: Array.isArray(legacyCloud.members)?legacyCloud.members:[],
-                                    mealsLog: Array.isArray(legacyCloud.mealsLog)?legacyCloud.mealsLog:[],
-                                    bazarLog: Array.isArray(legacyCloud.bazarLog)?legacyCloud.bazarLog:[],
-                                    fixedCosts: legacyCloud.fixedCosts||{rent:{}},
-                                    grandBills: legacyCloud.grandBills||{electricity:0,maid:0,wifi:0,others:0}
-                                };
-                                messData = appStore.months[activeMonth] || appStore.months[cur];
-                                localStorage.setItem(LOCAL_KEY_NEW, JSON.stringify(appStore));
-                                applyingFirebase = false;
-                                updateDropdowns(); renderMembersList(); renderFixedCostInputs(); calculateMess(); renderMonthSelector(); renderHistory();
-                            }
-                            // upload to new path
-                            const payload = { _v:2, updatedAt: Date.now(), months: appStore.months };
-                            refNew.set(payload).catch(()=>{});
-                        }
-                        firebaseReady = true;
-                        // if still not ready, upload local if exists
-                        if(!cloud || !cloud.months){
-                            const local = JSON.parse(localStorage.getItem(LOCAL_KEY_NEW)||'null');
-                            if(local && local.months && Object.keys(local.months).length>0){
-                                refNew.set({ _v:2, updatedAt: Date.now(), months: local.months }).catch(()=>{});
-                            }
-                        }
-                        firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
-                    });
-                }
-            }).catch(err => {
-                console.error("Firebase initial read error:", err);
+            // Initial load with timeout + graceful fallback
+            let initialDone = false;
+            function markReadyAndMaybeUpload(){
+                if(initialDone) return;
+                initialDone = true;
                 firebaseReady = true;
-                firebaseStatus("🔴 Firebase Read Error", false);
+                // upload local if cloud was empty
+                try{
+                    const local = JSON.parse(localStorage.getItem(LOCAL_KEY_NEW)||'null');
+                    if(local && local.months && Object.keys(local.months).length>0){
+                        const payload = { _v:2, updatedAt: Date.now(), months: local.months };
+                        // only upload if we haven't just applied cloud (to avoid echo)
+                        const localStr = JSON.stringify(local.months);
+                        const cloudStr = appStore.months ? JSON.stringify(appStore.months) : "";
+                        if(localStr !== cloudStr){
+                            refNew.set(payload).catch(err=>{
+                                const d = logFirebaseError("initial upload local", err);
+                                if(isPermissionError(err)){
+                                    // fallback to legacy
+                                    refLegacy.set(payload).catch(()=>{});
+                                    firebaseStatus("🟡 প্রাথমিক সিঙ্ক legacy path-এ", false, d);
+                                }
+                            });
+                        }
+                    }
+                }catch(e){}
+                if(syncErrorCount===0 && firebaseConnected) firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+            }
+            // Timeout: if Firebase hangs (e.g., TLS broken in sandbox), go offline mode
+            setTimeout(()=>{
+                if(!initialDone){
+                    console.warn("Firebase initial load timeout — going offline mode");
+                    markReadyAndMaybeUpload();
+                    firebaseStatus("🟠 অফলাইন মোড — লোকাল ডাটা সক্রিয়", false, "Firebase timeout — local storage active, retry with button");
+                }
+            }, 6000);
+
+            // Use allSettled to tolerate one path failing
+            Promise.allSettled([
+                refNew.once("value").then(s=>({path:'new', snap:s})).catch(err=>{ throw {path:'new', err}; }),
+                refLegacy.once("value").then(s=>({path:'legacy', snap:s})).catch(err=>{ throw {path:'legacy', err}; })
+            ]).then(results=>{
+                const newRes = results.find(r=> r.status==='fulfilled' && r.value.path==='new');
+                const legacyRes = results.find(r=> r.status==='fulfilled' && r.value.path==='legacy');
+                const newErr = results.find(r=> r.status==='rejected' && r.value && r.value.path==='new');
+                const legacyErr = results.find(r=> r.status==='rejected' && r.value && r.value.path==='legacy');
+
+                if(newErr) logFirebaseError("initial read refNew", newErr.value.err);
+                if(legacyErr) logFirebaseError("initial read refLegacy", legacyErr.value.err);
+
+                const newCloud = newRes ? newRes.value.snap.val() : null;
+                const legacyCloud = legacyRes ? legacyRes.value.snap.val() : null;
+
+                // Prefer new path if it has monthly data
+                if(newCloud && isMonthlyPayload(newCloud)){
+                    applyCloudMonthly(newCloud);
+                    markReadyAndMaybeUpload();
+                    firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+                    return;
+                }
+                if(newCloud && newCloud.months && Object.keys(newCloud.months).length===0 && legacyCloud && isMonthlyPayload(legacyCloud)){
+                    // new empty but legacy has fallback monthly payload
+                    applyCloudMonthly(legacyCloud);
+                    markReadyAndMaybeUpload();
+                    // migrate to new path in background
+                    const payload = { _v:2, updatedAt: Date.now(), months: appStore.months };
+                    refNew.set(payload).catch(err=>{
+                        if(isPermissionError(err)) console.warn("Cannot migrate to new path — permission denied, staying on legacy");
+                    });
+                    return;
+                }
+                if(legacyCloud && isMonthlyPayload(legacyCloud)){
+                    applyCloudMonthly(legacyCloud);
+                    markReadyAndMaybeUpload();
+                    // try to copy to new path for future
+                    const payload = { _v:2, updatedAt: Date.now(), months: legacyCloud.months };
+                    refNew.set(payload).catch(()=>{});
+                    return;
+                }
+                if(legacyCloud && (legacyCloud.members || legacyCloud.mealsLog || legacyCloud.bazarLog)){
+                    // Legacy single-month shape — migrate to current month if local empty
+                    const cur = getCurrentMonthId();
+                    const hasLocalCurrent = appStore.months[cur] && (appStore.months[cur].members.length>0 || appStore.months[cur].mealsLog.length>0);
+                    if(!hasLocalCurrent){
+                        applyingFirebase = true;
+                        appStore.months[cur] = {
+                            members: Array.isArray(legacyCloud.members)?legacyCloud.members:[],
+                            mealsLog: Array.isArray(legacyCloud.mealsLog)?legacyCloud.mealsLog:[],
+                            bazarLog: Array.isArray(legacyCloud.bazarLog)?legacyCloud.bazarLog:[],
+                            fixedCosts: legacyCloud.fixedCosts||{rent:{}},
+                            grandBills: legacyCloud.grandBills||{electricity:0,maid:0,wifi:0,others:0}
+                        };
+                        // if legacy had monthly-like but under old key, preserve member count?
+                        messData = appStore.months[activeMonth] || appStore.months[cur];
+                        localStorage.setItem(LOCAL_KEY_NEW, JSON.stringify(appStore));
+                        applyingFirebase = false;
+                        try{ updateDropdowns(); renderMembersList(); renderFixedCostInputs(); calculateMess(); renderMonthSelector(); renderHistory(); }catch(e){}
+                    }
+                    const payload = { _v:2, updatedAt: Date.now(), months: appStore.months };
+                    refNew.set(payload).catch(err=>{
+                        if(isPermissionError(err)){
+                            // fallback store monthly inside legacy (will overwrite single-month shape but that's ok — new code reads both)
+                            refLegacy.set(payload).catch(()=>{});
+                        }
+                    });
+                    markReadyAndMaybeUpload();
+                    return;
+                }
+                // Both empty — keep local
+                markReadyAndMaybeUpload();
+                if(newCloud===null && legacyCloud===null && !newErr && !legacyErr){
+                    firebaseStatus("🟢 Firebase সংযুক্ত — নতুন ডাটা", true);
+                }
+            }).catch(err=>{
+                console.error("Unexpected initial load error", err);
+                markReadyAndMaybeUpload();
+                const d = logFirebaseError("unexpected initial", err);
+                firebaseStatus("🔴 Firebase Read Error", false, d);
             });
 
-            // Real-time listener for monthly
-            refNew.on("value", snapshot => {
-                if (!firebaseReady || applyingFirebase) return;
-                const cloud = snapshot.val();
-                if (!cloud || !cloud.months) return;
-                // avoid loop: if cloud equals local, skip?
-                const localStr = JSON.stringify(appStore.months);
-                const cloudStr = JSON.stringify(cloud.months);
-                if(localStr===cloudStr) return;
-                applyCloudMonthly(cloud);
-                firebaseStatus("🟢 Real-time Sync আপডেট হয়েছে", true);
-            }, err => {
-                console.error("Firebase listener error:", err);
-                firebaseStatus("🔴 Firebase Listener Error", false);
-            });
+            // Real-time listeners for BOTH paths (to handle fallback clients)
+            function setupListener(ref, label){
+                ref.on("value", snapshot => {
+                    if (!firebaseReady || applyingFirebase) return;
+                    const cloud = snapshot.val();
+                    if (!cloud) return;
+                    // Handle both shapes: monthly payload or fallback monthly inside legacy
+                    let monthsData = null;
+                    if(isMonthlyPayload(cloud)) monthsData = cloud.months;
+                    else if(cloud.members || cloud.mealsLog) {
+                        // Old single-month shape on legacy — ignore for monthly clients (already migrated) but could be update from old client
+                        // Convert to current month update? For safety, treat as update to current activeMonth from old client?
+                        // We will not auto-apply single-month overwrites to avoid wiping other months; just notify
+                        console.log("Ignoring single-month legacy update on listener", label);
+                        return;
+                    }
+                    if(!monthsData) return;
+                    const localStr = JSON.stringify(appStore.months);
+                    const cloudStr = JSON.stringify(monthsData);
+                    if(localStr===cloudStr) return;
+                    // Simple conflict: keep cloud (last write wins) — can be enhanced with updatedAt
+                    applyCloudMonthly({months: monthsData});
+                    firebaseStatus("🟢 Real-time Sync আপডেট হয়েছে", true);
+                }, err => {
+                    const d = logFirebaseError("listener "+label, err);
+                    // Don't show red for permission on one path if other works
+                    if(isPermissionError(err)){
+                        console.warn("Listener permission denied for", label, "— ignoring, using other path");
+                        return;
+                    }
+                    firebaseStatus("🔴 Firebase Listener Error", false, d);
+                });
+            }
+            setupListener(refNew, "monthly_v2");
+            setupListener(refLegacy, "legacy");
 
-            // Public helper
+            // Public helpers
             window.syncMessDataNow = function () {
                 const payload = { _v:2, updatedAt: Date.now(), months: appStore.months };
-                refNew.set(payload)
-                    .then(() => firebaseToast("☁️ Firebase-এ ডাটা সিঙ্ক হয়েছে ✓"))
-                    .catch(() => firebaseToast("❌ Firebase Sync ব্যর্থ"));
+                firebaseStatus("🟡 সিঙ্ক হচ্ছে...", false, "Manual sync started");
+                refNew.set(payload).then(() => {
+                    syncErrorCount=0;
+                    firebaseToast("☁️ Firebase-এ ডাটা সিঙ্ক হয়েছে ✓");
+                    firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
+                }).catch(err=>{
+                    const d = logFirebaseError("manual sync refNew", err);
+                    if(isPermissionError(err)){
+                        refLegacy.set(payload).then(()=>{
+                            firebaseToast("☁️ Legacy path-এ সিঙ্ক হয়েছে (permission fallback)");
+                            firebaseStatus("🟢 Firebase Sync (legacy) চালু", true);
+                        }).catch(e2=>{
+                            firebaseToast("❌ Firebase Sync ব্যর্থ: "+(e2.code||e2.message));
+                            firebaseStatus("🔴 Firebase Save Error", false, d + " | " + (e2.message||e2.code));
+                        });
+                    } else {
+                        firebaseToast("❌ Firebase Sync ব্যর্থ: "+(err.code||err.message));
+                        firebaseStatus("🔴 Firebase Save Error", false, d);
+                    }
+                });
             };
+            window.retryFirebaseSync = function(){
+                firebaseStatus("🟡 পুনঃচেষ্টা...", false, "Retrying Firebase connection");
+                syncErrorCount=0;
+                lastFirebaseError=null;
+                // Re-trigger initial load by reloading listeners? simplest: reload page or re-init?
+                // We'll just try a manual sync and re-check connection
+                connectedRef.once("value").then(s=>{
+                    if(s.val()===true) firebaseStatus("🟢 সংযুক্ত — সিঙ্ক চেষ্টা", true);
+                    window.syncMessDataNow();
+                }).catch(err=>{
+                    const d = logFirebaseError("retry", err);
+                    firebaseStatus("🔴 Retry ব্যর্থ", false, d);
+                });
+                // Also reset firebaseReady timeout
+                if(!firebaseReady) firebaseReady=true;
+            };
+            // Auto retry on network recovery
+            window.addEventListener('online', ()=>{ console.log("online event"); window.retryFirebaseSync(); });
+            // Periodic retry if error count >0
+            setInterval(()=>{
+                if(syncErrorCount>0 && navigator.onLine){
+                    console.log("Auto retry firebase sync, errors", syncErrorCount);
+                    window.retryFirebaseSync();
+                }
+            }, 30000);
 
         } catch (error) {
             console.error("Firebase initialization error:", error);
-            firebaseStatus("🔴 Firebase Initialization Error", false);
+            firebaseStatus("🔴 Firebase Init Error", false, error.message||String(error));
+            // Ensure app still works offline
+            firebaseReady = true;
         }
     })();
     </script>
