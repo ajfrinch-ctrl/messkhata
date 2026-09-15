@@ -117,6 +117,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <button onclick="duplicateMonth()" class="bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-blue-700 shadow-sm" title="এই মাসের সদস্য ও ভাড়া কপি করে নতুন মাস তৈরি">📋 কপি</button>
                     <button onclick="deleteCurrentMonth()" class="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-md text-xs font-bold hover:bg-rose-100">🗑️ মাস মুছুন</button>
                     <button onclick="triggerManualRepair()" class="bg-amber-500 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-amber-600 shadow-sm" title="ভুল মাসে থাকা আগস্টের মিল/বাজার সঠিক মাসে ফেরত আনুন">♻️ আগস্ট উদ্ধার</button>
+                    <button onclick="diagnoseDatabase()" class="bg-slate-700 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-black shadow-sm" title="পুরো ডাটাবেজ পরীক্ষা করুন">🔍 ডাটাবেজ</button>
                 </div>
             </div>
             <div id="month-stats-bar" class="mt-3 flex flex-wrap gap-2 text-[11px]"></div>
@@ -357,8 +358,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
         <div id="tab-history" class="tab-content hidden">
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h2 class="text-lg font-bold text-gray-700 mb-1">🗓️ মাসের ইতিহাস ও আর্কাইভ</h2>
-                <p class="text-xs text-gray-500 mb-4">প্রতিটি মাসের হিসাব আলাদাভাবে সংরক্ষিত থাকে। যেকোনো মাসে ক্লিক করে সেই মাসের হিসাব দেখুন, এডিট বা ডিলিট করুন। নতুন মাসে পুরনো সদস্যদের কপি করে নিতে পারেন।</p>
+                <div class="flex justify-between items-start gap-2 flex-wrap mb-2">
+                    <div>
+                        <h2 class="text-lg font-bold text-gray-700 mb-1">🗓️ মাসের ইতিহাস ও আর্কাইভ</h2>
+                        <p class="text-xs text-gray-500">প্রতিটি মাসের হিসাব আলাদাভাবে সংরক্ষিত থাকে। যেকোনো মাসে ক্লিক করে সেই মাসের হিসাব দেখুন, এডিট বা ডিলিট করুন।</p>
+                    </div>
+                    <button onclick="diagnoseDatabase()" class="bg-slate-800 text-white px-3 py-1.5 rounded-md text-xs font-bold hover:bg-black shadow">🔍 ডাটাবেজ ডায়াগনস্টিক</button>
+                </div>
+                <p class="text-xs text-gray-500 mb-4">নতুন মাসে পুরনো সদস্যদের কপি করে নিতে পারেন। আগস্ট হারালে “আগস্ট উদ্ধার” বা ডায়াগনস্টিক থেকে ব্যাকআপ ফেরান।</p>
                 <div id="history-list" class="grid gap-3"></div>
                 <div class="mt-6 bg-white border rounded-lg p-4">
                     <h3 class="font-bold text-gray-700 mb-2">📊 মাসভিত্তিক তুলনা</h3>
@@ -598,6 +605,155 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
         window.triggerManualRepair = triggerManualRepair;
         window.repairMonthlyBuckets = repairMonthlyBuckets;
+
+        // ===== ডাটাবেজ ডায়াগনস্টিক — আগস্ট সহ সব মাস পরীক্ষা =====
+        function diagnoseDatabase(){
+            try{
+                const out = [];
+                out.push("=== MessKhata ডাটাবেজ ডায়াগনস্টিক ===");
+                out.push(`সক্রিয় মাস: ${activeMonth} (${formatMonthLabel(activeMonth)})`);
+                out.push(`মোট মাস: ${Object.keys(appStore.months).length} — ${Object.keys(appStore.months).sort().join(', ')}`);
+                out.push("");
+                // Per month details
+                Object.keys(appStore.months).sort().forEach(mid=>{
+                    const m = appStore.months[mid];
+                    const meals = (m.mealsLog||[]).length;
+                    const bazar = (m.bazarLog||[]).length;
+                    const fixed = (m.fixedLog||[]).length;
+                    const mealCount = (m.mealsLog||[]).reduce((s,l)=>s+(Number(l.count)||0),0);
+                    const bazarAmt = (m.bazarLog||[]).reduce((s,l)=>s+(Number(l.amount)||0),0);
+                    const fixedAmt = (m.fixedLog||[]).reduce((s,l)=>s+(Number(l.amount)||0),0);
+                    // Check for misplaced dates
+                    const misMeals = (m.mealsLog||[]).filter(l=> (l.date||'').slice(0,7)!==mid).length;
+                    const misBazar = (m.bazarLog||[]).filter(l=> (l.date||'').slice(0,7)!==mid).length;
+                    const misFixed = (m.fixedLog||[]).filter(l=> (l.date||'').slice(0,7)!==mid).length;
+                    out.push(`📅 ${mid} (${formatMonthLabel(mid)}) — সদস্য:${m.members.length} মিল:${meals}(${mealCount}) বাজার:${bazar}(৳${bazarAmt}) ফিক্সড:${fixed}(৳${fixedAmt}) ${misMeals||misBazar||misFixed ? '⚠️ ভুল বাকেট: মিল'+misMeals+' বাজার'+misBazar+' ফিক্সড'+misFixed : '✅ ঠিক'}`);
+                    // List August dates if any
+                    const augMeals = (m.mealsLog||[]).filter(l=> (l.date||'').startsWith('2025-08'));
+                    const augBazar = (m.bazarLog||[]).filter(l=> (l.date||'').startsWith('2025-08'));
+                    if(augMeals.length||augBazar.length){
+                        out.push(`   → 2025-08 ডাটা এই বাকেটে: মিল ${augMeals.length}, বাজার ${augBazar.length}`);
+                        augMeals.slice(0,3).forEach(e=> out.push(`      🍚 ${e.date} member:${e.memberId} count:${e.count}`));
+                        augBazar.slice(0,3).forEach(e=> out.push(`      🛒 ${e.date} ${e.desc} ৳${e.amount}`));
+                    }
+                });
+                out.push("");
+                // Check localStorage backups
+                const backups = Object.keys(localStorage).filter(k=>k.startsWith("messKhataMonthly_v2_backup_")||k.startsWith("messKhataMonthly_v2_backup"));
+                out.push(`💾 লোকাল ব্যাকআপ: ${backups.length}টি`);
+                backups.slice(0,5).forEach(k=>{
+                    try{
+                        const v = JSON.parse(localStorage.getItem(k));
+                        const months = v && v.months ? Object.keys(v.months).join(',') : 'no months';
+                        out.push(`   - ${k}: ${months}`);
+                    }catch(e){ out.push(`   - ${k}: parse error`); }
+                });
+                // Check for 2025-08 month existence
+                if(appStore.months["2025-08"]){
+                    out.push("");
+                    out.push(`✅ 2025-08 মাস পাওয়া গেছে — মিল:${appStore.months["2025-08"].mealsLog.length} বাজার:${appStore.months["2025-08"].bazarLog.length}`);
+                } else {
+                    out.push("");
+                    out.push(`❌ 2025-08 মাস পাওয়া যায়নি!`);
+                    // Search for August data in other buckets
+                    let found=false;
+                    Object.keys(appStore.months).forEach(mid=>{
+                        const m=appStore.months[mid];
+                        const hasAug = [...(m.mealsLog||[]), ...(m.bazarLog||[])].some(l=> (l.date||'').startsWith('2025-08'));
+                        if(hasAug){ out.push(`   → 2025-08 ডাটা ভুলভাবে ${mid} বাকেটে আছে! '♻️ আগস্ট উদ্ধার' চাপুন।`); found=true; }
+                    });
+                    if(!found) out.push(`   → কোনো বাকেটে 2025-08 তারিখের ডাটা নেই। Firebase বা ব্যাকআপ থেকে উদ্ধার প্রয়োজন।`);
+                }
+                out.push("");
+                out.push(`Firebase: ${window.firebase ? 'SDK loaded' : 'NOT loaded'} | ready:${typeof firebaseReady!=='undefined'?firebaseReady:'?'} | connected:${typeof firebaseConnected!=='undefined'?firebaseConnected:'?'}`);
+                const text = out.join("\n");
+                console.log(text);
+                // Show in modal-like alert + also in a prompt for copy
+                // Create a simple overlay
+                let overlay = document.getElementById('db-diag-overlay');
+                if(!overlay){
+                    overlay = document.createElement('div');
+                    overlay.id = 'db-diag-overlay';
+                    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+                    overlay.innerHTML = `<div style="background:white;max-width:800px;max-height:90vh;overflow:auto;border-radius:12px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,0.3);"><h3 style="font-weight:bold;font-size:18px;margin-bottom:10px;">🔍 ডাটাবেজ ডায়াগনস্টিক</h3><pre id="db-diag-text" style="white-space:pre-wrap;font-size:12px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e2e8f0;max-height:60vh;overflow:auto;"></pre><div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;"><button onclick="document.getElementById('db-diag-overlay').remove()" style="background:#0f172a;color:white;padding:8px 16px;border-radius:6px;font-weight:bold;">বন্ধ করুন</button><button onclick="triggerManualRepair()" style="background:#f59e0b;color:white;padding:8px 16px;border-radius:6px;font-weight:bold;">♻️ আগস্ট উদ্ধার চালান</button><button onclick="downloadDatabase()" style="background:#059669;color:white;padding:8px 16px;border-radius:6px;font-weight:bold;">💾 JSON ডাউনলোড</button><button onclick="restoreFromBackup()" style="background:#6366f1;color:white;padding:8px 16px;border-radius:6px;font-weight:bold;">♻️ ব্যাকআপ থেকে ফেরান</button></div></div>`;
+                    document.body.appendChild(overlay);
+                    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+                }
+                document.getElementById('db-diag-text').textContent = text;
+                // Also try Firebase fetch for August
+                if(window.firebase && firebase.database){
+                    try{
+                        firebase.database().ref("messKhata_monthly_v2").once("value").then(s=>{
+                            const v=s.val();
+                            const fbText = "\n--- Firebase messKhata_monthly_v2 ---\n" + (v && v.months ? `months: ${Object.keys(v.months).join(', ')}` : 'empty') + "\n" + (v && v.months && v.months["2025-08"] ? `2025-08 FB: মিল ${v.months["2025-08"].mealsLog?.length||0} বাজার ${v.months["2025-08"].bazarLog?.length||0}` : '2025-08 not in FB');
+                            document.getElementById('db-diag-text').textContent += fbText;
+                            console.log(fbText);
+                        });
+                        firebase.database().ref("messKhata").once("value").then(s=>{
+                            const v=s.val();
+                            const leg = v ? `legacy FB: members ${v.members?.length||0} meals ${v.mealsLog?.length||0} bazar ${v.bazarLog?.length||0}` : 'legacy empty';
+                            document.getElementById('db-diag-text').textContent += "\n--- Firebase messKhata (legacy) ---\n" + leg;
+                        });
+                    }catch(e){ console.warn(e); }
+                }
+            }catch(e){
+                alert("ডায়াগনস্টিক ত্রুটি: "+e.message);
+                console.error(e);
+            }
+        }
+        window.diagnoseDatabase = diagnoseDatabase;
+
+        function downloadDatabase(){
+            const data = JSON.stringify(appStore, null, 2);
+            const blob = new Blob([data], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `messkhata_backup_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("💾 ডাটাবেজ ডাউনলোড শুরু হয়েছে");
+        }
+        window.downloadDatabase = downloadDatabase;
+
+        function restoreFromBackup(){
+            const keys = Object.keys(localStorage).filter(k=>k.includes("messKhataMonthly_v2_backup"));
+            if(keys.length===0) return alert("কোনো ব্যাকআপ পাওয়া যায়নি।");
+            const list = keys.map((k,i)=> `${i+1}. ${k}`).join("\n");
+            const inp = prompt(`কোন ব্যাকআপ থেকে ফেরাতে চান? নম্বর লিখুন:\n${list}\n\n0 = বাতিল`);
+            if(!inp) return;
+            const idx = parseInt(inp)-1;
+            if(isNaN(idx) || idx<0 || idx>=keys.length) return;
+            const key = keys[idx];
+            if(!confirm(`${key} থেকে ডাটা ফেরাতে চান? বর্তমান ডাটা ব্যাকআপ হয়ে যাবে।`)) return;
+            try{
+                const backup = JSON.parse(localStorage.getItem(key));
+                const curKey = STORE_KEY + "_backup_before_restore_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+                localStorage.setItem(curKey, JSON.stringify(appStore));
+                appStore = backup;
+                localStorage.setItem(STORE_KEY, JSON.stringify(appStore));
+                // Re-init activeMonth
+                activeMonth = appStore.activeMonth || Object.keys(appStore.months).sort().pop() || getCurrentMonthId();
+                if(!appStore.months[activeMonth]) activeMonth = Object.keys(appStore.months).sort().pop();
+                appStore.activeMonth = activeMonth;
+                messData = appStore.months[activeMonth];
+                localStorage.setItem(ACTIVE_MONTH_KEY, activeMonth);
+                // Repair and render
+                try{ repairMonthlyBuckets(appStore); }catch(e){}
+                persistStore();
+                updateDropdowns();
+                renderMembersList();
+                renderFixedCostInputs();
+                calculateMess();
+                renderMonthSelector();
+                renderHistory();
+                if(window.syncMessDataNow) try{ window.syncMessDataNow(); }catch(e){}
+                showToast(`♻️ ${key} থেকে ফেরানো হয়েছে`);
+                setTimeout(diagnoseDatabase, 500);
+            }catch(e){ alert("ফেরাতে সমস্যা: "+e.message); }
+        }
+        window.restoreFromBackup = restoreFromBackup;
+        
 
         // Load or migrate store (legacy ডাটা থাকলে তারিখ অনুযায়ী মাসে ভাগ করে মাইগ্রেট)
         let appStore = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
@@ -1558,7 +1714,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
-            const shareLogAll = memberCount > 0 ? (totalFixedDep / memberCount) : 0;
+            const fixedShareLog = memberCount > 0 ? (totalFixedLogDeposit / memberCount) : 0;
 
             const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
             if(fixedBreakdownBody) fixedBreakdownBody.innerHTML = '';
@@ -2121,7 +2277,6 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
-            const shareLogAll = memberCount > 0 ? (totalFixedDep / memberCount) : 0;
 
             let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
             const myFixedShareLog = memberCount > 0 ? ((messData.fixedLog||[]).filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0) / memberCount) : 0;
@@ -2364,8 +2519,42 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const hasData = Object.keys(incoming).length>0;
                 if(!hasData) return false;
                 applyingFirebase = true;
-                // Deep merge: keep activeMonth selection if possible
+                // Deep merge: keep activeMonth selection if possible + preserve local-only months (e.g. 2025-08 that cloud missed)
+                const localBackupMonths = JSON.parse(JSON.stringify(appStore.months || {}));
                 appStore.months = incoming;
+                // Preserve any local month that cloud doesn't have (prevents August loss)
+                try{
+                    Object.keys(localBackupMonths).forEach(mid=>{
+                        if(!appStore.months[mid]){
+                            appStore.months[mid] = localBackupMonths[mid];
+                            console.log("[Firebase] preserved local-only month not in cloud:", mid);
+                        } else {
+                            // Same month exists both sides: if local has entries that cloud missed (e.g. due to race), merge them
+                            const localM = localBackupMonths[mid];
+                            const cloudM = appStore.months[mid];
+                            // Merge meals/bazar/fixed that are in local but not in cloud (by id)
+                            ["mealsLog","bazarLog","fixedLog"].forEach(key=>{
+                                const localArr = localM[key]||[];
+                                const cloudArr = cloudM[key]||[];
+                                const cloudIds = new Set(cloudArr.map(x=> x.id));
+                                const missing = localArr.filter(x=> !cloudIds.has(x.id));
+                                if(missing.length>0){
+                                    cloudM[key] = cloudArr.concat(missing);
+                                    console.log(`[Firebase] merged ${missing.length} missing ${key} from local into ${mid}`);
+                                }
+                            });
+                            // Also keep members if local has more members (e.g. newly added before cloud sync)
+                            if((localM.members||[]).length > (cloudM.members||[]).length){
+                                const cloudIds = new Set((cloudM.members||[]).map(m=> m.id));
+                                const extra = (localM.members||[]).filter(m=> !cloudIds.has(m.id));
+                                if(extra.length>0){
+                                    cloudM.members = cloudM.members.concat(extra);
+                                    console.log(`[Firebase] merged ${extra.length} extra members from local into ${mid}`);
+                                }
+                            }
+                        }
+                    });
+                }catch(e){ console.warn("preserve merge failed", e); }
                 // ভুল বাকেটে থাকা ক্লাউড ডাটা (আগস্ট → সেপ্টেম্বর) থাকলে সঠিক মাসে সরান
                 try{
                     // নিশ্চিত করুন fixedLog আছে
@@ -2568,16 +2757,67 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             // Public helpers
             window.syncMessDataNow = function () {
-                const payload = { _v:2, updatedAt: Date.now(), months: appStore.months };
-                firebaseStatus("🟡 সিঙ্ক হচ্ছে...", false, "Manual sync started");
-                refNew.set(payload).then(() => {
+                // Safe sync: first fetch cloud months and merge to avoid deleting August or other months missing locally
+                const localMonths = JSON.parse(JSON.stringify(appStore.months||{}));
+                firebaseStatus("🟡 সিঙ্ক হচ্ছে...", false, "Manual sync started (safe merge)");
+                refNew.once("value").then(snap=>{
+                    const cloud = snap.val();
+                    let monthsToPush = localMonths;
+                    if(cloud && cloud.months && Object.keys(cloud.months).length>0){
+                        const cloudMonths = cloud.months;
+                        const merged = JSON.parse(JSON.stringify(localMonths));
+                        let added = 0;
+                        Object.keys(cloudMonths).forEach(mid=>{
+                            if(!merged[mid]){
+                                merged[mid] = cloudMonths[mid];
+                                if(!merged[mid].fixedLog) merged[mid].fixedLog=[];
+                                added++;
+                            } else {
+                                // merge missing logs by id (preserve August entries that local might have missed)
+                                ["mealsLog","bazarLog","fixedLog"].forEach(key=>{
+                                    const localArr = merged[mid][key]||[];
+                                    const cloudArr = cloudMonths[mid][key]||[];
+                                    const localIds = new Set(localArr.map(x=> x.id));
+                                    const missing = cloudArr.filter(x=> !localIds.has(x.id));
+                                    if(missing.length>0){
+                                        merged[mid][key] = localArr.concat(missing);
+                                    }
+                                });
+                            }
+                        });
+                        if(added>0) console.log("[Firebase] sync merge: preserved", added, "cloud-only months");
+                        monthsToPush = merged;
+                        // Update local store if we pulled in cloud-only months
+                        if(added>0 || JSON.stringify(merged)!==JSON.stringify(localMonths)){
+                            appStore.months = merged;
+                            try{ const r = (window.repairMonthlyBuckets||repairMonthlyBuckets)(appStore); if(r&&r.movedMeals){ console.log("[Firebase] repair after merge",r); } }catch(e){}
+                            localStorage.setItem(LOCAL_KEY_NEW, JSON.stringify(appStore));
+                        }
+                    }
+                    const payload = { _v:2, updatedAt: Date.now(), months: monthsToPush };
+                    return refNew.set(payload);
+                }).then(() => {
                     syncErrorCount=0;
                     firebaseToast("☁️ Firebase-এ ডাটা সিঙ্ক হয়েছে ✓");
                     firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
                 }).catch(err=>{
+                    // Fallback: if once() failed, try direct push
+                    if(err && err.code==="PERMISSION_DENIED"){
+                        const payload2 = { _v:2, updatedAt: Date.now(), months: localMonths };
+                        refLegacy.set(payload2).then(()=>{
+                            firebaseToast("☁️ Legacy path-এ সিঙ্ক হয়েছে (permission fallback)");
+                            firebaseStatus("🟢 Firebase Sync (legacy) চালু", true);
+                        }).catch(e2=>{
+                            const d = logFirebaseError("manual sync refNew", err);
+                            firebaseToast("❌ Firebase Sync ব্যর্থ: "+(e2.code||e2.message));
+                            firebaseStatus("🔴 Firebase Save Error", false, d + " | " + (e2.message||e2.code));
+                        });
+                        return;
+                    }
                     const d = logFirebaseError("manual sync refNew", err);
                     if(isPermissionError(err)){
-                        refLegacy.set(payload).then(()=>{
+                        const payload2 = { _v:2, updatedAt: Date.now(), months: localMonths };
+                        refLegacy.set(payload2).then(()=>{
                             firebaseToast("☁️ Legacy path-এ সিঙ্ক হয়েছে (permission fallback)");
                             firebaseStatus("🟢 Firebase Sync (legacy) চালু", true);
                         }).catch(e2=>{
