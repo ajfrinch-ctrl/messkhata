@@ -158,7 +158,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         <div id="tab-meals" class="tab-content">
             <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
                 <h2 class="text-lg font-bold mb-1 text-gray-700">🥣 দৈনিক মিল এন্ট্রি <span class="text-xs font-normal text-gray-500" id="meal-form-month-hint"></span></h2>
-                <p class="text-xs text-gray-500 mb-3">একই তারিখে একই সদস্যের মিল আবার দিলে আগেরটি আপডেট হবে। এডিট/ডিলিট নিচের ছক থেকে করতে পারবেন।</p>
+                <p class="text-xs text-gray-500 mb-3">তারিখ সিলেক্ট করে এন্ট্রি দিলে অটো আপডেট হবে। কোনো এন্ট্রি না থাকলে ০ দেখাবে।</p>
                 <div class="space-y-3">
                     <input id="meal-date" type="date" class="border bg-white p-2 rounded-md w-full">
                     <select id="meal-member-select" class="border p-2 rounded-md w-full bg-white"></select>
@@ -1485,19 +1485,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     messData.members.forEach(m => {
                         const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
                         const countVal = entry ? entry.count : 0;
-                        if(entry){
-                            html += `<td class="p-1 border text-center">
-                                <div class="flex flex-col items-center gap-1">
-                                    <span class="font-bold text-amber-700">${convertToBanglaNumber(countVal)}</span>
-                                    <div class="flex gap-1">
-                                        <button onclick="editMeal('${date}','${m.id}')" class="text-[10px] bg-blue-500 text-white px-1.5 py-0.5 rounded hover:bg-blue-600" title="এডিট">✏️</button>
-                                        <button onclick="deleteMeal('${date}','${m.id}')" class="text-[10px] bg-red-500 text-white px-1.5 py-0.5 rounded hover:bg-red-600" title="ডিলিট">🗑️</button>
-                                    </div>
-                                </div>
-                            </td>`;
-                        } else {
-                            html += `<td class="p-2 border text-center text-gray-300">—</td>`;
-                        }
+                        const isZero = !entry || Number(countVal) === 0;
+                        const cls = isZero ? 'text-gray-400' : 'font-bold text-amber-700';
+                        html += `<td class="p-2 border text-center ${cls}">${convertToBanglaNumber(countVal)}</td>`;
                     });
 
                     html += `</tr>`;
