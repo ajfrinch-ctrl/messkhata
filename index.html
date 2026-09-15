@@ -116,6 +116,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <button onclick="createNewMonth()" class="bg-emerald-600 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-emerald-700 shadow-sm">➕ নতুন মাস</button>
                     <button onclick="duplicateMonth()" class="bg-blue-600 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-blue-700 shadow-sm" title="এই মাসের সদস্য ও ভাড়া কপি করে নতুন মাস তৈরি">📋 কপি</button>
                     <button onclick="deleteCurrentMonth()" class="bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 rounded-md text-xs font-bold hover:bg-rose-100">🗑️ মাস মুছুন</button>
+                    <button onclick="triggerManualRepair()" class="bg-amber-500 text-white px-3 py-2 rounded-md text-xs font-bold hover:bg-amber-600 shadow-sm" title="ভুল মাসে থাকা আগস্টের মিল/বাজার সঠিক মাসে ফেরত আনুন">♻️ আগস্ট উদ্ধার</button>
                 </div>
             </div>
             <div id="month-stats-bar" class="mt-3 flex flex-wrap gap-2 text-[11px]"></div>
@@ -456,6 +457,139 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             }
         }
 
+        /* ====== আগস্ট-সহ ভুল বাকেটে থাকা ডাটা স্বয়ংক্রিয় মেরামত ====== */
+        function repairMonthlyBuckets(store){
+            if(!store || !store.months) return {movedMeals:0, movedBazar:0, createdMonths:[]};
+            let movedMeals=0, movedBazar=0;
+            const created=[];
+            const allIds = Object.keys(store.months);
+            let toMoveMeals=[], toMoveBazar=[];
+            allIds.forEach(mid=>{
+                const m = store.months[mid];
+                if(!m.mealsLog) m.mealsLog=[];
+                if(!m.bazarLog) m.bazarLog=[];
+                for(let i=m.mealsLog.length-1; i>=0; i--){
+                    const e=m.mealsLog[i];
+                    if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) continue;
+                    const target=e.date.slice(0,7);
+                    if(target!==mid){
+                        toMoveMeals.push({entry:e, from:mid, target});
+                        m.mealsLog.splice(i,1);
+                        movedMeals++;
+                    }
+                }
+                for(let i=m.bazarLog.length-1; i>=0; i--){
+                    const e=m.bazarLog[i];
+                    if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) continue;
+                    const target=e.date.slice(0,7);
+                    if(target!==mid){
+                        toMoveBazar.push({entry:e, from:mid, target});
+                        m.bazarLog.splice(i,1);
+                        movedBazar++;
+                    }
+                }
+            });
+            function ensureMemberInTarget(target, entry, fromMid){
+                if(!entry.memberId) return;
+                if(store.months[target].members.find(x=>x.id===entry.memberId)) return;
+                let src=null;
+                if(store.months[fromMid]) src=store.months[fromMid].members.find(x=>x.id===entry.memberId);
+                if(!src){
+                    for(const mid of Object.keys(store.months)){
+                        const f=store.months[mid].members.find(x=>x.id===entry.memberId);
+                        if(f){ src=f; break; }
+                    }
+                }
+                if(src) store.months[target].members.push(JSON.parse(JSON.stringify(src)));
+            }
+            toMoveMeals.forEach(({entry,from,target})=>{
+                if(!store.months[target]){
+                    ensureMonth(store, target, from);
+                    if(!created.includes(target)) created.push(target);
+                } else ensureMemberInTarget(target, entry, from);
+                if(!store.months[target].mealsLog.find(x=>x.id===entry.id)){
+                    store.months[target].mealsLog.push(entry);
+                }
+                store.months[target].mealsLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+            });
+            toMoveBazar.forEach(({entry,from,target})=>{
+                if(!store.months[target]){
+                    ensureMonth(store, target, from);
+                    if(!created.includes(target)) created.push(target);
+                } else ensureMemberInTarget(target, entry, from);
+                if(!store.months[target].bazarLog.find(x=>x.id===entry.id)){
+                    store.months[target].bazarLog.push(entry);
+                }
+                store.months[target].bazarLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+            });
+            // legacy key থেকে অতিরিক্ত ডাটা (যদি থাকে) মার্জ — আগস্ট উদ্ধারে সাহায্য
+            try{
+                const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY)||'null');
+                if(legacy && (legacy.mealsLog||legacy.bazarLog)){
+                    const extraMeals = Array.isArray(legacy.mealsLog)?legacy.mealsLog:[];
+                    const extraBazar = Array.isArray(legacy.bazarLog)?legacy.bazarLog:[];
+                    extraMeals.forEach(e=>{
+                        if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
+                        const target=e.date.slice(0,7);
+                        if(!store.months[target]){
+                            ensureMonth(store, target);
+                            if(!created.includes(target)) created.push(target);
+                        }
+                        const exists = store.months[target].mealsLog.find(x=> x.id===e.id || (x.date===e.date && x.memberId===e.memberId && String(x.count)===String(e.count)));
+                        if(!exists){
+                            store.months[target].mealsLog.push({...e, id:e.id||'meal_'+Date.now()+Math.random().toString(36).slice(2)});
+                            movedMeals++;
+                        }
+                    });
+                    extraBazar.forEach(e=>{
+                        if(!e||!e.date||!/^\d{4}-\d{2}-\d{2}$/.test(e.date)) return;
+                        const target=e.date.slice(0,7);
+                        if(!store.months[target]){
+                            ensureMonth(store, target);
+                            if(!created.includes(target)) created.push(target);
+                        }
+                        const exists = store.months[target].bazarLog.find(x=> x.id===e.id || (x.date===e.date && x.memberId===e.memberId && String(x.amount)===String(e.amount)));
+                        if(!exists){
+                            store.months[target].bazarLog.push({...e, id:e.id||'bazar_'+Date.now()+Math.random().toString(36).slice(2)});
+                            movedBazar++;
+                        }
+                    });
+                }
+            }catch(e){ console.warn("legacy merge in repair", e); }
+            if(movedMeals>0 || movedBazar>0) console.log(`[Repair] moved ${movedMeals} meals, ${movedBazar} bazar, created ${created.join(',')}`);
+            return {movedMeals, movedBazar, createdMonths:created};
+        }
+        // Manual repair trigger for user
+        function triggerManualRepair(){
+            const backupKey = STORE_KEY + "_backup_" + new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+            try{ localStorage.setItem(backupKey, JSON.stringify(appStore)); console.log("Backup saved", backupKey); }catch(e){}
+            const res = repairMonthlyBuckets(appStore);
+            if(res.movedMeals===0 && res.movedBazar===0){
+                showToast("✅ কোনো ভুল বাকেট পাওয়া যায়নি — আগস্টসহ সব মাস ঠিক আছে");
+                return;
+            }
+            // persistStore will be defined later — save directly for now
+            localStorage.setItem(STORE_KEY, JSON.stringify(appStore));
+            if(appStore.months[activeMonth]) messData = appStore.months[activeMonth];
+            try{
+                if(typeof persistStore==='function') persistStore();
+                if(typeof renderMonthSelector==='function') renderMonthSelector();
+                if(typeof renderHistory==='function') renderHistory();
+                if(typeof calculateMess==='function') calculateMess();
+                if(typeof updateDropdowns==='function') updateDropdowns();
+            }catch(e){}
+            showToast(`♻️ মেরামত সম্পন্ন — ${res.movedMeals} মিল, ${res.movedBazar} বাজার সঠিক মাসে সরানো হয়েছে (${res.createdMonths.join(', ')||'কোনো নতুন মাস নয়'}) — Firebase এও সিঙ্ক হবে`);
+            // Try firebase sync if ready
+            if(typeof window.syncMessDataNow==='function'){
+                try{ window.syncMessDataNow(); }catch(e){}
+            } else {
+                // will sync on next persist
+                setTimeout(()=>{ try{ if(window.firebase) window.syncMessDataNow&&window.syncMessDataNow(); }catch(e){} }, 1500);
+            }
+        }
+        window.triggerManualRepair = triggerManualRepair;
+        window.repairMonthlyBuckets = repairMonthlyBuckets;
+
         // Load or migrate store (legacy ডাটা থাকলে তারিখ অনুযায়ী মাসে ভাগ করে মাইগ্রেট)
         let appStore = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
         if(!appStore || !appStore.months){
@@ -499,6 +633,25 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         if(!appStore.months[activeMonth]) ensureMonth(appStore, activeMonth);
         appStore.activeMonth = activeMonth;
         let messData = appStore.months[activeMonth];
+
+        // স্বয়ংক্রিয় মেরামত: ভুল মাসে থাকা আগস্ট ডাটা উদ্ধার (প্রথম লোডে একবার)
+        try{
+            const repairRes = repairMonthlyBuckets(appStore);
+            if(repairRes.movedMeals>0 || repairRes.movedBazar>0 || repairRes.createdMonths.length>0){
+                console.log("[AutoRepair] August data recovered", repairRes);
+                // activeMonth ঠিক থাকলে messData রিফ্রেশ
+                if(appStore.months[activeMonth]) messData = appStore.months[activeMonth];
+                localStorage.setItem(STORE_KEY, JSON.stringify(appStore));
+                localStorage.setItem(ACTIVE_MONTH_KEY, activeMonth);
+                localStorage.setItem(LEGACY_KEY, JSON.stringify(messData));
+                // নোট: window.onload এ রেন্ডার হবে, এখানে টোস্ট দেখাতে একটু দেরি
+                setTimeout(()=>{
+                    try{
+                        if(typeof showToast==='function') showToast(`♻️ আগস্টসহ ${repairRes.movedMeals} মিল ও ${repairRes.movedBazar} বাজার সঠিক মাসে ফেরানো হয়েছে${repairRes.createdMonths.length? ' — নতুন মাস: '+repairRes.createdMonths.join(', '):''}`);
+                    }catch(e){}
+                }, 1200);
+            }
+        }catch(e){ console.warn("auto repair failed", e); }
 
         let lastMarketData = null;
         let _editingBazarId = null;
@@ -1810,6 +1963,18 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 applyingFirebase = true;
                 // Deep merge: keep activeMonth selection if possible
                 appStore.months = incoming;
+                // ভুল বাকেটে থাকা ক্লাউড ডাটা (আগস্ট → সেপ্টেম্বর) থাকলে সঠিক মাসে সরান
+                try{
+                    const fn = window.repairMonthlyBuckets || (typeof repairMonthlyBuckets!=='undefined' ? repairMonthlyBuckets : null);
+                    if(fn){
+                        const r = fn(appStore);
+                        if(r && (r.movedMeals>0 || r.movedBazar>0 || r.createdMonths.length>0)){
+                            console.log("[Firebase] cloud repair applied", r);
+                            // মেরামতের পর ক্লাউডেও ঠিক ডাটা ব্যাক-সিঙ্ক করবে (পরবর্তী persist)
+                            setTimeout(()=>{ try{ if(!applyingFirebase) window.syncMessDataNow && window.syncMessDataNow(); }catch(e){} }, 800);
+                        }
+                    }
+                }catch(e){ console.warn("cloud repair failed", e); }
                 if(!appStore.months[activeMonth]){
                     const latest = Object.keys(appStore.months).sort().pop();
                     if(latest){
