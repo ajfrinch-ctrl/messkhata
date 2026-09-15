@@ -456,20 +456,37 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             }
         }
 
-        // Load or migrate store
+        // Load or migrate store (legacy ডাটা থাকলে তারিখ অনুযায়ী মাসে ভাগ করে মাইগ্রেট)
         let appStore = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
         if(!appStore || !appStore.months){
             const legacy = JSON.parse(localStorage.getItem(LEGACY_KEY) || 'null');
             const cur = getCurrentMonthId();
             if(legacy && (legacy.members || legacy.mealsLog || legacy.bazarLog || legacy.fixedCosts)){
                 appStore = { activeMonth: cur, months: {} };
-                appStore.months[cur] = {
-                    members: Array.isArray(legacy.members)?legacy.members:[],
-                    mealsLog: Array.isArray(legacy.mealsLog)?legacy.mealsLog:[],
-                    bazarLog: Array.isArray(legacy.bazarLog)?legacy.bazarLog:[],
-                    fixedCosts: legacy.fixedCosts || { rent:{} },
-                    grandBills: legacy.grandBills || { electricity:0, maid:0, wifi:0, others:0 }
-                };
+                // তারিখ অনুযায়ী মাস আলাদা করে মাইগ্রেট — যাতে ড্যাশবোর্ড শুধু সেই মাসের ডাটা দেখায়
+                const legacyMeals = Array.isArray(legacy.mealsLog)?legacy.mealsLog:[];
+                const legacyBazar = Array.isArray(legacy.bazarLog)?legacy.bazarLog:[];
+                const members = Array.isArray(legacy.members)?legacy.members:[];
+                const fixedCosts = legacy.fixedCosts || { rent:{} };
+                const grandBills = legacy.grandBills || { electricity:0, maid:0, wifi:0, others:0 };
+                const monthIds = new Set();
+                legacyMeals.forEach(l=>{ if(l.date && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) monthIds.add(l.date.slice(0,7)); });
+                legacyBazar.forEach(l=>{ if(l.date && /^\d{4}-\d{2}-\d{2}$/.test(l.date)) monthIds.add(l.date.slice(0,7)); });
+                if(monthIds.size===0) monthIds.add(cur);
+                monthIds.forEach(mid=>{
+                    appStore.months[mid] = {
+                        members: JSON.parse(JSON.stringify(members)),
+                        mealsLog: legacyMeals.filter(l=> (l.date||'').slice(0,7)===mid),
+                        bazarLog: legacyBazar.filter(l=> (l.date||'').slice(0,7)===mid),
+                        fixedCosts: JSON.parse(JSON.stringify(fixedCosts)),
+                        grandBills: JSON.parse(JSON.stringify(grandBills))
+                    };
+                });
+                // চলতি মাস না থাকলে তৈরি
+                if(!appStore.months[cur]){
+                    appStore.months[cur] = { members: JSON.parse(JSON.stringify(members)), mealsLog: [], bazarLog: [], fixedCosts: JSON.parse(JSON.stringify(fixedCosts)), grandBills: { electricity:0, maid:0, wifi:0, others:0 } };
+                }
+                // সব মাসে অন্তত একটি খালি মাস নিশ্চিত, যাতে আগের মাস দেখা যায়
             } else {
                 appStore = { activeMonth: cur, months: {} };
                 appStore.months[cur] = { members: [], mealsLog: [], bazarLog: [], fixedCosts:{rent:{}}, grandBills:{electricity:0,maid:0,wifi:0,others:0}};
@@ -556,10 +573,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
             if(pickerEl) pickerEl.value = activeMonth;
 
-            // stats
+            // stats — শুধু সক্রিয় মাসের ডাটা (তারিখ ফিল্টার)
             const m = appStore.months[activeMonth];
-            const mealCount = m.mealsLog.reduce((s,l)=>s+(Number(l.count)||0),0);
-            const bazarTotal = m.bazarLog.reduce((s,l)=>s+(Number(l.amount)||0),0);
+            const mealCount = m.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.count)||0),0);
+            const bazarTotal = m.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth).reduce((s,l)=>s+(Number(l.amount)||0),0);
             const membersCount = m.members.length;
             const fixedTotal = (()=>{ let t=0; const c = m.grandBills||{}; const cnt=m.members.length||1; t+=Object.values(m.fixedCosts.rent||{}).reduce((a,b)=>a+(Number(b)||0),0); t+=Number(c.electricity||0); t+=Number(c.maid||0); t+=Number(c.wifi||0); t+=Number(c.others||0); return t; })();
             statsBar.innerHTML = `
@@ -793,36 +810,55 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const count = parseFloat(document.getElementById('meal-count').value);
 
             if (!date || !memberId || isNaN(count) || count < 0) return alert('দয়া করে সঠিক তথ্য দিন।');
-            // ensure date belongs to active month? allow cross-month but warn
+            // ড্যাশবোর্ড শুধু সক্রিয় মাসের ডাটা দেখাবে — তাই তারিখের মাস অনুযায়ী সঠিক বাকেটে সংরক্ষণ
             const dateMonth = date.slice(0,7);
+            let targetData = messData;
+            let targetMonth = activeMonth;
+            let switched = false;
             if(dateMonth !== activeMonth){
-                if(!confirm(`তারিখটি ${dateMonth} মাসের, কিন্তু আপনি ${activeMonth} মাসে আছেন। তারিখ অনুযায়ী স্বয়ংক্রিয়ভাবে ${dateMonth} মাসে যোগ করতে চান?`)){
-                    // stay on same month, still allow? We'll allow but warn
-                } else {
-                    // switch to that month and add
-                    if(!appStore.months[dateMonth]) ensureMonth(appStore, dateMonth, activeMonth);
+                if(!appStore.months[dateMonth]) ensureMonth(appStore, dateMonth, activeMonth);
+                // সদস্য টার্গেট মাসে না থাকলে কপি
+                if(!appStore.months[dateMonth].members.find(m=>m.id===memberId)){
+                    const srcMem = messData.members.find(m=>m.id===memberId);
+                    if(srcMem) appStore.months[dateMonth].members.push(JSON.parse(JSON.stringify(srcMem)));
+                }
+                if(confirm(`তারিখটি ${formatMonthLabel(dateMonth)} (${dateMonth}) মাসের। এই এন্ট্রি ${formatMonthLabel(dateMonth)} মাসে সংরক্ষণ করা হবে। সেই মাসে যেতে চান?`)){
                     activeMonth = dateMonth;
                     appStore.activeMonth = dateMonth;
                     messData = appStore.months[dateMonth];
+                    targetData = messData;
+                    targetMonth = dateMonth;
+                    switched = true;
                     persistStore();
                     updateDropdowns();
                     renderMembersList();
                     renderFixedCostInputs();
+                } else {
+                    targetData = appStore.months[dateMonth];
+                    targetMonth = dateMonth;
                 }
             }
 
-            const existingIndex = messData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
+            const existingIndex = targetData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
             if (existingIndex !== -1) {
-                messData.mealsLog[existingIndex].count = count;
-                showToast('মিলের হিসাব আপডেট করা হয়েছে।');
+                targetData.mealsLog[existingIndex].count = count;
+                showToast(`মিল ${switched?'আপডেট':'সংরক্ষিত'} — ${formatMonthLabel(targetMonth)}`);
             } else {
-                messData.mealsLog.push({ id: 'meal_' + Date.now(), date, memberId, count });
-                showToast('মিল অটো-সেভ করা হয়েছে।');
+                targetData.mealsLog.push({ id: 'meal_' + Date.now(), date, memberId, count });
+                showToast(`মিল সংরক্ষিত — ${formatMonthLabel(targetMonth)}`);
             }
 
             document.getElementById('meal-count').value = '';
-            saveToLocalStorage();
-            calculateMess();
+            if(!switched && targetMonth !== activeMonth){
+                // অন্য মাসে সেভ হয়েছে, বর্তমান ভিউ না বদলে স্টোরেজ আপডেট
+                persistStore();
+                // বর্তমান মাসের ড্যাশবোর্ড রিফ্রেশ (ফিল্টারে এই এন্ট্রি দেখাবে না — সঠিক)
+                calculateMess();
+                showToast(`ℹ️ ${formatMonthLabel(targetMonth)} মাসে সংরক্ষিত হয়েছে। সেই মাসে গিয়ে দেখুন।`);
+            } else {
+                saveToLocalStorage();
+                calculateMess();
+            }
         }
 
         function deleteMeal(date, memberId){
@@ -893,55 +929,118 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if (!rawDate || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
 
             const formattedDate = formatBanglaDate(rawDate);
-            const memberObj = messData.members.find(m => m.id === memberId);
-            const buyerName = memberObj ? memberObj.name : 'সদস্য';
-
-            // month check similar to meals
             const dateMonth = rawDate.slice(0,7);
-            if(dateMonth !== activeMonth && !_editingBazarId){
-                if(confirm(`তারিখটি ${dateMonth} মাসের, কিন্তু আপনি ${activeMonth} মাসে আছেন। ${dateMonth} মাসে যোগ করতে চান?`)){
-                    if(!appStore.months[dateMonth]) ensureMonth(appStore, dateMonth, activeMonth);
-                    // switch context to that month for this entry
+
+            // এডিট মোডে: পুরনো এন্ট্রি যে মাসে ছিল সেখান থেকে সরিয়ে নতুন তারিখের মাসে সংরক্ষণ
+            if(_editingBazarId){
+                // পুরনো এন্ট্রি খুঁজুন (যেকোনো মাসে থাকতে পারে)
+                let oldMonthId = null, oldIdx = -1, oldEntry = null;
+                for(const mid of Object.keys(appStore.months)){
+                    const idx = appStore.months[mid].bazarLog.findIndex(b=>b.id===_editingBazarId);
+                    if(idx!==-1){ oldMonthId = mid; oldIdx = idx; oldEntry = appStore.months[mid].bazarLog[idx]; break; }
+                }
+                if(oldEntry){
+                    // যদি তারিখের মাস পরিবর্তন হয়, পুরনো মাস থেকে সরান
+                    if(oldMonthId !== dateMonth){
+                        appStore.months[oldMonthId].bazarLog.splice(oldIdx,1);
+                        if(!appStore.months[dateMonth]) ensureMonth(appStore, dateMonth, oldMonthId);
+                        // সদস্য টার্গেট মাসে না থাকলে কপি
+                        if(!appStore.months[dateMonth].members.find(m=>m.id===memberId)){
+                            const srcMem = (appStore.months[oldMonthId].members.find(m=>m.id===memberId) || messData.members.find(m=>m.id===memberId));
+                            if(srcMem) appStore.months[dateMonth].members.push(JSON.parse(JSON.stringify(srcMem)));
+                        }
+                        appStore.months[dateMonth].bazarLog.push({ id: _editingBazarId, date: rawDate, displayDate: formattedDate, memberId, desc, amount });
+                        appStore.months[dateMonth].bazarLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+                        if(dateMonth !== activeMonth){
+                            if(confirm(`${formatMonthLabel(dateMonth)} মাসে আপডেট করা হয়েছে। সেই মাসে যেতে চান?`)){
+                                switchToMonth(dateMonth);
+                            } else {
+                                persistStore();
+                                calculateMess();
+                                showToast(`✏️ ${formatMonthLabel(dateMonth)} মাসে আপডেট হয়েছে`);
+                            }
+                        } else {
+                            // টার্গেট বর্তমান মাস
+                            if(activeMonth !== dateMonth){
+                                // সক্রিয় মাস আপডেট না করে টার্গেটে সেভ হয়েছে
+                            } else {
+                                messData = appStore.months[activeMonth];
+                            }
+                            persistStore();
+                            calculateMess();
+                            showToast('বাজার খরচ আপডেট করা হয়েছে — ' + formatMonthLabel(dateMonth));
+                        }
+                    } else {
+                        // একই মাসে আপডেট
+                        const targetData = appStore.months[dateMonth];
+                        const idx2 = targetData.bazarLog.findIndex(b=>b.id===_editingBazarId);
+                        if(idx2!==-1){
+                            targetData.bazarLog[idx2].date = rawDate;
+                            targetData.bazarLog[idx2].displayDate = formattedDate;
+                            targetData.bazarLog[idx2].memberId = memberId;
+                            targetData.bazarLog[idx2].desc = desc;
+                            targetData.bazarLog[idx2].amount = amount;
+                            targetData.bazarLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
+                            if(dateMonth !== activeMonth){
+                                // অন্য মাসে আপডেট, সক্রিয় মাস না বদলালে
+                                persistStore();
+                                calculateMess();
+                            } else {
+                                saveToLocalStorage();
+                                calculateMess();
+                            }
+                            showToast('বাজার খরচ আপডেট করা হয়েছে — ' + formatMonthLabel(dateMonth));
+                        }
+                    }
+                }
+                _editingBazarId = null;
+                updateBazarFormState();
+                document.getElementById('bazar-desc').value = '';
+                document.getElementById('bazar-amount').value = '';
+                return;
+            }
+
+            // নতুন এন্ট্রি — তারিখের মাস অনুযায়ী সঠিক বাকেটে সংরক্ষণ
+            if(!appStore.months[dateMonth]) ensureMonth(appStore, dateMonth, activeMonth);
+            if(!appStore.months[dateMonth].members.find(m=>m.id===memberId)){
+                const srcMem = messData.members.find(m=>m.id===memberId);
+                if(srcMem) appStore.months[dateMonth].members.push(JSON.parse(JSON.stringify(srcMem)));
+            }
+            let switched = false;
+            if(dateMonth !== activeMonth){
+                if(confirm(`তারিখটি ${formatMonthLabel(dateMonth)} (${dateMonth}) মাসের। এই এন্ট্রি ${formatMonthLabel(dateMonth)} মাসে সংরক্ষণ করা হবে। সেই মাসে যেতে চান?`)){
                     activeMonth = dateMonth;
                     appStore.activeMonth = dateMonth;
                     messData = appStore.months[dateMonth];
+                    switched = true;
                     persistStore();
                     updateDropdowns();
                     renderMembersList();
                     renderFixedCostInputs();
                 }
             }
-
-            if(_editingBazarId){
-                const idx = messData.bazarLog.findIndex(b=>b.id===_editingBazarId);
-                if(idx!==-1){
-                    messData.bazarLog[idx].date = rawDate;
-                    messData.bazarLog[idx].displayDate = formattedDate;
-                    messData.bazarLog[idx].memberId = memberId;
-                    messData.bazarLog[idx].desc = desc;
-                    messData.bazarLog[idx].amount = amount;
-                    showToast('বাজার খরচ আপডেট করা হয়েছে');
-                }
-                _editingBazarId = null;
-                updateBazarFormState();
-            } else {
-                messData.bazarLog.push({ id: 'bazar_' + Date.now(), date: rawDate, displayDate: formattedDate, memberId, desc, amount });
-                lastMarketData = { 
-                    buyer: buyerName, 
-                    date: formattedDate, 
-                    list: desc, 
-                    amount: convertToBanglaNumber(amount) 
-                };
+            const targetForNew = appStore.months[dateMonth];
+            const memberObj = targetForNew.members.find(m => m.id === memberId) || messData.members.find(m=>m.id===memberId);
+            const buyerName = memberObj ? memberObj.name : 'সদস্য';
+            targetForNew.bazarLog.push({ id: 'bazar_' + Date.now(), date: rawDate, displayDate: formattedDate, memberId, desc, amount });
+            targetForNew.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
+            if(dateMonth !== activeMonth && !switched){
+                lastMarketData = { buyer: buyerName, date: formattedDate, list: desc, amount: convertToBanglaNumber(amount) };
                 document.getElementById('wa-share-btn').classList.remove('hidden');
-                showToast('বাজার খরচ সফলভাবে সংরক্ষিত হয়েছে!');
+                persistStore();
+                calculateMess();
+                showToast(`🛒 ${formatMonthLabel(dateMonth)} মাসে সংরক্ষিত — সেই মাসে গিয়ে দেখুন`);
+            } else {
+                // সক্রিয় মাসে বা সুইচ করে
+                messData = appStore.months[activeMonth];
+                lastMarketData = { buyer: buyerName, date: formattedDate, list: desc, amount: convertToBanglaNumber(amount) };
+                document.getElementById('wa-share-btn').classList.remove('hidden');
+                saveToLocalStorage();
+                calculateMess();
+                showToast('বাজার খরচ সফলভাবে সংরক্ষিত — ' + formatMonthLabel(dateMonth));
             }
-
-            messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
-            
             document.getElementById('bazar-desc').value = '';
             document.getElementById('bazar-amount').value = '';
-            saveToLocalStorage();
-            calculateMess();
         }
 
         function shareSpecificOnWhatsApp(buyerName, formattedDate, desc, amount) {
@@ -1008,14 +1107,17 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, rent: 0, maid: 0, elec: 0, wifi: 0, oth: 0, fixed: 0 };
             });
 
-            messData.mealsLog.forEach(log => {
+            // ড্যাশবোর্ডে শুধু সক্রিয় মাসের ডাটা দেখানো — তারিখের মাস ফিল্টার (বাকেটে ভুল মাসের ডাটা থাকলেও ফিল্টার হবে)
+            const monthMealsForCalc = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthBazarForCalc = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            monthMealsForCalc.forEach(log => {
                 if (memberSummary[log.memberId]) {
                     memberSummary[log.memberId].meals += log.count;
                     totalMeals += log.count;
                 }
             });
 
-            messData.bazarLog.forEach(log => {
+            monthBazarForCalc.forEach(log => {
                 if (memberSummary[log.memberId]) {
                     memberSummary[log.memberId].bazarSpent += log.amount;
                     totalBazar += log.amount;
@@ -1086,10 +1188,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             document.getElementById('table-total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
             const bazarTableBody = document.getElementById('bazar-log-table-body');
             bazarTableBody.innerHTML = '';
-            if(messData.bazarLog.length===0){
+            // শুধু সক্রিয় মাসের বাজার দেখানো
+            const monthBazarForTable = monthBazarForCalc;
+            if(monthBazarForTable.length===0){
                 bazarTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">এই মাসে কোনো বাজার এন্ট্রি নেই। উপরের ফর্ম থেকে যোগ করুন।</td></tr>`;
             } else {
-                messData.bazarLog.forEach(b => {
+                monthBazarForTable.forEach(b => {
                     const member = messData.members.find(m => m.id === b.memberId);
                     const memName = member ? member.name : 'Unknown';
                     const displayDt = b.displayDate || formatBanglaDate(b.date);
@@ -1176,7 +1280,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 return;
             }
 
-            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            const monthBazarGrid = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const dates = [...new Set(monthBazarGrid.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
             let html = `<table class="w-full text-left border-collapse bg-white text-sm">
                 <thead><tr class="bg-emerald-700 text-white">
                     <th class="p-2 border min-w-[105px]">তারিখ</th>`;
@@ -1205,10 +1310,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             html += `</tbody><tfoot><tr class="bg-emerald-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>`;
             messData.members.forEach(m => {
-                const memberTotal = messData.bazarLog.filter(b => b.memberId === m.id).reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+                const memberTotal = monthBazarGrid.filter(b => b.memberId === m.id).reduce((sum,b) => sum + (Number(b.amount)||0), 0);
                 html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(memberTotal.toFixed(1))}</td>`;
             });
-            const grandBazar = messData.bazarLog.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
+            const grandBazar = monthBazarGrid.reduce((sum,b) => sum + (Number(b.amount)||0), 0);
             html += `<td class="p-2 border text-center text-emerald-900">৳${convertToBanglaNumber(grandBazar.toFixed(1))}</td></tr></tfoot></table>`;
             container.innerHTML = html;
         }
@@ -1220,7 +1325,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 return;
             }
 
-            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            const monthMealsGrid = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const dates = [...new Set(monthMealsGrid.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
 
             let html = `<table class="w-full text-left border-collapse bg-white text-sm">
                 <thead>
@@ -1269,7 +1375,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             let totalAllMeals = 0;
             messData.members.forEach(m => {
                 let mTotal = 0;
-                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
+                monthMealsGrid.filter(l => l.memberId === m.id).forEach(l => mTotal += l.count);
                 totalAllMeals += mTotal;
                 html += `<td class="p-2 border text-center text-amber-900 font-extrabold">${convertToBanglaNumber(mTotal)}</td>`;
             });
@@ -1282,11 +1388,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const tbody = document.getElementById('meals-log-table-body');
             if(!tbody) return;
             tbody.innerHTML='';
-            if(messData.mealsLog.length===0){
+            const monthMealsLog = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            if(monthMealsLog.length===0){
                 tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-400">এই মাসে কোনো মিল এন্ট্রি নেই।</td></tr>`;
                 return;
             }
-            const sorted = [...messData.mealsLog].sort((a,b)=> new Date(a.date)-new Date(b.date));
+            const sorted = [...monthMealsLog].sort((a,b)=> new Date(a.date)-new Date(b.date));
             sorted.forEach(log=>{
                 const mem = messData.members.find(m=>m.id===log.memberId);
                 const name = mem?mem.name:'Unknown';
@@ -1397,10 +1504,11 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
-        /* হোয়াটসঅ্যাপে বিভিন্ন রিপোর্ট শেয়ার করার ফাংশনসমূহ */
+        /* হোয়াটসঅ্যাপে বিভিন্ন রিপোর্ট শেয়ার করার ফাংশনসমূহ — শুধু সক্রিয় মাসের ডাটা */
         function shareMealsOnWhatsApp() {
             if (messData.members.length === 0) return alert("কোনো সদস্য পাওয়া যায়নি।");
-            const dates = [...new Set(messData.mealsLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            const monthMealsShare = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const dates = [...new Set(monthMealsShare.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
             
             let message = `🥣 *দৈনিক মিলের রিপোর্ট — ${formatMonthLabel(activeMonth)} (${activeMonth})*\\n\\n`;
             if (dates.length === 0) {
@@ -1409,7 +1517,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 dates.forEach(date => {
                     message += `📅 *তারিখ:* ${formatBanglaDate(date)}\\n`;
                     messData.members.forEach(m => {
-                        const entry = messData.mealsLog.find(l => l.date === date && l.memberId === m.id);
+                        const entry = monthMealsShare.find(l => l.date === date && l.memberId === m.id);
                         const countVal = entry ? entry.count : 0;
                         message += `- ${m.name}: ${convertToBanglaNumber(countVal)} মিল\\n`;
                     });
@@ -1421,9 +1529,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function shareBazarListOnWhatsApp() {
-            if (messData.bazarLog.length === 0) return alert("এই মাসে কোনো বাজার খরচ পাওয়া যায়নি।");
+            const monthBazarShare = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            if (monthBazarShare.length === 0) return alert("এই মাসে কোনো বাজার খরচ পাওয়া যায়নি।");
             
-            const dates = [...new Set(messData.bazarLog.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
+            const dates = [...new Set(monthBazarShare.map(l => l.date))].sort((a,b) => new Date(a) - new Date(b));
             let message = `🛒 *সম্পূর্ণ বাজার তালিকা — ${formatMonthLabel(activeMonth)} (${activeMonth})*\\n\\n`;
             let totalBazar = 0;
 
@@ -1432,7 +1541,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 message += `📅 *তারিখ:* ${displayDt}\\n`;
 
                 messData.members.forEach(m => {
-                    const entries = messData.bazarLog.filter(b => b.date === date && b.memberId === m.id);
+                    const entries = monthBazarShare.filter(b => b.date === date && b.memberId === m.id);
                     if (entries.length > 0) {
                         const subtotal = entries.reduce((sum, b) => sum + b.amount, 0);
                         const itemsCombined = entries.map(b => b.desc).join(', ');
@@ -1449,17 +1558,19 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function shareMemberOnWhatsApp(memberId) {
+            const monthMealsAll = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthBazarAll = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             let totalMeals = 0; 
             let totalBazar = 0;
-            messData.mealsLog.forEach(l => totalMeals += l.count);
-            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            monthMealsAll.forEach(l => totalMeals += l.count);
+            monthBazarAll.forEach(l => totalBazar += l.amount);
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
             const member = messData.members.find(m => m.id === memberId);
             if (!member) return;
 
-            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId);
-            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId);
+            const myMeals = monthMealsAll.filter(l => l.memberId === memberId);
+            const myBazar = monthBazarAll.filter(l => l.memberId === memberId);
 
             const billElec = messData.grandBills.electricity || 0;
             const billMaid = messData.grandBills.maid || 0;
@@ -1506,10 +1617,12 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function shareAllInOneOnWhatsApp() {
+            const monthMealsAll2 = messData.mealsLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
+            const monthBazarAll2 = messData.bazarLog.filter(l => (l.date||'').slice(0,7)===activeMonth);
             let totalMeals = 0;
             let totalBazar = 0;
-            messData.mealsLog.forEach(l => totalMeals += l.count);
-            messData.bazarLog.forEach(l => totalBazar += l.amount);
+            monthMealsAll2.forEach(l => totalMeals += l.count);
+            monthBazarAll2.forEach(l => totalBazar += l.amount);
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
             const billElec = messData.grandBills.electricity || 0;
@@ -1532,8 +1645,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             messData.members.forEach(m => {
                 let mMeals = 0;
                 let mBazar = 0;
-                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
-                messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
+                monthMealsAll2.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
+                monthBazarAll2.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
 
                 let mRent = messData.fixedCosts.rent[m.id] || 0;
                 let mMealCost = mMeals * mealRate;
