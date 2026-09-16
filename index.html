@@ -32,38 +32,12 @@
         });
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
-        body { font-family: 'Noto Sans Bengali', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .brand-font { font-family: 'Poppins', sans-serif; }
-        .toast-notification { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { 
-            from { transform: translateX(100%); opacity: 0; } 
-            to { transform: translateX(0); opacity: 1; }
-        }
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="./ui.css">
 
-        /* ===== ইনস্টলড অ্যাপ (standalone) মোডের জন্য ===== */
-        body {
-            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-            padding-left: calc(1rem + env(safe-area-inset-left));
-            padding-right: calc(1rem + env(safe-area-inset-right));
-        }
-        /* ব্রাউজারের অ্যাড্রেস বার না থাকলে উপরে একটু নিরাপদ জায়গা */
-        @media (display-mode: standalone) {
-            body { padding-top: calc(1rem + env(safe-area-inset-top)); }
-            #install-banner { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
-        }
-        @media (display-mode: standalone), (display-mode: minimal-ui) {
-            html { -webkit-tap-highlight-color: transparent; }
-        }
-        .no-select { -webkit-user-select: none; user-select: none; }
-        @keyframes bannerUp {
-            from { transform: translateY(120%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        .banner-up { animation: bannerUp 0.35s ease-out; }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 
 <script>
 /* ===== Date / weekday / helpers ===== */
@@ -122,328 +96,903 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 </head>
-<body class="bg-gray-100 p-4 md:p-8">
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
-    <div id="firebase-sync-status" class="fixed bottom-3 left-3 z-50 bg-white border shadow px-3 py-2 rounded-full text-xs font-semibold text-gray-600">🔄 Firebase Sync...</div>
+<body>
+    <!-- togtoast + লুকানো sync স্ট্যাটাস (হেডারে ছোট চিপ হিসেবে দেখানো হয়) -->
+    <div id="toast-container"></div>
+    <div id="firebase-sync-status">🔄 Firebase Sync...</div>
 
-
-    <div class="max-w-6xl mx-auto bg-white p-6 rounded-lg shadow-lg">
-        <div class="flex items-center justify-center gap-3 mb-6 border-b pb-4">
-            <svg class="w-10 h-10 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                <path d="M12 6a3 3 0 0 0-3 3v2h6V9a3 3 0 0 0-3-3z"/>
-                <path d="M9 11v3"/>
-                <path d="M15 11v3"/>
-            </svg>
-            <div class="text-center md:text-left">
-                <h1 class="text-3xl font-bold brand-font text-emerald-600 tracking-wide">Meal Khata</h1>
-                <p class="text-xs text-gray-500 font-medium">স্মার্ট মেস ও মিল ম্যানেজমেন্ট সিস্টেম</p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div class="bg-blue-600 p-4 rounded text-center shadow-xs text-white">
-                <p class="text-xs md:text-sm font-medium opacity-90">💳 মোট খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-expense">০</span></p>
-            </div>
-            <div class="bg-emerald-600 p-4 rounded text-center shadow-xs text-white">
-                <p class="text-xs md:text-sm font-medium opacity-90">🛒 মোট বাজার খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-bazar">০</span></p>
-            </div>
-            <div class="bg-indigo-600 p-4 rounded text-center shadow-xs text-white">
-                <p class="text-xs md:text-sm font-medium opacity-90">📠 মোট ফিক্সড খরচ</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="total-fixed">০</span></p>
-            </div>
-            <div class="bg-amber-500 p-4 rounded text-center shadow-xs text-white">
-                <p class="text-xs md:text-sm font-medium opacity-90">🍚 মোট মিল</p>
-                <p class="text-lg md:text-xl font-bold"><span id="total-meals">০</span></p>
-            </div>
-            <div class="bg-rose-500 p-4 rounded text-center shadow-xs text-white col-span-2 md:col-span-1">
-                <p class="text-xs md:text-sm font-medium opacity-90">📈 মিল রেট</p>
-                <p class="text-lg md:text-xl font-bold">৳<span id="meal-rate">০.০০</span></p>
-            </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 mb-6 border-b pb-3">
-            <button onclick="switchTab('tab-meals')" id="btn-tab-meals" class="tab-btn px-4 py-2 rounded-md font-medium bg-emerald-600 text-white">🥣 দৈনিক মিল</button>
-            <button onclick="switchTab('tab-bazar')" id="btn-tab-bazar" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🛒 বাজার খরচ</button>
-            <button onclick="switchTab('tab-fixed')" id="btn-tab-fixed" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">🏠 ফিক্সড খরচ</button>
-            <button onclick="switchTab('tab-summary')" id="btn-tab-summary" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">📊 হিসাব ও রিপোর্ট</button>
-            <button onclick="switchTab('tab-members')" id="btn-tab-members" class="tab-btn px-4 py-2 rounded-md font-medium bg-gray-200 text-gray-700">👥 সদস্যগণ</button>
-        </div>
-
-        <div id="tab-meals" class="tab-content">
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                <h2 class="text-lg font-bold mb-2 text-gray-700">🥣 দৈনিক মিল এন্ট্রি</h2>
-                <div class="space-y-3">
-                    <input id="meal-date" type="date" class="border bg-white p-2 rounded-md w-full">
-                    <select id="meal-member-select" class="border p-2 rounded-md w-full bg-white"></select>
-                    <input id="meal-count" type="number" step="0.5" placeholder="মিলের সংখ্যা (যেমন: ১, ১.৫, ২)" class="border bg-white p-2 rounded-md w-full">
-                    <button onclick="addMeals()" class="w-full bg-amber-500 text-white py-2 rounded-md font-medium hover:bg-amber-600">মিল সংরক্ষণ করুন</button>
+    <div class="app" id="app-shell">
+        <!-- ================= HEADER ================= -->
+        <header class="appbar" id="appbar">
+            <div class="appbar__row">
+                <button type="button" class="appbar__btn appbar__back" id="nav-back" aria-label="ফিরে যান" hidden>
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12H5"/><path d="M11.5 5.5 5 12l6.5 6.5"/></svg>
+                </button>
+                <span class="appbar__logo" id="appbar-logo">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 11v3"/><path d="M15 11v3"/></svg>
+                </span>
+                <div class="appbar__titles">
+                    <h1 class="appbar__title" id="appbar-title">Mess Khata</h1>
+                    <p class="appbar__sub" id="appbar-sub">—</p>
                 </div>
+                <button type="button" class="syncchip" id="sync-chip" data-goto="more" aria-label="সিঙ্কের অবস্থা">
+                    <span class="syncchip__dot" id="sync-dot"></span>
+                    <span class="syncchip__txt" id="sync-label">সিঙ্ক হচ্ছে…</span>
+                </button>
+                <button type="button" class="appbar__btn" id="nav-menu" data-goto="more" aria-label="আরও অপশন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+                </button>
             </div>
-            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক মিলের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
-                    <button onclick="shareMealsOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
-                        📤 হোয়াটসঅ্যাপে মিল রিপোর্ট শেয়ার
-                    </button>
-                </div>
-                <div id="meals-grid-container" class="overflow-x-auto"></div>
-            </div>
-        </div>
+        </header>
 
-        <div id="tab-bazar" class="tab-content hidden">
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                <h2 class="text-lg font-bold mb-2 text-gray-700">🛒 বাজার খরচ যোগ করুন</h2>
-                <div class="space-y-3">
-                    <input id="bazar-date" type="date" class="border bg-white p-2 rounded-md w-full">
-                    <select id="bazar-member-select" class="border p-2 rounded-md w-full bg-white"></select>
-                    <input id="bazar-desc" type="text" placeholder="বাজারের বিবরণ (যেমন: চাল, মুরগি, তেল)" class="border bg-white p-2 rounded-md w-full">
-                    <input id="bazar-amount" type="number" placeholder="টাকার পরিমাণ (টাকা)" class="border bg-white p-2 rounded-md w-full">
-                    <button onclick="addBazar()" class="w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">খরচ যোগ করুন</button>
-                    
-                    <button id="wa-share-btn" onclick="shareOnWhatsApp()" class="w-full bg-green-500 text-white py-2 rounded-md font-medium hover:bg-green-600 hidden flex items-center justify-center gap-2">
-                        📤 হোয়াটসঅ্যাপ গ্রুপে শেয়ার করুন
-                    </button>
+        <main class="main" id="main">
+        <!--------------------------------------------------------------------
+             HOME
+        --------------------------------------------------------------------->
+        <section class="screen is-active" id="screen-home" data-screen="home">
+            <div class="card card--start hidden" id="home-start-card">
+                <span class="card--start__ico">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 20v-1.7a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4V20"/><circle cx="10.5" cy="7.3" r="3.3"/><path d="M17.5 4.6a3.3 3.3 0 0 1 0 6.4"/><path d="M21 20v-1.6a4 4 0 0 0-2.6-3.7"/></svg>
+                </span>
+                <div class="card--start__body">
+                    <p class="card--start__title">শুরু করুন</p>
+                    <p class="card--start__text">প্রথমে মেসের সদস্য যোগ করুন, তারপর মিল ও বাজারের হিসাব শুরু হবে।</p>
                 </div>
-            </div>
-            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-gray-700">🛒 বাজারের তালিকা (তারিখ অনুযায়ী সর্টিং)</h2>
-                    <button onclick="shareBazarListOnWhatsApp()" class="bg-green-600 text-white px-4 py-1.5 rounded-md font-medium hover:bg-green-700 text-sm flex items-center gap-1">
-                        📤 হোয়াটসঅ্যাপে সম্পূর্ণ বাজার তালিকা শেয়ার
-                    </button>
-                </div>
-                <table class="w-full text-left border-collapse bg-white mb-3">
-                    <thead>
-                        <tr class="bg-emerald-700 text-white text-sm">
-                            <th class="p-2 border">তারিখ</th>
-                            <th class="p-2 border">সদস্য</th>
-                            <th class="p-2 border">বিবরণ</th>
-                            <th class="p-2 border">টাকা</th>
-                            <th class="p-2 border text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bazar-log-table-body" class="text-sm"></tbody>
-                    <tfoot>
-                        <tr class="bg-emerald-100 font-bold text-gray-800">
-                            <td colspan="3" class="p-2 border text-right">সর্বমোট বাজার খরচ:</td>
-                            <td class="p-2 border text-emerald-900" colspan="2">৳<span id="table-total-bazar">০</span></td>
-                        </tr>
-                    </tfoot>
-                </table>
+                <button type="button" class="btn btn--primary btn--sm" data-act="open-member">সদস্য যোগ</button>
             </div>
 
-            <div class="overflow-x-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mt-6">
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-lg font-bold text-gray-700">📋 দৈনিক বাজারের ছক (তারিখ ও সদস্যভিত্তিক)</h2>
-                    <span class="text-xs text-gray-500">একই দিনে একাধিক বাজার → আইটেম কমা দিয়ে + মোট টাকা যোগ হবে</span>
+            <div class="card summary">
+                <div class="summary__head">
+                    <span class="summary__label">আজকের হিসাব</span>
+                    <span class="summary__date" id="home-today-date">—</span>
                 </div>
-                <div id="bazar-grid-container" class="overflow-x-auto"></div>
-            </div>
-        </div>
-
-        <div id="tab-fixed" class="tab-content hidden">
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
-                <h2 class="text-lg font-bold mb-1 text-gray-700">🏠 ফিক্সড খরচ ড্যাশবোর্ড</h2>
-                <p class="text-xs text-gray-500 mb-4">সদস্যদের বাসা ভাড়ার আলাদা পরিমাণ ইনপুট দিন এবং ইউটিলিটি বিলগুলো সবার মধ্যে সমানভাবে বন্টন করুন।</p>
-                <div class="space-y-6">
-                    <div>
-                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">🏢 বাসা ভাড়া (ব্যক্তিগত)</h3>
-                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="fixed-rent-inputs"></div>
+                <div class="summary__grid">
+                    <div class="stat">
+                        <span class="stat__ico stat__ico--meal">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 8V6.2"/><path d="M12 8V5.4"/><path d="M15 8V6.2"/></svg>
+                        </span>
+                        <span class="stat__label">আজকের মিল</span>
+                        <span class="stat__value" id="home-today-meals">০</span>
                     </div>
-                    <div>
-                        <h3 class="font-semibold text-gray-700 border-b pb-1 mb-2">⚡ অন্যান্য ইউটিলিটি বিল (সবার মাঝে সমানভাবে বণ্টন হবে)</h3>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">⚡ বিদ্যুৎ বিল</label>
-                                <input type="number" id="bill-electricity" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">🧹 বুয়া বিল</label>
-                                <input type="number" id="bill-maid" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">📶 ওয়াইফাই বিল</label>
-                                <input type="number" id="bill-wifi" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
-                            <div class="flex flex-col bg-white p-3 rounded-md border border-gray-200">
-                                <label class="text-xs font-semibold text-gray-600 mb-1">⚙️ অন্যান্য বিল</label>
-                                <input type="number" id="bill-others" placeholder="মোট টাকা" class="border bg-gray-50 p-2 rounded text-sm">
-                            </div>
+                    <div class="stat">
+                        <span class="stat__ico stat__ico--bazar">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.3 10.3a1.8 1.8 0 0 0 1.8 1.4h7.8a1.8 1.8 0 0 0 1.8-1.4L20.5 7H6.3"/><circle cx="10" cy="19.4" r="1.3"/><circle cx="17" cy="19.4" r="1.3"/></svg>
+                        </span>
+                        <span class="stat__label">আজকের বাজার</span>
+                        <span class="stat__value" id="home-today-bazar">৳০</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat__ico stat__ico--report">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
+                        </span>
+                        <span class="stat__label">মিল রেট</span>
+                        <span class="stat__value" id="home-meal-rate">৳০</span>
+                    </div>
+                </div>
+                <div class="summary__foot">
+                    <span id="home-summary-note">মোট খরচ ৳০ · ০ জন সদস্য</span>
+                </div>
+            </div>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Quick Actions</h2>
+                    <span class="sec__note">কম ট্যাপে এন্ট্রি</span>
+                </div>
+                <div class="card quick">
+                    <button type="button" class="quick__btn" data-act="open-meal">
+                        <span class="quick__ico quick__ico--meal">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                        </span>
+                        <span class="quick__txt">Add Meal</span>
+                    </button>
+                    <button type="button" class="quick__btn" data-act="open-bazar">
+                        <span class="quick__ico quick__ico--bazar">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                        </span>
+                        <span class="quick__txt">Add Bazar</span>
+                    </button>
+                    <button type="button" class="quick__btn" data-act="open-fixed">
+                        <span class="quick__ico quick__ico--fixed">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                        </span>
+                        <span class="quick__txt">Fixed Cost</span>
+                    </button>
+                    <button type="button" class="quick__btn" data-goto="report">
+                        <span class="quick__ico quick__ico--report">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
+                        </span>
+                        <span class="quick__txt">Report</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Main Menu</h2>
+                </div>
+                <div class="menu">
+                    <button type="button" class="menu__item" data-goto="meal">
+                        <span class="menu__ico menu__ico--meal">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 8V6.2"/><path d="M12 8V5.4"/><path d="M15 8V6.2"/></svg>
+                        </span>
+                        <span class="menu__body">
+                            <span class="menu__title">Daily Meal</span>
+                            <span class="menu__sub">দৈনিক মিল ব্যবস্থাপনা</span>
+                        </span>
+                        <span class="menu__meta" id="menu-meta-meal">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="menu__item" data-goto="bazar">
+                        <span class="menu__ico menu__ico--bazar">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.3 10.3a1.8 1.8 0 0 0 1.8 1.4h7.8a1.8 1.8 0 0 0 1.8-1.4L20.5 7H6.3"/><circle cx="10" cy="19.4" r="1.3"/><circle cx="17" cy="19.4" r="1.3"/></svg>
+                        </span>
+                        <span class="menu__body">
+                            <span class="menu__title">Bazar</span>
+                            <span class="menu__sub">দৈনিক বাজার খরচ</span>
+                        </span>
+                        <span class="menu__meta" id="menu-meta-bazar">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="menu__item" data-goto="fixed">
+                        <span class="menu__ico menu__ico--fixed">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17l-2.75-1.9-2.75 1.9-2.75-1.9-2.75 1.9v-17Z"/><path d="M9.5 8.5h5"/><path d="M9.5 12h5"/></svg>
+                        </span>
+                        <span class="menu__body">
+                            <span class="menu__title">Fixed Cost</span>
+                            <span class="menu__sub">ফিক্সড খরচ ব্যবস্থাপনা</span>
+                        </span>
+                        <span class="menu__meta" id="menu-meta-fixed">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="menu__item" data-goto="report">
+                        <span class="menu__ico menu__ico--report">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
+                        </span>
+                        <span class="menu__body">
+                            <span class="menu__title">Accounts</span>
+                            <span class="menu__sub">হিসাব ও রিপোর্ট</span>
+                        </span>
+                        <span class="menu__meta" id="menu-meta-report">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="menu__item" data-goto="members">
+                        <span class="menu__ico menu__ico--members">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 20v-1.7a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4V20"/><circle cx="10.5" cy="7.3" r="3.3"/><path d="M17.5 4.6a3.3 3.3 0 0 1 0 6.4"/><path d="M21 20v-1.6a4 4 0 0 0-2.6-3.7"/></svg>
+                        </span>
+                        <span class="menu__body">
+                            <span class="menu__title">Members</span>
+                            <span class="menu__sub">সদস্যদের তথ্য</span>
+                        </span>
+                        <span class="menu__meta" id="menu-meta-members">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                </div>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             DAILY MEAL
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-meal" data-screen="meal">
+            <button type="button" class="btn btn--add btn--meal" data-act="open-meal">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                Add Meal
+            </button>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Today's Meals</h2>
+                    <span class="sec__note" id="meal-today-total">মোট ০ মিল</span>
+                </div>
+                <div class="card" id="meal-today-list"></div>
+            </section>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">সব মিল এন্ট্রি</h2>
+                    <span class="sec__note" id="meal-all-total">—</span>
+                </div>
+                <div class="folds" id="meal-day-list"></div>
+            </section>
+
+            <section class="sec">
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--meal"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M4.5 14.8h15"/><path d="M10.2 5.5v13"/><path d="M14.8 5.5v13"/></svg></span>
+                        <span class="fold__title">মিলের ছক (তারিখ ও সদস্যভিত্তিক)</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <p class="fold__hint">প্রয়োজনে টেবিলটি ডানে-বায়ে স্ক্রল করুন।</p>
+                        <div class="tablescroll" id="meals-grid-container"></div>
+                    </div>
+                </details>
+            </section>
+
+            <section class="sec">
+                <button type="button" class="btn btn--wa btn--soft-border" id="meal-share-btn">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                    হোয়াটসঅ্যাপে মিল রিপোর্ট শেয়ার
+                </button>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             BAZAR
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-bazar" data-screen="bazar">
+            <button type="button" class="btn btn--add btn--bazar" data-act="open-bazar">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                Add Bazar
+            </button>
+            <button type="button" class="btn btn--wa hidden" id="wa-share-btn" data-act="share-last-bazar">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                শেষ এন্ট্রিটি হোয়াটসঅ্যাপে শেয়ার করুন
+            </button>
+
+            <div class="card totalcard">
+                <span class="totalcard__label">সর্বমোট বাজার খরচ</span>
+                <span class="totalcard__value">৳<span id="table-total-bazar">০</span></span>
+            </div>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Recent Bazar</h2>
+                    <span class="sec__note" id="bazar-count">—</span>
+                </div>
+                <div class="card" id="bazar-list"></div>
+            </section>
+
+            <section class="sec">
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--bazar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M4.5 14.8h15"/><path d="M10.2 5.5v13"/><path d="M14.8 5.5v13"/></svg></span>
+                        <span class="fold__title">দৈনিক বাজারের ছক</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <p class="fold__hint">একই দিনে একাধিক বাজার → আইটেম কমা দিয়ে + মোট টাকা যোগ হবে।</p>
+                        <div class="tablescroll" id="bazar-grid-container"></div>
+                    </div>
+                </details>
+
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--bazar"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6.5h11"/><path d="M4.5 6.5h.01"/><path d="M8.5 12h11"/><path d="M4.5 12h.01"/><path d="M8.5 17.5h11"/><path d="M4.5 17.5h.01"/></svg></span>
+                        <span class="fold__title">সব এন্ট্রি (টেবিল ভিউ)</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <div class="tablescroll">
+                            <table class="legacy-table">
+                                <thead>
+                                    <tr class="bg-emerald-700 text-white text-sm">
+                                        <th>তারিখ</th>
+                                        <th>সদস্য</th>
+                                        <th>বিবরণ</th>
+                                        <th>টাকা</th>
+                                        <th>অ্যাকশন</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bazar-log-table-body" class="text-sm"></tbody>
+                            </table>
                         </div>
                     </div>
+                </details>
+            </section>
+
+            <section class="sec">
+                <button type="button" class="btn btn--wa btn--soft-border" id="bazar-share-list-btn">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                    সম্পূর্ণ বাজার তালিকা শেয়ার করুন
+                </button>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             FIXED COST
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-fixed" data-screen="fixed">
+            <button type="button" class="btn btn--add btn--fixed" data-act="open-fixed">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                Add Fixed Cost
+            </button>
+
+            <div class="tiles">
+                <div class="tile tile--fixed">
+                    <span class="tile__label">মোট বাসা ভাড়া</span>
+                    <span class="tile__value" id="foot-total-rent">৳০</span>
                 </div>
-                <button onclick="saveFixedCosts()" class="mt-5 bg-indigo-600 text-white px-6 py-2 rounded-md font-medium hover:bg-indigo-700">ফিক্সড খরচ সংরক্ষণ করুন</button>
+                <div class="tile tile--fixed">
+                    <span class="tile__label">মোট ইউটিলিটি</span>
+                    <span class="tile__value" id="foot-total-utility">৳০</span>
+                </div>
+                <div class="tile tile--fixed tile--wide">
+                    <span class="tile__label">সর্বমোট ফিক্সড খরচ</span>
+                    <span class="tile__value tile__value--lg" id="foot-total-fixed-all">৳০</span>
+                </div>
             </div>
 
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 class="text-lg font-bold text-gray-700 mb-3 border-b pb-2">📋 সদস্যদের ফিক্সড খরচের সমবণ্টন তালিকা</h3>
-                <table class="w-full text-left border-collapse bg-white">
-                    <thead>
-                        <tr class="bg-indigo-700 text-white text-sm">
-                            <th class="p-3 border">সদস্যের নাম</th>
-                            <th class="p-3 border">ব্যক্তিগত বাসা ভাড়া</th>
-                            <th class="p-3 border">ইউটিলিটি শেয়ার (সমবণ্টন)</th>
-                            <th class="p-3 border">সর্বমোট ফিক্সড খরচ</th>
-                        </tr>
-                    </thead>
-                    <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
-                    <tfoot>
-                        <tr class="bg-indigo-100 font-bold text-gray-800 text-sm">
-                            <td class="p-3 border text-right">সর্বমোট:</td>
-                            <td class="p-3 border" id="foot-total-rent">৳০</td>
-                            <td class="p-3 border" id="foot-total-utility">৳০</td>
-                            <td class="p-3 border text-indigo-900" id="foot-total-fixed-all">৳০</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Fixed Cost তালিকা</h2>
+                    <span class="sec__note">ট্যাপ করে সম্পাদনা</span>
+                </div>
+                <div class="card" id="fixed-list"></div>
+            </section>
 
-        <div id="tab-summary" class="tab-content hidden">
-            <div class="overflow-auto bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 border-b pb-3">
-                    <h2 class="text-xl font-bold text-gray-700">📊 মাসিক ব্যালেন্স শীট ও রিপোর্ট</h2>
-                    <button onclick="shareAllInOneOnWhatsApp()" class="bg-green-700 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-800 text-sm shadow flex items-center gap-2">
-                        📤 সম্পূর্ণ সম্মিলিত রিপোর্ট হোয়াটসঅ্যাপে শেয়ার
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">সদস্যভিত্তিক সমবণ্টন</h2>
+                </div>
+                <div class="card" id="fixed-member-list"></div>
+            </section>
+
+            <section class="sec">
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--fixed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M10.2 5.5v13"/></svg></span>
+                        <span class="fold__title">বিস্তারিত টেবিল</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <div class="tablescroll">
+                            <table class="legacy-table">
+                                <thead>
+                                    <tr class="bg-indigo-700 text-white text-sm">
+                                        <th>সদস্যের নাম</th>
+                                        <th>ব্যক্তিগত বাসা ভাড়া</th>
+                                        <th>ইউটিলিটি শেয়ার</th>
+                                        <th>সর্বমোট ফিক্সড খরচ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             ACCOUNTS / REPORT
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-report" data-screen="report">
+            <div class="tiles">
+                <div class="tile">
+                    <span class="tile__label">মোট বাজার খরচ</span>
+                    <span class="tile__value">৳<span id="total-bazar">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মোট ফিক্সড খরচ</span>
+                    <span class="tile__value">৳<span id="total-fixed">০</span></span>
+                </div>
+                <div class="tile tile--wide tile--accent">
+                    <span class="tile__label">সর্বমোট খরচ</span>
+                    <span class="tile__value tile__value--lg">৳<span id="total-expense">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মোট মিল</span>
+                    <span class="tile__value"><span id="total-meals">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মিল রেট</span>
+                    <span class="tile__value">৳<span id="meal-rate">০.০০</span></span>
+                </div>
+            </div>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Member Accounts</h2>
+                </div>
+                <div class="card" id="report-member-list"></div>
+            </section>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">Previous Months</h2>
+                </div>
+                <div class="card" id="report-month-list"></div>
+                <p class="sec__foot-note">মাস অনুযায়ী বাজার ও মিলের যোগফল দেখানো হয়েছে।</p>
+            </section>
+
+            <section class="sec">
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--report"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M10.2 5.5v13"/></svg></span>
+                        <span class="fold__title">বিস্তারিত ব্যালেন্স শীট টেবিল</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <p class="fold__hint">প্রয়োজনে টেবিলটি ডানে-বায়ে স্ক্রল করুন।</p>
+                        <div class="tablescroll">
+                            <table class="legacy-table">
+                                <thead>
+                                    <tr class="bg-blue-900 text-white">
+                                        <th>সদস্য</th><th>মিল</th><th>মিলের খরচ</th><th>বাসা ভাড়া</th><th>বুয়া</th><th>বিদ্যুৎ</th><th>ওয়াইফাই</th><th>অন্যান্য</th><th>মোট খরচ</th><th>বাজার জমা</th><th>অবস্থা</th><th>অ্যাকশন</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="calculation-table-body"></tbody>
+                                <tfoot>
+                                    <tr class="bg-blue-100 font-bold text-gray-900">
+                                        <td>সর্বমোট:</td>
+                                        <td class="ta-c" id="summary-foot-meals">০</td>
+                                        <td id="summary-foot-meal-cost">৳০</td>
+                                        <td id="summary-foot-rent">৳০</td>
+                                        <td id="summary-foot-maid">৳০</td>
+                                        <td id="summary-foot-elec">৳০</td>
+                                        <td id="summary-foot-wifi">৳০</td>
+                                        <td id="summary-foot-oth">৳০</td>
+                                        <td id="summary-foot-total-cost">৳০</td>
+                                        <td id="summary-foot-bazar">৳০</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <section class="sec">
+                <button type="button" class="btn btn--wa btn--soft-border" id="report-share-btn">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                    সম্পূর্ণ রিপোর্ট শেয়ার করুন
+                </button>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             MEMBERS
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-members" data-screen="members">
+            <button type="button" class="btn btn--add btn--members" data-act="open-member">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
+                Add Member
+            </button>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">সদস্যের তালিকা</h2>
+                    <span class="sec__note" id="members-count">—</span>
+                </div>
+                <div class="card" id="members-list-container"></div>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             MEMBER DETAIL
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-member" data-screen="member">
+            <div class="card memberhead" id="member-detail-head"></div>
+            <div id="member-detail-body"></div>
+        </section>
+
+        <!--------------------------------------------------------------------
+             MORE
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-more" data-screen="more">
+            <section class="sec" style="margin-top:0">
+                <div class="card">
+                    <button type="button" class="row row--tap" data-goto="fixed">
+                        <span class="row__ico row__ico--fixed">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17l-2.75-1.9-2.75 1.9-2.75-1.9-2.75 1.9v-17Z"/><path d="M9.5 8.5h5"/><path d="M9.5 12h5"/></svg>
+                        </span>
+                        <span class="row__body">
+                            <span class="row__title">Fixed Cost</span>
+                            <span class="row__sub">ফিক্সড খরচ ব্যবস্থাপনা</span>
+                        </span>
+                        <span class="menu__meta" id="more-meta-fixed">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="row row--tap" data-goto="members">
+                        <span class="row__ico row__ico--members">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 20v-1.7a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4V20"/><circle cx="10.5" cy="7.3" r="3.3"/><path d="M17.5 4.6a3.3 3.3 0 0 1 0 6.4"/><path d="M21 20v-1.6a4 4 0 0 0-2.6-3.7"/></svg>
+                        </span>
+                        <span class="row__body">
+                            <span class="row__title">Members</span>
+                            <span class="row__sub">সদস্যদের তথ্য</span>
+                        </span>
+                        <span class="menu__meta" id="more-meta-members">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="row row--tap" data-goto="meal">
+                        <span class="row__ico row__ico--meal">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 8V6.2"/><path d="M12 8V5.4"/><path d="M15 8V6.2"/></svg>
+                        </span>
+                        <span class="row__body">
+                            <span class="row__title">Daily Meal</span>
+                            <span class="row__sub">দৈনিক মিল ব্যবস্থাপনা</span>
+                        </span>
+                        <span class="menu__meta" id="more-meta-meal">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
+                    </button>
+                    <button type="button" class="row row--tap" data-goto="bazar">
+                        <span class="row__ico row__ico--bazar">
+                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.3 10.3a1.8 1.8 0 0 0 1.8 1.4h7.8a1.8 1.8 0 0 0 1.8-1.4L20.5 7H6.3"/><circle cx="10" cy="19.4" r="1.3"/><circle cx="17" cy="19.4" r="1.3"/></svg>
+                        </span>
+                        <span class="row__body">
+                            <span class="row__title">Bazar</span>
+                            <span class="row__sub">দৈনিক বাজার খরচ</span>
+                        </span>
+                        <span class="menu__meta" id="more-meta-bazar">—</span>
+                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
                     </button>
                 </div>
-                <table class="w-full text-left border-collapse bg-white mb-3 text-xs md:text-sm">
-                    <thead>
-                        <tr class="bg-blue-900 text-white">
-                            <th class="p-2 border">সদস্য</th>
-                            <th class="p-2 border text-center">মিল</th>
-                            <th class="p-2 border">মিলের খরচ</th>
-                            <th class="p-2 border">বাসা ভাড়া</th>
-                            <th class="p-2 border">বুয়া</th>
-                            <th class="p-2 border">বিদ্যুৎ</th>
-                            <th class="p-2 border">ওয়াইফাই</th>
-                            <th class="p-2 border">অন্যান্য</th>
-                            <th class="p-2 border">মোট খরচ</th>
-                            <th class="p-2 border">বাজার জমা</th>
-                            <th class="p-2 border">অবস্থা</th>
-                            <th class="p-2 border text-center">অ্যাকশন</th>
-                        </tr>
-                    </thead>
-                    <tbody id="calculation-table-body"></tbody>
-                    <tfoot>
-                        <tr class="bg-blue-100 font-bold text-gray-900">
-                            <td class="p-2 border">সর্বমোট:</td>
-                            <td class="p-2 border text-center" id="summary-foot-meals">০</td>
-                            <td class="p-2 border" id="summary-foot-meal-cost">৳০</td>
-                            <td class="p-2 border" id="summary-foot-rent">৳০</td>
-                            <td class="p-2 border" id="summary-foot-maid">৳০</td>
-                            <td class="p-2 border" id="summary-foot-elec">৳০</td>
-                            <td class="p-2 border" id="summary-foot-wifi">৳০</td>
-                            <td class="p-2 border" id="summary-foot-oth">৳০</td>
-                            <td class="p-2 border text-blue-900" id="summary-foot-total-cost">৳০</td>
-                            <td class="p-2 border text-emerald-900" id="summary-foot-bazar">৳০</td>
-                            <td class="p-2 border" colspan="2"></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        </div>
+            </section>
 
-        <div id="tab-members" class="tab-content hidden">
-            <div class="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h2 class="text-lg font-bold mb-2 text-gray-700">👥 নতুন সদস্য যোগ করুন</h2>
-                <div class="flex gap-2">
-                    <input id="member-name" type="text" placeholder="সদস্যের নাম লিখুন (যেমন: রহিম)" class="border bg-white p-2 rounded-md flex-grow">
-                    <button onclick="addMember()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700">যোগ করুন</button>
+            <div class="card info-card">
+                <div class="info-card__row">
+                    <span class="info-card__ico info-card__ico--sync">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M20 4.5v4.6h-4.6"/></svg>
+                    </span>
+                    <div class="info-card__body">
+                        <p class="info-card__title">রিয়েল-টাইম সিঙ্ক</p>
+                        <p class="info-card__text" id="sync-detail-text">🔄 Firebase Sync...</p>
+                    </div>
+                </div>
+                <button type="button" class="btn btn--ghost" id="sync-now-btn">এখনই সিঙ্ক করুন</button>
+            </div>
+
+            <div class="card install" id="install-section">
+                <div class="info-card__row">
+                    <span class="info-card__ico info-card__ico--install">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10.5"/><path d="M8 11l4 4 4-4"/><path d="M5 19.5h14"/></svg>
+                    </span>
+                    <div class="info-card__body">
+                        <p class="info-card__title">অ্যাপ হিসেবে ইনস্টল করুন</p>
+                        <p class="info-card__text" id="install-status-text">Chrome-এর ঠিকানা বারের পাশে <strong>⤓ Install</strong> আইকনে ক্লিক করলে অথবা নিচের বাটনে চাপ দিলে Meal Khata মোবাইল/পিসিতে আলাদা অ্যাপের মতো ইনস্টল হবে — অফলাইনেও হিসাব দেখা যাবে।</p>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="button" class="btn btn--primary hidden" id="install-app-btn" data-act="install">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10.5"/><path d="M8 11l4 4 4-4"/><path d="M5 19.5h14"/></svg>
+                        অ্যাপ ইনস্টল করুন
+                    </button>
+                    <span class="badge hidden" id="installed-badge">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 12.5l4.3 4.3L18.5 7.5"/></svg>
+                        ইনস্টল করা আছে
+                    </span>
+                    <button type="button" class="btn btn--ghost" id="install-help-btn" data-act="install-help">কীভাবে ইনস্টল করবেন?</button>
                 </div>
             </div>
-            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h2 class="text-lg font-bold mb-3 text-gray-700">সদস্যের তালিকা</h2>
-                <div id="members-list-container" class="space-y-2"></div>
-            </div>
-        </div>
 
-        <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-lg p-4" id="install-section">
-            <h2 class="text-lg font-bold mb-1 text-emerald-800">📲 অ্যাপ হিসেবে ইনস্টল করুন</h2>
-            <p id="install-status-text" class="text-sm text-gray-600 mb-3">
-                Chrome-এর ঠিকানা বারের পাশে <strong>⤓ Install</strong> আইকনে ক্লিক করলে অথবা নিচের বাটনে চাপ দিলে
-                Meal Khata মোবাইল/পিসিতে আলাদা অ্যাপের মতো ইনস্টল হবে — অফলাইনেও হিসাব দেখা যাবে।
-            </p>
-            <div class="flex flex-wrap gap-2">
-                <button id="install-app-btn" onclick="promptInstallApp()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700 hidden items-center gap-2">
-                    ⤓ অ্যাপ ইনস্টল করুন
-                </button>
-                <span id="installed-badge" class="hidden items-center gap-2 text-emerald-700 font-semibold text-sm bg-white border border-emerald-300 px-3 py-2 rounded-md">
-                    ✅ অ্যাপ হিসেবে ইনস্টল করা আছে
-                </span>
-                <button id="install-help-btn" onclick="showInstallHelp()" class="bg-white text-emerald-700 border border-emerald-300 px-5 py-2 rounded-md font-medium hover:bg-emerald-100">
-                    কীভাবে ইনস্টল করবেন?
-                </button>
+            <div class="card info-card">
+                <div class="info-card__row">
+                    <span class="info-card__ico info-card__ico--about">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5.3"/><path d="M12 8h.01"/></svg>
+                    </span>
+                    <div class="info-card__body">
+                        <p class="info-card__title">Meal Khata</p>
+                        <p class="info-card__text">স্মার্ট মেস ও মিল ম্যানেজমেন্ট সিস্টেম — মোবাইলের জন্য তৈরি। Firebase রিয়েল-টাইম সিঙ্ক চালু।</p>
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <div class="mt-8 flex justify-end items-center gap-3 pt-4 border-t">
-            <button onclick="resetApp()" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600">
-                সব ডেটা রিসেট করুন
+            <div class="card info-card info-card--danger">
+                <div class="info-card__row">
+                    <span class="info-card__ico info-card__ico--danger">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.5 21 19.5H3z"/><path d="M12 10v4"/><path d="M12 16.8h.01"/></svg>
+                    </span>
+                    <div class="info-card__body">
+                        <p class="info-card__title">সব ডেটা রিসেট</p>
+                        <p class="info-card__text">এই ডিভাইসের সব মিল, বাজার ও সদস্যের তথ্য মুছে যাবে। সতর্কতার সাথে ব্যবহার করুন।</p>
+                    </div>
+                </div>
+                <button type="button" class="btn btn--danger" id="reset-btn" data-act="reset">সব ডেটা রিসেট করুন</button>
+            </div>
+        </section>
+        </main>
+
+        <!-- ================= BOTTOM NAVIGATION ================= -->
+        <nav class="navbar" id="app-nav" aria-label="প্রধান মেনু">
+            <button type="button" class="navbar__item is-active" data-goto="home">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg>
+                <span class="navbar__label">Home</span>
             </button>
+            <button type="button" class="navbar__item" data-goto="meal">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 8V6.2"/><path d="M12 8V5.4"/><path d="M15 8V6.2"/></svg>
+                <span class="navbar__label">Meal</span>
+            </button>
+            <button type="button" class="navbar__item" data-goto="bazar">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.3 10.3a1.8 1.8 0 0 0 1.8 1.4h7.8a1.8 1.8 0 0 0 1.8-1.4L20.5 7H6.3"/><circle cx="10" cy="19.4" r="1.3"/><circle cx="17" cy="19.4" r="1.3"/></svg>
+                <span class="navbar__label">Bazar</span>
+            </button>
+            <button type="button" class="navbar__item" data-goto="report">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
+                <span class="navbar__label">Report</span>
+            </button>
+            <button type="button" class="navbar__item" data-goto="more">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+                <span class="navbar__label">More</span>
+            </button>
+        </nav>
+    </div>
+
+    <!--------------------------------------------------------------------
+         SHEET : ADD / EDIT MEAL
+    --------------------------------------------------------------------->
+    <div class="overlay" id="sheet-meal" role="dialog" aria-modal="true" aria-labelledby="sheet-meal-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="sheet">
+            <span class="sheet__grip"></span>
+            <div class="sheet__head">
+                <h2 class="sheet__title" id="sheet-meal-title">Add Meal</h2>
+                <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
+            </div>
+            <div class="sheet__body">
+                <div class="field">
+                    <label class="field__label" for="meal-date">তারিখ</label>
+                    <input id="meal-date" type="date" class="input">
+                </div>
+                <div class="field">
+                    <span class="field__label">সদস্য</span>
+                    <select id="meal-member-select" class="visually-hidden-control" tabindex="-1" aria-hidden="true"></select>
+                    <div class="chips" id="meal-member-chips" data-picker="meal"></div>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="meal-count">মিলের সংখ্যা</label>
+                    <input id="meal-count" type="number" step="0.5" min="0" inputmode="decimal" placeholder="যেমন: ১, ১.৫, ২" class="input">
+                    <div class="chips chips--count" id="meal-count-chips">
+                        <button type="button" class="chip" data-count="0.5">০.৫</button>
+                        <button type="button" class="chip" data-count="1">১</button>
+                        <button type="button" class="chip" data-count="1.5">১.৫</button>
+                        <button type="button" class="chip" data-count="2">২</button>
+                        <button type="button" class="chip" data-count="2.5">২.৫</button>
+                        <button type="button" class="chip" data-count="3">৩</button>
+                    </div>
+                </div>
+                <p class="sheet__hint" id="meal-sheet-hint">একাধিক মিল একসাথে: সেভ করলেই পরের সদস্যে চলে যাবে।</p>
+            </div>
+            <div class="sheet__foot">
+                <button type="button" class="btn btn--primary" id="meal-save-btn">মিল সংরক্ষণ করুন</button>
+                <button type="button" class="btn btn--primary hidden" id="meal-add-member-btn" data-act="member-first-meal">আগে সদস্য যোগ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         SHEET : ADD / EDIT BAZAR
+    --------------------------------------------------------------------->
+    <div class="overlay" id="sheet-bazar" role="dialog" aria-modal="true" aria-labelledby="sheet-bazar-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="sheet">
+            <span class="sheet__grip"></span>
+            <div class="sheet__head">
+                <h2 class="sheet__title" id="sheet-bazar-title">Add Bazar</h2>
+                <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
+            </div>
+            <div class="sheet__body">
+                <div class="field">
+                    <label class="field__label" for="bazar-date">তারিখ</label>
+                    <input id="bazar-date" type="date" class="input">
+                </div>
+                <div class="field">
+                    <span class="field__label">বাজারকারী সদস্য</span>
+                    <select id="bazar-member-select" class="visually-hidden-control" tabindex="-1" aria-hidden="true"></select>
+                    <div class="chips" id="bazar-member-chips" data-picker="bazar"></div>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="bazar-desc">বিবরণ</label>
+                    <input id="bazar-desc" type="text" autocomplete="off" placeholder="যেমন: চাল, মুরগি, তেল" class="input">
+                </div>
+                <div class="field">
+                    <label class="field__label" for="bazar-amount">টাকার পরিমাণ</label>
+                    <input id="bazar-amount" type="number" step="any" min="0" inputmode="decimal" placeholder="০.০০" class="input input--amount">
+                </div>
+            </div>
+            <div class="sheet__foot">
+                <button type="button" class="btn btn--primary" id="bazar-save-btn">খরচ যোগ করুন</button>
+                <button type="button" class="btn btn--primary hidden" id="bazar-add-member-btn" data-act="member-first-bazar">আগে সদস্য যোগ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         SHEET : FIXED COST (ইন্টারফেস — বিদ্যমান ইনপুট ও লজিক অপরিবর্তিত)
+    --------------------------------------------------------------------->
+    <div class="overlay" id="sheet-fixed" role="dialog" aria-modal="true" aria-labelledby="sheet-fixed-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="sheet">
+            <span class="sheet__grip"></span>
+            <div class="sheet__head">
+                <h2 class="sheet__title" id="sheet-fixed-title">Fixed Cost</h2>
+                <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
+            </div>
+            <div class="sheet__body">
+                <div class="group">
+                    <div class="group__head">
+                        <span class="group__ico group__ico--rent"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg></span>
+                        <div>
+                            <p class="group__title">House Rent · বাসা ভাড়া</p>
+                            <p class="group__sub">প্রতিটি সদস্যের ব্যক্তিগত বাসা ভাড়া</p>
+                        </div>
+                    </div>
+                    <div class="rentlist" id="fixed-rent-inputs"></div>
+                </div>
+
+                <div class="group">
+                    <div class="group__head">
+                        <span class="group__ico group__ico--util"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 17.2h4.8"/><path d="M10.4 20.4h3.2"/><path d="M12 3.6a6 6 0 0 0-3.3 11c.3.2.5.5.5.9v1.7h5.6v-1.7c0-.4.2-.7.5-.9A6 6 0 0 0 12 3.6Z"/></svg></span>
+                        <div>
+                            <p class="group__title">ইউটিলিটি বিল · Water, WiFi, Electricity</p>
+                            <p class="group__sub">সবার মাঝে সমানভাবে বণ্টন হবে</p>
+                        </div>
+                    </div>
+                    <div class="billlist">
+                        <label class="billrow">
+                            <span class="billrow__ico billrow__ico--elec"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3.5 6.5 13.5h4.2L11 20.5l6.5-10h-4.2z"/></svg></span>
+                            <span class="billrow__body">
+                                <span class="billrow__label">Electricity</span>
+                                <span class="billrow__sub">বিদ্যুৎ বিল</span>
+                            </span>
+                            <input type="number" id="bill-electricity" inputmode="decimal" placeholder="০" class="input input--bill">
+                        </label>
+                        <label class="billrow">
+                            <span class="billrow__ico billrow__ico--maid"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4.5 11 12.5"/><path d="M5.5 20.5l3-5.5 4.2 2.3-2.6 3.2z"/><path d="M12.6 15.2l.9-1.6"/></svg></span>
+                            <span class="billrow__body">
+                                <span class="billrow__label">Maid</span>
+                                <span class="billrow__sub">বুয়া বিল</span>
+                            </span>
+                            <input type="number" id="bill-maid" inputmode="decimal" placeholder="০" class="input input--bill">
+                        </label>
+                        <label class="billrow">
+                            <span class="billrow__ico billrow__ico--wifi"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5a11 11 0 0 1 15 0"/><path d="M7.6 13a7 7 0 0 1 8.8 0"/><path d="M10.6 16.4a3 3 0 0 1 2.8 0"/><circle cx="12" cy="19.4" r=".9"/></svg></span>
+                            <span class="billrow__body">
+                                <span class="billrow__label">WiFi</span>
+                                <span class="billrow__sub">ওয়াইফাই বিল</span>
+                            </span>
+                            <input type="number" id="bill-wifi" inputmode="decimal" placeholder="০" class="input input--bill">
+                        </label>
+                        <label class="billrow">
+                            <span class="billrow__ico billrow__ico--other"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.4 12 4.5l7.5 3.9v7.2L12 19.5l-7.5-3.9z"/><path d="M4.5 8.4 12 12.3l7.5-3.9"/><path d="M12 12.3v7.2"/></svg></span>
+                            <span class="billrow__body">
+                                <span class="billrow__label">Others</span>
+                                <span class="billrow__sub">অন্যান্য বিল</span>
+                            </span>
+                            <input type="number" id="bill-others" inputmode="decimal" placeholder="০" class="input input--bill">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="sheet__foot">
+                <button type="button" class="btn btn--primary" id="fixed-save-btn">ফিক্সড খরচ সংরক্ষণ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         SHEET : ADD MEMBER
+    --------------------------------------------------------------------->
+    <div class="overlay" id="sheet-member" role="dialog" aria-modal="true" aria-labelledby="sheet-member-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="sheet sheet--short">
+            <span class="sheet__grip"></span>
+            <div class="sheet__head">
+                <h2 class="sheet__title" id="sheet-member-title">Add Member</h2>
+                <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
+            </div>
+            <div class="sheet__body">
+                <div class="field">
+                    <label class="field__label" for="member-name">সদস্যের নাম</label>
+                    <input id="member-name" type="text" autocomplete="off" placeholder="যেমন: রহিম" class="input">
+                </div>
+            </div>
+            <div class="sheet__foot">
+                <button type="button" class="btn btn--primary" id="member-save-btn">সদস্য যোগ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         SHEET : ACTIONS (Edit / Delete / Share)
+    --------------------------------------------------------------------->
+    <div class="overlay" id="sheet-actions" role="dialog" aria-modal="true" aria-labelledby="sheet-actions-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="sheet sheet--actions">
+            <span class="sheet__grip"></span>
+            <div class="sheet__head">
+                <h2 class="sheet__title" id="sheet-actions-title">অ্যাকশন</h2>
+                <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
+            </div>
+            <div class="sheet__body sheet__body--flush" id="sheet-actions-list"></div>
+            <div class="sheet__foot">
+                <button type="button" class="btn btn--soft" data-close="1">বাতিল</button>
+            </div>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         ALERT (native alert() এর বদলে মোবাইল ডায়ালগ)
+    --------------------------------------------------------------------->
+    <div class="overlay overlay--center" id="alert-overlay" role="alertdialog" aria-modal="true" aria-labelledby="alert-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="dialog">
+            <h2 class="dialog__title" id="alert-title">জানানো হচ্ছে</h2>
+            <p class="dialog__text" id="alert-text"></p>
+            <button type="button" class="btn btn--primary" data-close="1" id="alert-ok-btn">ঠিক আছে</button>
+        </div>
+    </div>
+
+    <!--------------------------------------------------------------------
+         CONFIRM (native confirm() এর বদলে মোবাইল ডায়ালগ)
+    --------------------------------------------------------------------->
+    <div class="overlay overlay--center" id="confirm-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+        <div class="overlay__bd" data-close="1"></div>
+        <div class="dialog">
+            <h2 class="dialog__title" id="confirm-title">নিশ্চিত করুন</h2>
+            <p class="dialog__text" id="confirm-text"></p>
+            <div class="dialog__actions">
+                <button type="button" class="btn btn--soft" id="confirm-no">বাতিল</button>
+                <button type="button" class="btn btn--danger" id="confirm-yes">হ্যাঁ, নিশ্চিত</button>
+            </div>
         </div>
     </div>
 
     <!-- ================= ইনস্টল ব্যানার (নিচে ভেসে ওঠে) ================= -->
-    <div id="install-banner" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t shadow-2xl p-4 banner-up">
-        <div class="max-w-6xl mx-auto flex items-center gap-3">
-            <img src="./icons/icon-192.png" alt="Meal Khata" class="w-12 h-12 rounded-xl shadow no-select">
-            <div class="flex-grow">
-                <p class="font-bold text-gray-800 text-sm">Meal Khata অ্যাপ ইনস্টল করুন</p>
-                <p class="text-xs text-gray-500">হোম স্ক্রিন থেকে এক ট্যাপে খুলুন, অফলাইনেও কাজ করবে।</p>
-            </div>
-            <button id="banner-install-btn" onclick="promptInstallApp()" class="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold text-sm hover:bg-emerald-700 whitespace-nowrap">
-                ইনস্টল
-            </button>
-            <button onclick="dismissInstallBanner()" aria-label="বন্ধ করুন" class="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">&times;</button>
+    <div id="install-banner" class="hidden install-banner">
+        <img src="./icons/icon-192.png" alt="Meal Khata" class="install-banner__img no-select">
+        <div class="install-banner__body">
+            <p class="install-banner__title">Meal Khata অ্যাপ ইনস্টল করুন</p>
+            <p class="install-banner__text">হোম স্ক্রিন থেকে এক ট্যাপে খুলুন, অফলাইনেও কাজ করবে।</p>
         </div>
+        <button type="button" class="btn btn--primary btn--xs" id="banner-install-btn" data-act="install">ইনস্টল</button>
+        <button type="button" class="install-banner__close" data-act="dismiss-banner" aria-label="বন্ধ করুন">&times;</button>
     </div>
 
     <!-- ================= ইনস্টল নির্দেশনা মডাল ================= -->
-    <div id="install-help-modal" class="hidden fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto">
-        <div class="max-w-md mx-auto mt-8 bg-white rounded-lg shadow-2xl p-5">
-            <div class="flex items-start justify-between gap-3 mb-3">
-                <h3 class="text-lg font-bold text-gray-800">📲 অ্যাপ হিসেবে ইনস্টল করার নিয়ম</h3>
-                <button onclick="closeInstallHelp()" aria-label="বন্ধ করুন" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+    <div id="install-help-modal" class="hidden overlay overlay--center">
+        <div class="overlay__bd" data-act="close-install-help"></div>
+        <div class="dialog dialog--scroll">
+            <div class="dialog__head">
+                <h3 class="dialog__title">📲 অ্যাপ হিসেবে ইনস্টল করার নিয়ম</h3>
+                <button type="button" class="sheet__close" data-act="close-install-help" aria-label="বন্ধ করুন">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
+                </button>
             </div>
-
-            <div class="space-y-4 text-sm text-gray-700">
-                <div class="bg-gray-50 border rounded-lg p-3">
-                    <p class="font-bold text-emerald-700 mb-1">🤖 Android (Chrome)</p>
-                    <ol class="list-decimal ml-5 space-y-1">
+            <div class="dialog__body">
+                <div class="help-block">
+                    <p class="help-block__title">🤖 Android (Chrome)</p>
+                    <ol class="help-list">
                         <li>উপরে ডান দিকের <strong>⋮</strong> মেনুতে চাপ দিন</li>
                         <li><strong>"Install app"</strong> বা <strong>"Add to Home screen"</strong> বেছে নিন</li>
                         <li><strong>Install</strong> চাপুন — হোম স্ক্রিনে আইকন এসে যাবে</li>
                     </ol>
                 </div>
-                <div class="bg-gray-50 border rounded-lg p-3">
-                    <p class="font-bold text-emerald-700 mb-1">💻 Windows / Mac / Linux (Chrome)</p>
-                    <ol class="list-decimal ml-5 space-y-1">
+                <div class="help-block">
+                    <p class="help-block__title">💻 Windows / Mac / Linux (Chrome)</p>
+                    <ol class="help-list">
                         <li>অ্যাড্রেস বারের ডান পাশে <strong>⤓ Install</strong> আইকনে ক্লিক করুন</li>
                         <li>অথবা <strong>⋮</strong> মেনু → <strong>"Install Meal Khata"</strong></li>
                         <li>পপ-আপে <strong>Install</strong> চাপুন</li>
                     </ol>
                 </div>
-                <div class="bg-gray-50 border rounded-lg p-3">
-                    <p class="font-bold text-emerald-700 mb-1">🍎 iPhone / iPad (Safari)</p>
-                    <ol class="list-decimal ml-5 space-y-1">
+                <div class="help-block">
+                    <p class="help-block__title">🍎 iPhone / iPad (Safari)</p>
+                    <ol class="help-list">
                         <li>নিচের <strong>Share</strong> (⬆️) বাটনে চাপ দিন</li>
                         <li><strong>"Add to Home Screen"</strong> বেছে নিন</li>
                         <li><strong>Add</strong> চাপুন</li>
                     </ol>
-                    <p class="text-xs text-gray-500 mt-1">নোট: iOS-এ ইনস্টল করতে Safari ব্রাউজার লাগবে, Chrome-এ অপশনটি থাকে না।</p>
+                    <p class="help-note">নোট: iOS-এ ইনস্টল করতে Safari ব্রাউজার লাগবে, Chrome-এ অপশনটি থাকে না।</p>
                 </div>
-                <p class="text-xs text-gray-500">
+                <p class="help-note">
                     ইনস্টল করার জন্য সাইটটি <strong>HTTPS</strong>-এ খোলা থাকতে হয় (যেমন GitHub Pages লিংক), অথবা ব্রাউজারে
-                    <code class="bg-gray-100 px-1 rounded">localhost</code> হিসেবে চলতে হয়। সরাসরি ফাইল খুললে (<code class="bg-gray-100 px-1 rounded">file://</code>) ইনস্টল বাটন আসবে না।
+                    <code class="code">localhost</code> হিসেবে চলতে হয়। সরাসরি ফাইল খুললে (<code class="code">file://</code>) ইনস্টল বাটন আসবে না।
                 </p>
             </div>
-
-            <button onclick="closeInstallHelp()" class="mt-4 w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">বুঝেছি</button>
+            <button type="button" class="btn btn--primary" data-act="close-install-help">বুঝেছি</button>
         </div>
     </div>
 
@@ -1100,7 +1649,6 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         };
     </script>
 
-    <!-- ================= FIREBASE REAL-TIME SYNC ================= -->
     <script>
     (function () {
         const FIREBASE_CONFIG = {
@@ -1226,7 +1774,6 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     })();
     </script>
 
-    <!-- ================= PWA : ইনস্টল + অফলাইন ================= -->
     <script>
     (function () {
         const BANNER_KEY = 'mealKhataInstallBannerDismissed';
@@ -1387,5 +1934,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         window.addEventListener('pageshow', () => { detectStandalone(); updateInstallUI(); });
     })();
     </script>
+
+    <script src="./ui.js"></script>
 </body>
 </html>
