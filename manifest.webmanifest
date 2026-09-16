@@ -13,7 +13,6 @@
     "minimal-ui",
     "browser"
   ],
-  "orientation": "portrait-primary",
   "theme_color": "#08916d",
   "background_color": "#f3f4f6",
   "categories": [

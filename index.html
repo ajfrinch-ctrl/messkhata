@@ -22,6 +22,16 @@
     <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
     <link rel="mask-icon" href="./icons/icon-192.png" color="#08916d">
 
+    <!-- ইনস্টল প্রম্পট পেজ লোড হওয়ার আগেই ধরে রাখি (নাহলে বাটন মিস হতে পারে) -->
+    <script>
+        window.__mealKhataInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', function (event) {
+            event.preventDefault();
+            window.__mealKhataInstallPrompt = event;
+            window.dispatchEvent(new Event('meal-khata-installprompt-ready'));
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
@@ -1276,7 +1286,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if (syncPill) syncPill.style.bottom = banner.classList.contains('hidden') ? '' : '6.5rem';
         }
 
-        /* Chrome ইনস্টল প্রম্পট তৈরি হলে ধরে রাখি */
+        /* Chrome ইনস্টল প্রম্পট — head-এর আর্লি লিসেনার থেকে নিয়ে নিই */
+        if (window.__mealKhataInstallPrompt) {
+            deferredPrompt = window.__mealKhataInstallPrompt;
+        }
+        window.addEventListener('meal-khata-installprompt-ready', () => {
+            deferredPrompt = window.__mealKhataInstallPrompt;
+            updateInstallUI();
+        });
         window.addEventListener('beforeinstallprompt', (event) => {
             event.preventDefault();
             deferredPrompt = event;
@@ -1302,6 +1319,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 if (typeof showToast === 'function') showToast('⤓ ইনস্টল শুরু হয়েছে...');
             }
             deferredPrompt = null;
+            window.__mealKhataInstallPrompt = null;
             updateInstallUI();
         };
 
@@ -1362,7 +1380,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         });
 
         const mq = window.matchMedia('(display-mode: standalone)');
-        if (mq.addEventListener) mq.addEventListener('change', () => { detectStandalone(); updateInstallUI(); });
+        const onDisplayModeChange = () => { detectStandalone(); updateInstallUI(); };
+        if (mq.addEventListener) mq.addEventListener('change', onDisplayModeChange);
+        else if (mq.addListener) mq.addListener(onDisplayModeChange);
 
         window.addEventListener('pageshow', () => { detectStandalone(); updateInstallUI(); });
     })();
