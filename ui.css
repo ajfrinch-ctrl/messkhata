@@ -355,6 +355,23 @@ img { max-width: 100%; display: block; }
 
 .tile__value--lg { font-size: clamp(17px, 6vw, 23px); }
 
+/* totalcard — Bazar / Fixed total, Daily Bazar style */
+.totalcard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+}
+.totalcard__label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.totalcard__value { font-size: 18px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.totalcard__value span { color: var(--primary-dark); }
+
 /* ------------------------------------------------------- quick actions ---- */
 .quick {
     display: grid;
@@ -918,6 +935,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
 .billrow__ico--elec  { background: #fef6e0; }
 .billrow__ico--maid  { background: #eaf6ef; }
 .billrow__ico--wifi  { background: #e9f0fe; }
+.billrow__ico--water { background: #e0f2fe; }
 .billrow__ico--other { background: #f2f0fe; }
 
 .billrow__body { flex: 1 1 auto; min-width: 0; }
@@ -932,6 +950,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
 .billrow__ico--maid  { background: #eaf6ef; color: #15803d; }
 .billrow__ico--wifi  { background: #e9f0fe; color: #1d4ed8; }
 .billrow__ico--other { background: #f2f0fe; color: #6d28d9; }
+.billrow__ico--water { background: #e0f2fe; color: #0369a1; }
 
 /* -------------------------------------------------------------- folds ---- */
 .folds { display: flex; flex-direction: column; gap: 10px; }

@@ -391,49 +391,48 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         </section>
 
         <!--------------------------------------------------------------------
-             FIXED COST
+             FIXED COST — Transaction Based (Daily Bazar-এর মতো)
         --------------------------------------------------------------------->
         <section class="screen" id="screen-fixed" data-screen="fixed">
             <button type="button" class="btn btn--add btn--fixed" data-act="open-fixed">
                 <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>
                 Add Fixed Cost
             </button>
+            <button type="button" class="btn btn--wa hidden" id="fixed-wa-share-btn" data-act="share-last-fixed">
+                <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                শেষ এন্ট্রিটি হোয়াটসঅ্যাপে শেয়ার করুন
+            </button>
 
-            <div class="tiles">
-                <div class="tile tile--fixed">
-                    <span class="tile__label">মোট বাসা ভাড়া</span>
-                    <span class="tile__value" id="foot-total-rent">৳০</span>
-                </div>
-                <div class="tile tile--fixed">
-                    <span class="tile__label">মোট ইউটিলিটি</span>
-                    <span class="tile__value" id="foot-total-utility">৳০</span>
-                </div>
-                <div class="tile tile--fixed tile--wide">
-                    <span class="tile__label">সর্বমোট ফিক্সড খরচ</span>
-                    <span class="tile__value tile__value--lg" id="foot-total-fixed-all">৳০</span>
-                </div>
+            <div class="card totalcard">
+                <span class="totalcard__label">সর্বমোট ফিক্সড খরচ</span>
+                <span class="totalcard__value">৳<span id="table-total-fixed">০</span></span>
             </div>
 
             <section class="sec">
                 <div class="sec__head">
-                    <h2 class="sec__title">Fixed Cost তালিকা</h2>
-                    <span class="sec__note">ট্যাপ করে সম্পাদনা</span>
+                    <h2 class="sec__title">Recent Fixed Cost</h2>
+                    <span class="sec__note" id="fixed-count">—</span>
                 </div>
                 <div class="card" id="fixed-list"></div>
             </section>
 
             <section class="sec">
-                <div class="sec__head">
-                    <h2 class="sec__title">সদস্যভিত্তিক সমবণ্টন</h2>
-                </div>
-                <div class="card" id="fixed-member-list"></div>
-            </section>
-
-            <section class="sec">
                 <details class="fold fold--tools">
                     <summary>
-                        <span class="fold__ico fold__ico--fixed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M10.2 5.5v13"/></svg></span>
-                        <span class="fold__title">বিস্তারিত টেবিল</span>
+                        <span class="fold__ico fold__ico--fixed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M4.5 14.8h15"/><path d="M10.2 5.5v13"/><path d="M14.8 5.5v13"/></svg></span>
+                        <span class="fold__title">দৈনিক ফিক্সড খরচের ছক</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <p class="fold__hint">একই দিনে একাধিক ফিক্সড খরচ → ক্যাটাগরি অনুযায়ী মোট টাকা যোগ হবে।</p>
+                        <div class="tablescroll" id="fixed-grid-container"></div>
+                    </div>
+                </details>
+
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--fixed"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6.5h11"/><path d="M4.5 6.5h.01"/><path d="M8.5 12h11"/><path d="M4.5 12h.01"/><path d="M8.5 17.5h11"/><path d="M4.5 17.5h.01"/></svg></span>
+                        <span class="fold__title">সব এন্ট্রি (টেবিল ভিউ)</span>
                         <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
                     </summary>
                     <div class="fold__body">
@@ -441,18 +440,48 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                             <table class="legacy-table">
                                 <thead>
                                     <tr class="bg-indigo-700 text-white text-sm">
-                                        <th>সদস্যের নাম</th>
-                                        <th>ব্যক্তিগত বাসা ভাড়া</th>
-                                        <th>ইউটিলিটি শেয়ার</th>
-                                        <th>সর্বমোট ফিক্সড খরচ</th>
+                                        <th>তারিখ</th>
+                                        <th>Cost Type</th>
+                                        <th>বিবরণ</th>
+                                        <th>টাকা</th>
+                                        <th>অ্যাকশন</th>
                                     </tr>
                                 </thead>
-                                <tbody id="fixed-cost-member-breakdown" class="text-sm"></tbody>
+                                <tbody id="fixed-log-table-body" class="text-sm"></tbody>
                             </table>
                         </div>
                     </div>
                 </details>
             </section>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">মাসভিত্তিক সারাংশ</h2>
+                    <span class="sec__note" id="fixed-month-label">—</span>
+                </div>
+                <div class="card" id="fixed-month-summary"></div>
+            </section>
+
+            <section class="sec">
+                <button type="button" class="btn btn--wa btn--soft-border" id="fixed-share-list-btn">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                    সম্পূর্ণ ফিক্সড খরচ শেয়ার করুন
+                </button>
+            </section>
+
+            <!-- Legacy hidden holders — পুরাতন calculation JS error এড়াতে (display:none) -->
+            <div class="hidden" aria-hidden="true">
+                <span id="foot-total-rent">৳০</span>
+                <span id="foot-total-utility">৳০</span>
+                <span id="foot-total-fixed-all">৳০</span>
+                <div id="fixed-member-list"></div>
+                <table><tbody id="fixed-cost-member-breakdown"></tbody></table>
+                <input id="bill-electricity" type="hidden">
+                <input id="bill-maid" type="hidden">
+                <input id="bill-wifi" type="hidden">
+                <input id="bill-others" type="hidden">
+                <div id="fixed-rent-inputs" class="hidden"></div>
+            </div>
         </section>
 
         <!--------------------------------------------------------------------
@@ -794,76 +823,51 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     </div>
 
     <!--------------------------------------------------------------------
-         SHEET : FIXED COST (ইন্টারফেস — বিদ্যমান ইনপুট ও লজিক অপরিবর্তিত)
+         SHEET : ADD / EDIT FIXED COST — Daily Bazar-এর মতো একই form
     --------------------------------------------------------------------->
     <div class="overlay" id="sheet-fixed" role="dialog" aria-modal="true" aria-labelledby="sheet-fixed-title">
         <div class="overlay__bd" data-close="1"></div>
         <div class="sheet">
             <span class="sheet__grip"></span>
             <div class="sheet__head">
-                <h2 class="sheet__title" id="sheet-fixed-title">Fixed Cost</h2>
+                <h2 class="sheet__title" id="sheet-fixed-title">Add Fixed Cost</h2>
                 <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
                     <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
                 </button>
             </div>
             <div class="sheet__body">
-                <div class="group">
-                    <div class="group__head">
-                        <span class="group__ico group__ico--rent"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg></span>
-                        <div>
-                            <p class="group__title">House Rent · বাসা ভাড়া</p>
-                            <p class="group__sub">প্রতিটি সদস্যের ব্যক্তিগত বাসা ভাড়া</p>
-                        </div>
-                    </div>
-                    <div class="rentlist" id="fixed-rent-inputs"></div>
+                <div class="field">
+                    <label class="field__label" for="fixed-date">তারিখ</label>
+                    <input id="fixed-date" type="date" class="input">
                 </div>
-
-                <div class="group">
-                    <div class="group__head">
-                        <span class="group__ico group__ico--util"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 17.2h4.8"/><path d="M10.4 20.4h3.2"/><path d="M12 3.6a6 6 0 0 0-3.3 11c.3.2.5.5.5.9v1.7h5.6v-1.7c0-.4.2-.7.5-.9A6 6 0 0 0 12 3.6Z"/></svg></span>
-                        <div>
-                            <p class="group__title">ইউটিলিটি বিল · Water, WiFi, Electricity</p>
-                            <p class="group__sub">সবার মাঝে সমানভাবে বণ্টন হবে</p>
-                        </div>
-                    </div>
-                    <div class="billlist">
-                        <label class="billrow">
-                            <span class="billrow__ico billrow__ico--elec"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3.5 6.5 13.5h4.2L11 20.5l6.5-10h-4.2z"/></svg></span>
-                            <span class="billrow__body">
-                                <span class="billrow__label">Electricity</span>
-                                <span class="billrow__sub">বিদ্যুৎ বিল</span>
-                            </span>
-                            <input type="number" id="bill-electricity" inputmode="decimal" placeholder="০" class="input input--bill">
-                        </label>
-                        <label class="billrow">
-                            <span class="billrow__ico billrow__ico--maid"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 4.5 11 12.5"/><path d="M5.5 20.5l3-5.5 4.2 2.3-2.6 3.2z"/><path d="M12.6 15.2l.9-1.6"/></svg></span>
-                            <span class="billrow__body">
-                                <span class="billrow__label">Maid</span>
-                                <span class="billrow__sub">বুয়া বিল</span>
-                            </span>
-                            <input type="number" id="bill-maid" inputmode="decimal" placeholder="০" class="input input--bill">
-                        </label>
-                        <label class="billrow">
-                            <span class="billrow__ico billrow__ico--wifi"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 9.5a11 11 0 0 1 15 0"/><path d="M7.6 13a7 7 0 0 1 8.8 0"/><path d="M10.6 16.4a3 3 0 0 1 2.8 0"/><circle cx="12" cy="19.4" r=".9"/></svg></span>
-                            <span class="billrow__body">
-                                <span class="billrow__label">WiFi</span>
-                                <span class="billrow__sub">ওয়াইফাই বিল</span>
-                            </span>
-                            <input type="number" id="bill-wifi" inputmode="decimal" placeholder="০" class="input input--bill">
-                        </label>
-                        <label class="billrow">
-                            <span class="billrow__ico billrow__ico--other"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.4 12 4.5l7.5 3.9v7.2L12 19.5l-7.5-3.9z"/><path d="M4.5 8.4 12 12.3l7.5-3.9"/><path d="M12 12.3v7.2"/></svg></span>
-                            <span class="billrow__body">
-                                <span class="billrow__label">Others</span>
-                                <span class="billrow__sub">অন্যান্য বিল</span>
-                            </span>
-                            <input type="number" id="bill-others" inputmode="decimal" placeholder="০" class="input input--bill">
-                        </label>
-                    </div>
+                <div class="field">
+                    <span class="field__label">Cost Type</span>
+                    <select id="fixed-costtype-select" class="visually-hidden-control" tabindex="-1" aria-hidden="true">
+                        <option value="House Rent">House Rent</option>
+                        <option value="Electricity">Electricity</option>
+                        <option value="Maid">Maid</option>
+                        <option value="WiFi">WiFi</option>
+                        <option value="Water">Water</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <div class="chips" id="fixed-costtype-chips" data-picker="fixed-costtype"></div>
+                </div>
+                <div class="field">
+                    <span class="field__label">সদস্য (ঐচ্ছিক)</span>
+                    <select id="fixed-member-select" class="visually-hidden-control" tabindex="-1" aria-hidden="true"></select>
+                    <div class="chips" id="fixed-member-chips" data-picker="fixed-member"></div>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="fixed-desc">বিবরণ</label>
+                    <input id="fixed-desc" type="text" autocomplete="off" placeholder="যেমন: September Rent, Electricity bill" class="input">
+                </div>
+                <div class="field">
+                    <label class="field__label" for="fixed-amount">টাকার পরিমাণ</label>
+                    <input id="fixed-amount" type="number" step="any" min="0" inputmode="decimal" placeholder="০.০০" class="input input--amount">
                 </div>
             </div>
             <div class="sheet__foot">
-                <button type="button" class="btn btn--primary" id="fixed-save-btn">ফিক্সড খরচ সংরক্ষণ করুন</button>
+                <button type="button" class="btn btn--primary" id="fixed-save-btn">খরচ যোগ করুন</button>
             </div>
         </div>
     </div>
@@ -999,14 +1003,21 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     <script>
         document.getElementById('meal-date').valueAsDate = new Date();
         document.getElementById('bazar-date').valueAsDate = new Date();
+        if(document.getElementById('fixed-date')) document.getElementById('fixed-date').valueAsDate = new Date();
 
         let messData = JSON.parse(localStorage.getItem('messAppDataMealKhata')) || {
             members: [],
             mealsLog: [],
             bazarLog: [],
             fixedCosts: { rent: {} },
-            grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }
+            grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 },
+            fixedLog: []
         };
+        // Migration: ensure new fields exist for old data
+        if (!Array.isArray(messData.fixedLog)) messData.fixedLog = [];
+        if (!messData.fixedCosts) messData.fixedCosts = { rent: {} };
+        if (!messData.fixedCosts.rent) messData.fixedCosts.rent = {};
+        if (!messData.grandBills) messData.grandBills = { electricity: 0, maid: 0, wifi: 0, others: 0 };
 
         let lastMarketData = null;
 
@@ -1059,6 +1070,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 messData.members = messData.members.filter(m => m.id !== id);
                 messData.mealsLog = messData.mealsLog.filter(l => l.memberId !== id);
                 messData.bazarLog = messData.bazarLog.filter(b => b.memberId !== id);
+                if (Array.isArray(messData.fixedLog)) messData.fixedLog = messData.fixedLog.filter(f => f.memberId !== id);
                 saveToLocalStorage();
                 updateDropdowns();
                 renderMembersList();
@@ -1088,30 +1100,35 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function updateDropdowns() {
             const mealSelect = document.getElementById('meal-member-select');
             const bazarSelect = document.getElementById('bazar-member-select');
-            mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
-            bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            const fixedSelect = document.getElementById('fixed-member-select');
+            if(mealSelect) mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            if(bazarSelect) bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            if(fixedSelect) fixedSelect.innerHTML = '<option value="">— সদস্য ছাড়া —</option>';
             messData.members.forEach(member => {
-                mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
-                bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if(mealSelect) mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if(bazarSelect) bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if(fixedSelect) fixedSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
             });
         }
 
         function renderFixedCostInputs() {
             const div = document.getElementById('fixed-rent-inputs');
-            div.innerHTML = '';
-            messData.members.forEach(member => {
-                const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
-                div.innerHTML += `
-                    <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
-                        <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
-                        <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
-                    </div>
-                `;
-            });
-            document.getElementById('bill-electricity').value = messData.grandBills.electricity || '';
-            document.getElementById('bill-maid').value = messData.grandBills.maid || '';
-            document.getElementById('bill-wifi').value = messData.grandBills.wifi || '';
-            document.getElementById('bill-others').value = messData.grandBills.others || '';
+            if(div){
+                div.innerHTML = '';
+                messData.members.forEach(member => {
+                    const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
+                    div.innerHTML += `
+                        <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
+                            <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
+                            <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
+                        </div>
+                    `;
+                });
+            }
+            const elE=document.getElementById('bill-electricity'); if(elE) elE.value = messData.grandBills.electricity || '';
+            const elM=document.getElementById('bill-maid'); if(elM) elM.value = messData.grandBills.maid || '';
+            const elW=document.getElementById('bill-wifi'); if(elW) elW.value = messData.grandBills.wifi || '';
+            const elO=document.getElementById('bill-others'); if(elO) elO.value = messData.grandBills.others || '';
         }
 
         function addMeals() {
@@ -1194,21 +1211,30 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function saveFixedCosts() {
-            const rentInputs = document.querySelectorAll('.rent-input');
-            rentInputs.forEach(input => {
-                const memId = input.getAttribute('data-mem');
-                const val = input.value === '' ? 0 : parseFloat(input.value);
-                messData.fixedCosts.rent[memId] = val;
-            });
-
-            messData.grandBills.electricity = parseFloat(document.getElementById('bill-electricity').value) || 0;
-            messData.grandBills.maid = parseFloat(document.getElementById('bill-maid').value) || 0;
-            messData.grandBills.wifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
-            messData.grandBills.others = parseFloat(document.getElementById('bill-others').value) || 0;
-
+            // Legacy field-based system deprecated — kept for backward hidden inputs only
+            try{
+                const rentInputs = document.querySelectorAll('.rent-input');
+                rentInputs.forEach(input => {
+                    const memId = input.getAttribute('data-mem');
+                    const val = input.value === '' ? 0 : parseFloat(input.value);
+                    messData.fixedCosts.rent[memId] = val;
+                });
+                const elE=document.getElementById('bill-electricity'); if(elE) messData.grandBills.electricity = parseFloat(elE.value) || 0;
+                const elM=document.getElementById('bill-maid'); if(elM) messData.grandBills.maid = parseFloat(elM.value) || 0;
+                const elW=document.getElementById('bill-wifi'); if(elW) messData.grandBills.wifi = parseFloat(elW.value) || 0;
+                const elO=document.getElementById('bill-others'); if(elO) messData.grandBills.others = parseFloat(elO.value) || 0;
+                saveToLocalStorage();
+                calculateMess();
+                showToast('ফিক্সড খরচ অটো-সেভ করা হয়েছে।');
+            }catch(e){ console.error(e); }
+        }
+        // New transaction-based Fixed Cost helpers (mirrors Bazar)
+        function addFixedCostDirect(entry){
+            if(!Array.isArray(messData.fixedLog)) messData.fixedLog=[];
+            messData.fixedLog.push(entry);
+            messData.fixedLog.sort((a,b)=> new Date(a.date)-new Date(b.date));
             saveToLocalStorage();
             calculateMess();
-            showToast('ফিক্সড খরচ অটো-সেভ করা হয়েছে।');
         }
 
         function calculateMess() {
@@ -1243,55 +1269,67 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 }
             });
 
-            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
-            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
-            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
-            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
+            // ---- New Fixed Cost (transaction based) — data-safe combine legacy + new ----
+            if (!Array.isArray(messData.fixedLog)) messData.fixedLog = [];
+            let totalFixedLog = messData.fixedLog.reduce((s,f)=> s + (Number(f.amount)||0), 0);
+            const billElecLegacy = parseFloat(document.getElementById('bill-electricity')?.value) || 0;
+            const billMaidLegacy = parseFloat(document.getElementById('bill-maid')?.value) || 0;
+            const billWifiLegacy = parseFloat(document.getElementById('bill-wifi')?.value) || 0;
+            const billOthLegacy = parseFloat(document.getElementById('bill-others')?.value) || 0;
+            const legacyRentTotal = Object.values(messData.fixedCosts.rent||{}).reduce((s,v)=> s+(Number(v)||0),0);
+            const legacyUtilityTotal = billElecLegacy + billMaidLegacy + billWifiLegacy + billOthLegacy;
+            const legacyFixedTotal = legacyRentTotal + legacyUtilityTotal;
+            // Data-safe: always sum new + legacy so old historical data never lost
+            totalFixedAll = totalFixedLog + legacyFixedTotal;
 
             const memberCount = messData.members.length;
-            const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
-            const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
-            const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
-            const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+            const splitNew = memberCount > 0 ? (totalFixedLog / memberCount) : 0;
 
             const fixedBreakdownBody = document.getElementById('fixed-cost-member-breakdown');
-            fixedBreakdownBody.innerHTML = '';
+            if(fixedBreakdownBody) fixedBreakdownBody.innerHTML = '';
 
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
+            // Combined per-member fixed: legacy rent + legacy utility share + new share
+            const splitMaid = memberCount > 0 ? (billMaidLegacy / memberCount) : 0;
+            const splitElec = memberCount > 0 ? (billElecLegacy / memberCount) : 0;
+            const splitWifi = memberCount > 0 ? (billWifiLegacy / memberCount) : 0;
+            const splitOth = memberCount > 0 ? (billOthLegacy / memberCount) : 0;
+            const legacySharePerMember = splitMaid + splitElec + splitWifi + splitOth;
             messData.members.forEach(m => {
                 const rentInput = document.querySelector(`.rent-input[data-mem="${m.id}"]`);
                 let individualRent = rentInput ? (rentInput.value === '' ? 0 : parseFloat(rentInput.value)) : (messData.fixedCosts.rent[m.id] || 0);
-                
-                const calculatedFixedSum = individualRent + splitMaid + splitElec + splitWifi + splitOth;
-                
+                const legacyFixedForMember = individualRent + legacySharePerMember;
+                const totalFixedForMember = legacyFixedForMember + splitNew;
                 memberSummary[m.id].rent = individualRent;
                 memberSummary[m.id].maid = splitMaid;
                 memberSummary[m.id].elec = splitElec;
                 memberSummary[m.id].wifi = splitWifi;
                 memberSummary[m.id].oth = splitOth;
-                memberSummary[m.id].fixed = calculatedFixedSum;
-
+                memberSummary[m.id].fixed = totalFixedForMember;
                 totalRentAll += individualRent;
                 totalMaidAll += splitMaid;
                 totalElecAll += splitElec;
                 totalWifiAll += splitWifi;
                 totalOthAll += splitOth;
-                totalFixedAll += calculatedFixedSum;
-
-                fixedBreakdownBody.innerHTML += `
+                if(fixedBreakdownBody) fixedBreakdownBody.innerHTML += `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3 border font-semibold">${m.name}</td>
                         <td class="p-3 border">৳${convertToBanglaNumber(individualRent.toFixed(1))}</td>
-                        <td class="p-3 border text-gray-600">৳${convertToBanglaNumber((splitMaid + splitElec + splitWifi + splitOth).toFixed(1))}</td>
-                        <td class="p-3 border font-bold text-indigo-700">৳${convertToBanglaNumber(calculatedFixedSum.toFixed(1))}</td>
+                        <td class="p-3 border text-gray-600">৳${convertToBanglaNumber((legacySharePerMember + splitNew).toFixed(1))}</td>
+                        <td class="p-3 border font-bold text-indigo-700">৳${convertToBanglaNumber(totalFixedForMember.toFixed(1))}</td>
                     </tr>
                 `;
             });
+            // For footer totals: keep utility separate for display, but totalFixedAll includes both
+            // totalOthAll etc already counted, totalFixedAll = totalRentAll + totalUtilityLegacy + totalFixedLog
+            // totalFixedAll already computed as sum above
 
-            document.getElementById('foot-total-rent').innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
-            document.getElementById('foot-total-utility').innerText = `৳${convertToBanglaNumber((totalMaidAll + totalElecAll + totalWifiAll + totalOthAll).toFixed(1))}`;
-            document.getElementById('foot-total-fixed-all').innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
+            const elFootRent = document.getElementById('foot-total-rent'); if(elFootRent) elFootRent.innerText = `৳${convertToBanglaNumber(totalRentAll.toFixed(1))}`;
+            const totalUtilityForFoot = totalMaidAll + totalElecAll + totalWifiAll + totalOthAll;
+            const elFootUtil = document.getElementById('foot-total-utility'); if(elFootUtil) elFootUtil.innerText = `৳${convertToBanglaNumber((totalUtilityForFoot + totalFixedLog).toFixed(1))}`;
+            const elFootAll = document.getElementById('foot-total-fixed-all'); if(elFootAll) elFootAll.innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
+            const elTableFixed = document.getElementById('table-total-fixed'); if(elTableFixed) elTableFixed.innerText = convertToBanglaNumber(totalFixedAll.toFixed(1));
 
             const totalExpenseAll = totalBazar + totalFixedAll;
 
@@ -1538,19 +1576,21 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const myMeals = messData.mealsLog.filter(l => l.memberId === memberId);
             const myBazar = messData.bazarLog.filter(l => l.memberId === memberId);
 
-            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
-            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
-            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
-            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
-
+            // Combined fixed: legacy + new transaction
+            if (!Array.isArray(messData.fixedLog)) messData.fixedLog=[];
+            let totalFixedLog = messData.fixedLog.reduce((s,f)=> s + (Number(f.amount)||0),0);
+            const billElec = parseFloat(document.getElementById('bill-electricity')?.value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid')?.value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi')?.value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others')?.value) || 0;
             const memberCount = messData.members.length;
             const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
-
             let myFixedRent = messData.fixedCosts.rent[memberId] || 0;
-            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth;
+            let splitNew = memberCount>0 ? totalFixedLog/memberCount : 0;
+            let myGrandCostFixed = myFixedRent + splitMaid + splitElec + splitWifi + splitOth + splitNew;
 
             let myTotalMealsCount = 0; 
             myMeals.forEach(m => myTotalMealsCount += m.count);
@@ -1565,7 +1605,21 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
             let statusStr = isRefund ? `পাবে: ৳${convertToBanglaNumber(finalStatus.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(finalStatus).toFixed(1))}`;
 
-            let message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
+            // Combined message: show legacy breakdown if legacy exists, plus new share
+            let message;
+            if(totalFixedLog>0 && (billElec+billMaid+billWifi+billOth+Object.values(messData.fixedCosts.rent||{}).reduce((s,v)=>s+Number(v||0),0)===0)){
+                // Only new transaction data
+                message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
+                          `👤 *নাম:* ${member.name}\n` +
+                          `🍚 মোট মিল: ${convertToBanglaNumber(myTotalMealsCount)}\n` +
+                          `📈 প্রতি মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n` +
+                          `🍽️ মিলের খরচ: ৳${convertToBanglaNumber(myMealCost.toFixed(1))}\n` +
+                          `🏠 ফিক্সড খরচ (ভাগ): ৳${convertToBanglaNumber(splitNew.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\n` +
+                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\n` +
+                          `📌 আর্থিক অবস্থা: *${statusStr}*`;
+            } else {
+                message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
                           `👤 *নাম:* ${member.name}\n` +
                           `🍚 মোট মিল: ${convertToBanglaNumber(myTotalMealsCount)}\n` +
                           `📈 প্রতি মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n` +
@@ -1575,9 +1629,11 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                           `⚡ বিদ্যুৎ বিল: ৳${convertToBanglaNumber(splitElec.toFixed(1))}\n` +
                           `📶 ওয়াইফাই বিল: ৳${convertToBanglaNumber(splitWifi.toFixed(1))}\n` +
                           `⚙️ অন্যান্য বিল: ৳${convertToBanglaNumber(splitOth.toFixed(1))}\n` +
+                          `🏠 নতুন ফিক্সড (ভাগ): ৳${convertToBanglaNumber(splitNew.toFixed(1))}\n` +
                           `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\n` +
                           `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\n` +
                           `📌 আর্থিক অবস্থা: *${statusStr}*`;
+            }
 
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
@@ -1589,16 +1645,18 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             messData.bazarLog.forEach(l => totalBazar += l.amount);
             const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
 
-            const billElec = parseFloat(document.getElementById('bill-electricity').value) || 0;
-            const billMaid = parseFloat(document.getElementById('bill-maid').value) || 0;
-            const billWifi = parseFloat(document.getElementById('bill-wifi').value) || 0;
-            const billOth = parseFloat(document.getElementById('bill-others').value) || 0;
-
+            if (!Array.isArray(messData.fixedLog)) messData.fixedLog=[];
+            let totalFixedLog = messData.fixedLog.reduce((s,f)=> s + (Number(f.amount)||0),0);
+            const billElec = parseFloat(document.getElementById('bill-electricity')?.value) || 0;
+            const billMaid = parseFloat(document.getElementById('bill-maid')?.value) || 0;
+            const billWifi = parseFloat(document.getElementById('bill-wifi')?.value) || 0;
+            const billOth = parseFloat(document.getElementById('bill-others')?.value) || 0;
             const memberCount = messData.members.length;
             const splitMaid = memberCount > 0 ? (billMaid / memberCount) : 0;
             const splitElec = memberCount > 0 ? (billElec / memberCount) : 0;
             const splitWifi = memberCount > 0 ? (billWifi / memberCount) : 0;
             const splitOth = memberCount > 0 ? (billOth / memberCount) : 0;
+            const splitNew = memberCount>0 ? totalFixedLog/memberCount : 0;
 
             let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট ও ব্যালেন্স শীট*\n\n` +
                           `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\n` +
@@ -1612,9 +1670,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
                 messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
 
-                let mRent = messData.fixedCosts.rent[m.id] || 0;
                 let mMealCost = mMeals * mealRate;
-                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth;
+                let mRent = messData.fixedCosts.rent[m.id] || 0;
+                let mTotalCost = mMealCost + mRent + splitMaid + splitElec + splitWifi + splitOth + splitNew;
                 let mBalance = mBazar - mTotalCost;
                 let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
 
@@ -1627,12 +1685,13 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         function resetApp() {
             if (confirm('আপনি কি নিশ্চিতভাবে সব ডেটা মুছে ফেলতে চান?')) {
                 localStorage.removeItem('messAppDataMealKhata');
-                messData = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent: {} }, grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 } };
-                document.getElementById('bill-electricity').value = '';
-                document.getElementById('bill-maid').value = '';
-                document.getElementById('bill-wifi').value = '';
-                document.getElementById('bill-others').value = '';
-                document.getElementById('wa-share-btn').classList.add('hidden');
+                messData = { members: [], mealsLog: [], bazarLog: [], fixedCosts: { rent: {} }, grandBills: { electricity: 0, maid: 0, wifi: 0, others: 0 }, fixedLog: [] };
+                const be=document.getElementById('bill-electricity'); if(be) be.value = '';
+                const bm=document.getElementById('bill-maid'); if(bm) bm.value = '';
+                const bw=document.getElementById('bill-wifi'); if(bw) bw.value = '';
+                const bo=document.getElementById('bill-others'); if(bo) bo.value = '';
+                const wab=document.getElementById('wa-share-btn'); if(wab) wab.classList.add('hidden');
+                const waf=document.getElementById('fixed-wa-share-btn'); if(waf) waf.classList.add('hidden');
                 updateDropdowns();
                 renderMembersList();
                 renderFixedCostInputs();
@@ -1707,15 +1766,17 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const cloud = snapshot.val();
                 const local = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
 
-                if (cloud && (cloud.members || cloud.mealsLog || cloud.bazarLog || cloud.fixedCosts || cloud.grandBills)) {
+                if (cloud && (cloud.members || cloud.mealsLog || cloud.bazarLog || cloud.fixedCosts || cloud.grandBills || cloud.fixedLog)) {
                     applyingFirebase = true;
                     messData = {
                         members: Array.isArray(cloud.members) ? cloud.members : [],
                         mealsLog: Array.isArray(cloud.mealsLog) ? cloud.mealsLog : [],
                         bazarLog: Array.isArray(cloud.bazarLog) ? cloud.bazarLog : [],
                         fixedCosts: cloud.fixedCosts || { rent: {} },
-                        grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 }
+                        grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 },
+                        fixedLog: Array.isArray(cloud.fixedLog) ? cloud.fixedLog : []
                     };
+                    if (!Array.isArray(messData.fixedLog)) messData.fixedLog = [];
                     localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
                     updateDropdowns();
                     renderMembersList();
@@ -1745,8 +1806,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     mealsLog: Array.isArray(cloud.mealsLog) ? cloud.mealsLog : [],
                     bazarLog: Array.isArray(cloud.bazarLog) ? cloud.bazarLog : [],
                     fixedCosts: cloud.fixedCosts || { rent: {} },
-                    grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 }
+                    grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 },
+                    fixedLog: Array.isArray(cloud.fixedLog) ? cloud.fixedLog : []
                 };
+                if (!Array.isArray(messData.fixedLog)) messData.fixedLog = [];
                 localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
                 updateDropdowns();
                 renderMembersList();

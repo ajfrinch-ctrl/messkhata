@@ -346,8 +346,11 @@
     /* ==================================================== MEMBER PICKERS ==== */
     const PICKERS = [
         { kind: 'meal', select: 'meal-member-select', chips: 'meal-member-chips' },
-        { kind: 'bazar', select: 'bazar-member-select', chips: 'bazar-member-chips' }
+        { kind: 'bazar', select: 'bazar-member-select', chips: 'bazar-member-chips' },
+        { kind: 'fixed-member', select: 'fixed-member-select', chips: 'fixed-member-chips' }
     ];
+
+    const FIXED_COSTTYPE_PICKER = { select: 'fixed-costtype-select', chips: 'fixed-costtype-chips' };
 
     function pickerById(kind) {
         return PICKERS.filter(function (p) { return p.kind === kind; })[0];
@@ -359,19 +362,55 @@
             const box = $(p.chips);
             if (!select || !box) return;
 
+            // fixed-member is optional: allow empty (no member)
+            const isFixedMember = p.kind === 'fixed-member';
             const list = members();
             const current = select.value;
 
-            box.innerHTML = list.map(function (m) {
-                return '<button type="button" class="chip" data-picker="' + p.kind +
-                    '" data-mid="' + esc(m.id) + '">' + esc(m.name) + '</button>';
-            }).join('');
+            if (isFixedMember) {
+                // Show members + allow none selected; include a 'No member' chip implicitly via deselection
+                // Render member chips only; none selected means no member
+                box.innerHTML = list.map(function (m) {
+                    return '<button type="button" class="chip" data-picker="' + p.kind +
+                        '" data-mid="' + esc(m.id) + '">' + esc(m.name) + '</button>';
+                }).join('');
+                if (current && list.some(function (m) { return m.id === current; })) select.value = current;
+                else select.value = ''; // default none for fixed
+                syncPickerSelection(p.kind);
+            } else {
+                box.innerHTML = list.map(function (m) {
+                    return '<button type="button" class="chip" data-picker="' + p.kind +
+                        '" data-mid="' + esc(m.id) + '">' + esc(m.name) + '</button>';
+                }).join('');
 
-            if (current && list.some(function (m) { return m.id === current; })) select.value = current;
-            else if (!current && list.length) select.value = list[0].id;
-            else select.value = '';
+                if (current && list.some(function (m) { return m.id === current; })) select.value = current;
+                else if (!current && list.length) select.value = list[0].id;
+                else select.value = '';
 
-            syncPickerSelection(p.kind);
+                syncPickerSelection(p.kind);
+            }
+        });
+        // CostType chips (not member-based)
+        renderFixedCostTypeChips();
+    }
+
+    function renderFixedCostTypeChips() {
+        const sel = $(FIXED_COSTTYPE_PICKER.select);
+        const box = $(FIXED_COSTTYPE_PICKER.chips);
+        if (!sel || !box) return;
+        const current = sel.value || FIXED_COST_TYPES[0];
+        box.innerHTML = FIXED_COST_TYPES.map(function (ct) {
+            return '<button type="button" class="chip" data-picker="fixed-costtype" data-ct="' + esc(ct) + '">' + esc(ct) + '</button>';
+        }).join('');
+        sel.value = current;
+        syncFixedCostTypeSelection();
+    }
+    function syncFixedCostTypeSelection() {
+        const sel = $(FIXED_COSTTYPE_PICKER.select);
+        const box = $(FIXED_COSTTYPE_PICKER.chips);
+        if (!sel || !box) return;
+        $$('.chip', box).forEach(function (chip) {
+            chip.classList.toggle('is-on', chip.getAttribute('data-ct') === sel.value);
         });
     }
 
@@ -427,37 +466,74 @@
     }
 
     /* ====================================================== CALC HELPERS ==== */
+    // New totals: fixed = sum(fixedLog) + legacy (data-safe combine)
     function totals() {
         const d = data(); if (!d) return { meals: 0, bazar: 0, rate: 0, fixed: 0, utility: 0, rent: 0 };
         const meals = (d.mealsLog || []).reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
         const bazar = (d.bazarLog || []).reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const rent = Object.keys((d.fixedCosts && d.fixedCosts.rent) || {})
+        const fixedLog = Array.isArray(d.fixedLog) ? d.fixedLog : [];
+        const fixedNew = fixedLog.reduce(function (s, f) { return s + (Number(f.amount) || 0); }, 0);
+        const rentLegacy = Object.keys((d.fixedCosts && d.fixedCosts.rent) || {})
             .reduce(function (s, k) { return s + (Number(d.fixedCosts.rent[k]) || 0); }, 0);
         const bills = d.grandBills || {};
-        const utility = ['electricity', 'maid', 'wifi', 'others']
+        const utilityLegacy = ['electricity', 'maid', 'wifi', 'others']
             .reduce(function (s, k) { return s + (Number(bills[k]) || 0); }, 0);
+        const fixedLegacy = rentLegacy + utilityLegacy;
+        // Data-safe: always sum both old and new so legacy data never lost
+        const fixed = fixedNew + fixedLegacy;
+        const hasLegacy = fixedLegacy > 0;
+        const hasNew = fixedNew > 0;
         return {
             meals: meals,
             bazar: bazar,
             rate: meals > 0 ? bazar / meals : 0,
-            rent: rent,
-            utility: utility,
-            fixed: rent + utility
+            rent: rentLegacy,
+            utility: utilityLegacy,
+            fixed: fixed,
+            fixedNew: fixedNew,
+            fixedLegacy: fixedLegacy,
+            useLegacy: hasLegacy && !hasNew,
+            hasLegacy: hasLegacy,
+            hasNew: hasNew
         };
     }
 
     function memberStats(memberId) {
-        const d = data(); if (!d) return { meals: 0, spent: 0, rent: 0, expense: 0, balance: 0 };
+        const d = data(); if (!d) return { meals: 0, spent: 0, rent: 0, expense: 0, balance: 0, share: 0 };
         const t = totals();
         const meals = (d.mealsLog || []).filter(function (l) { return l.memberId === memberId; })
             .reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
         const spent = (d.bazarLog || []).filter(function (b) { return b.memberId === memberId; })
             .reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const rent = Number((d.fixedCosts && d.fixedCosts.rent ? d.fixedCosts.rent[memberId] : 0)) || 0;
         const count = members().length;
-        const share = count ? t.utility / count : 0;
+        // Combine legacy per-member rent + legacy utility share + new equal share
+        const rentLegacy = Number((d.fixedCosts && d.fixedCosts.rent ? d.fixedCosts.rent[memberId] : 0)) || 0;
+        const utilityShare = count ? t.utility / count : 0;
+        const newShare = count ? t.fixedNew / count : 0;
+        const share = utilityShare + newShare;
+        const rent = rentLegacy;
         const expense = meals * t.rate + rent + share;
         return { meals: meals, spent: spent, rent: rent, share: share, expense: expense, balance: spent - expense };
+    }
+
+    // Fixed Cost cost types — exactly 6, same as spec
+    const FIXED_COST_TYPES = ['House Rent', 'Electricity', 'Maid', 'WiFi', 'Water', 'Other'];
+
+    function sortedFixedDesc() {
+        const d = data(); if (!d) return [];
+        return (d.fixedLog || []).slice().sort(function (a, b) {
+            const diff = new Date(b.date) - new Date(a.date);
+            return diff !== 0 ? diff : String(b.id).localeCompare(String(a.id));
+        });
+    }
+
+    function fixedTotal() {
+        const d = data(); if (!d) return 0;
+        if (Array.isArray(d.fixedLog) && d.fixedLog.length) {
+            return d.fixedLog.reduce(function (s, f) { return s + (Number(f.amount) || 0); }, 0);
+        }
+        const t = totals();
+        return t.fixed;
     }
 
     /* ======================================================= HOME RENDER ==== */
@@ -623,7 +699,7 @@
     }
 
     /* ================================================== FIXED COST RENDER == */
-    /* Fixed Cost ক্যাটাগরি — একই রকম SVG আইকন (ইমোজির বদলে, সব ডিভাইসে একই দেখাবে) */
+    /* Fixed Cost ক্যাটাগরি — একই রকম SVG আইকন (Daily Bazar-এর মতো card/list/grid) */
     const ICONS = {
         rent: '<svg class="ico" viewBox="0 0 24 24"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg>',
         elec: '<svg class="ico" viewBox="0 0 24 24"><path d="M13 3.5 6.5 13.5h4.2L11 20.5l6.5-10h-4.2z"/></svg>',
@@ -632,6 +708,25 @@
         water:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5c3 3.7 5.5 6.6 5.5 9.4a5.5 5.5 0 0 1-11 0C6.5 10.1 9 7.2 12 3.5Z"/></svg>',
         other:'<svg class="ico" viewBox="0 0 24 24"><path d="M4.5 8.4 12 4.5l7.5 3.9v7.2L12 19.5l-7.5-3.9z"/><path d="M4.5 8.4 12 12.3l7.5-3.9"/><path d="M12 12.3v7.2"/></svg>'
     };
+
+    function costTypeIcon(type) {
+        const t = String(type||'').toLowerCase();
+        if (t.indexOf('rent') !== -1) return ICONS.rent;
+        if (t.indexOf('electric') !== -1) return ICONS.elec;
+        if (t.indexOf('maid') !== -1) return ICONS.maid;
+        if (t.indexOf('wifi') !== -1) return ICONS.wifi;
+        if (t.indexOf('water') !== -1) return ICONS.water;
+        return ICONS.other;
+    }
+    function costTypeClass(type) {
+        const t = String(type||'').toLowerCase();
+        if (t.indexOf('rent') !== -1) return 'rent';
+        if (t.indexOf('electric') !== -1) return 'elec';
+        if (t.indexOf('maid') !== -1) return 'maid';
+        if (t.indexOf('wifi') !== -1) return 'wifi';
+        if (t.indexOf('water') !== -1) return 'water';
+        return 'other';
+    }
 
     const BILL_ROWS = [
         { key: 'electricity', label: 'Electricity', sub: 'বিদ্যুৎ বিল',   ico: ICONS.elec,  cls: 'elec' },
@@ -655,34 +750,154 @@
     function renderFixedScreen() {
         const d = data(); if (!d) return;
         const box = $('fixed-list');
-        const memberBox = $('fixed-member-list');
-        if (!box || !memberBox) return;
+        if (!box) return;
 
+        const entries = sortedFixedDesc();
         const t = totals();
-        const bills = d.grandBills || {};
+        const totalEl = $('table-total-fixed');
+        if (totalEl) totalEl.textContent = bn((t.fixed || 0).toFixed(1).replace(/\.0$/,''));
+        const countEl = $('fixed-count');
+        if (countEl) countEl.textContent = bn(entries.length) + 'টি এন্ট্রি';
 
-        let html = fixedRow(ICONS.rent, 'rent', 'House Rent', 'বাসা ভাড়া (ব্যক্তিগত)', money(t.rent));
-        BILL_ROWS.forEach(function (b) {
-            html += fixedRow(b.ico, b.cls, b.label, b.sub, money(Number(bills[b.key]) || 0));
-        });
-        box.innerHTML = html;
+        // Also keep legacy hidden totals in sync (for index.html hidden holders)
+        const elFootRent = $('foot-total-rent'); if(elFootRent) elFootRent.textContent = money(t.rent);
+        const elFootUtil = $('foot-total-utility'); if(elFootUtil) elFootUtil.textContent = money(t.utility);
+        const elFootAll = $('foot-total-fixed-all'); if(elFootAll) elFootAll.textContent = money(t.fixed);
 
-        const list = members();
-        if (!list.length) {
-            memberBox.innerHTML = emptyState('👥', 'কোনো সদস্য নেই।', 'সদস্য যোগ করলে ফিক্সড খরচ ভাগ হবে।');
-            return;
+        if (!entries.length) {
+            box.innerHTML = emptyState('🏠', 'কোনো ফিক্সড খরচ নেই।', '“Add Fixed Cost” চেপে প্রথম এন্ট্রি যোগ করুন।');
+        } else {
+            box.innerHTML = entries.map(function (f) {
+                const amount = Number(f.amount) || 0;
+                const icon = costTypeIcon(f.costType);
+                const cls = costTypeClass(f.costType);
+                const memberTxt = f.memberId ? memberName(f.memberId) : '';
+                const desc = f.desc ? esc(f.desc) : esc(f.costType || 'Fixed Cost');
+                return '<div class="row">' +
+                    '<span class="billrow__ico billrow__ico--' + cls + '">' + icon + '</span>' +
+                    '<div class="row__body">' +
+                        '<div class="row__title">' + esc(f.costType || 'Other') + ' <span class="badge">' + esc(f.displayDate || bnDate(f.date)) + '</span></div>' +
+                        '<div class="row__sub">' + desc + (memberTxt ? ' · ' + esc(memberTxt) : '') + '</div>' +
+                    '</div>' +
+                    '<div class="row__right"><span class="row__amount">৳' + bn(amount) + '</span></div>' +
+                    '<div class="row__actions">' +
+                        '<button type="button" class="rowbtn" data-act="fixed-actions" data-id="' + esc(f.id) + '" aria-label="আরও অপশন">' + dotsIcon() + '</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
         }
 
-        const share = t.utility / list.length;
-        memberBox.innerHTML = list.map(function (m) {
-            const s = memberStats(m.id);
-            return '<div class="row">' +
-                '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0)) + '</span>' +
-                '<div class="row__body">' +
-                    '<div class="row__title">' + esc(m.name) + '</div>' +
-                    '<div class="row__sub">ভাড়া ' + money(s.rent) + ' · ইউটিলিটি ' + money(share) + '</div>' +
-                '</div>' +
-                '<div class="row__right"><span class="row__amount row__amount--muted">' + money(s.rent + share) + '</span></div>' +
+        renderFixedGrid();
+        renderFixedTable();
+        renderFixedMonthSummary();
+        // Keep legacy member list element empty but present
+        const legacyMemberBox = $('fixed-member-list');
+        if (legacyMemberBox) legacyMemberBox.innerHTML = '';
+        const legacyBreakdown = $('fixed-cost-member-breakdown');
+        if (legacyBreakdown && !legacyBreakdown.closest('.hidden')) {
+            // only if not hidden, but our hidden one should stay
+        }
+    }
+
+    function renderFixedGrid() {
+        const container = $('fixed-grid-container');
+        if (!container) return;
+        const d = data(); if (!d) return;
+        const logs = d.fixedLog || [];
+        if (!logs.length) {
+            container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো ফিক্সড খরচের ডাটা পাওয়া যায়নি।</p>';
+            return;
+        }
+        const dates = [...new Set(logs.map(function(l){return l.date;}))].sort(function(a,b){return new Date(a)-new Date(b);});
+        const types = FIXED_COST_TYPES;
+        let html = '<table class="w-full text-left border-collapse bg-white text-sm"><thead><tr class="bg-indigo-700 text-white"><th class="p-2 border min-w-[105px]">তারিখ</th>';
+        types.forEach(function(t){ html += '<th class="p-2 border text-center min-w-[90px]">' + esc(t) + '</th>'; });
+        html += '<th class="p-2 border text-center min-w-[100px]">মোট</th></tr></thead><tbody>';
+        if (!dates.length) {
+            html += '<tr><td colspan="' + (types.length+2) + '" class="p-3 text-center text-gray-500">কোনো ডাটা নেই।</td></tr>';
+        } else {
+            dates.forEach(function(date){
+                let dateTotal = 0;
+                let displayDt = bnDate(date);
+                html += '<tr class="border-b hover:bg-indigo-50"><td class="p-2 border font-medium">' + esc(displayDt) + '</td>';
+                types.forEach(function(ct){
+                    const entries = logs.filter(function(f){ return f.date===date && String(f.costType)===ct; });
+                    const subtotal = entries.reduce(function(s,f){ return s + (Number(f.amount)||0); },0);
+                    dateTotal += subtotal;
+                    const descs = entries.map(function(f){ return f.desc || ct; }).join(', ');
+                    html += '<td class="p-2 border align-top">' + (entries.length ? '<div class="font-medium text-gray-700 break-words">' + esc(descs) + '</div><div class="font-bold text-indigo-700 mt-1">৳' + bn(subtotal) + '</div>' : '<span class="text-gray-300">—</span>') + '</td>';
+                });
+                html += '<td class="p-2 border text-center font-extrabold text-indigo-800">৳' + bn(dateTotal) + '</td></tr>';
+            });
+        }
+        html += '</tbody><tfoot><tr class="bg-indigo-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>';
+        types.forEach(function(ct){
+            const sum = logs.filter(function(f){ return String(f.costType)===ct; }).reduce(function(s,f){ return s + (Number(f.amount)||0); },0);
+            html += '<td class="p-2 border text-center text-indigo-900">৳' + bn(sum.toFixed(1).replace(/\.0$/,'')) + '</td>';
+        });
+        const grand = logs.reduce(function(s,f){ return s + (Number(f.amount)||0); },0);
+        html += '<td class="p-2 border text-center text-indigo-900">৳' + bn(grand.toFixed(1).replace(/\.0$/,'')) + '</td></tr></tfoot></table>';
+        container.innerHTML = html;
+    }
+
+    function renderFixedTable() {
+        const tbody = $('fixed-log-table-body');
+        if (!tbody) return;
+        const logs = sortedFixedDesc();
+        tbody.innerHTML = '';
+        if (!logs.length) {
+            // leave empty, parent will show emptyState only in list; table stays blank
+            return;
+        }
+        logs.forEach(function(f){
+            const member = f.memberId ? memberName(f.memberId) : '—';
+            const displayDt = f.displayDate || bnDate(f.date);
+            const amount = Number(f.amount)||0;
+            tbody.innerHTML += '<tr class="border-b hover:bg-gray-50">' +
+                '<td class="p-2 border">' + esc(displayDt) + '</td>' +
+                '<td class="p-2 border font-medium">' + esc(f.costType||'Other') + '</td>' +
+                '<td class="p-2 border">' + esc(f.desc||'—') + (f.memberId? ' <span class="text-gray-400">· '+esc(member)+' </span>':'') + '</td>' +
+                '<td class="p-2 border text-indigo-600 font-bold">৳' + bn(amount) + '</td>' +
+                '<td class="p-2 border text-center flex gap-1 justify-center">' +
+                    '<button type="button" class="bg-green-600 text-white text-xs px-2 py-1 rounded hover:bg-green-700" data-act="fixed-share-one" data-id="' + esc(f.id) + '">📤 শেয়ার</button>' +
+                    '<button type="button" class="bg-red-500 text-white text-xs px-2 py-1 rounded hover:bg-red-600" data-act="fixed-delete-one" data-id="' + esc(f.id) + '">ডিলিট</button>' +
+                '</td></tr>';
+        });
+    }
+
+    function renderFixedMonthSummary() {
+        const box = $('fixed-month-summary');
+        const label = $('fixed-month-label');
+        if (!box) return;
+        const d = data(); if (!d) return;
+        const logs = d.fixedLog || [];
+        if (!logs.length) {
+            box.innerHTML = emptyState('📅', 'কোনো ফিক্সড খরচ নেই।', 'Add Fixed Cost চেপে খরচ যোগ করলে মাসভিত্তিক সারাংশ এখানে দেখা যাবে।');
+            if(label) label.textContent = '—';
+            return;
+        }
+        const byMonth = {};
+        logs.forEach(function(f){
+            const key = monthKey(f.date);
+            if(!byMonth[key]) byMonth[key] = { total:0, byType:{} };
+            byMonth[key].total += Number(f.amount)||0;
+            const ct = f.costType || 'Other';
+            byMonth[key].byType[ct] = (byMonth[key].byType[ct]||0) + (Number(f.amount)||0);
+        });
+        const keys = Object.keys(byMonth).sort(function(a,b){ return b.localeCompare(a); });
+        if(label) label.textContent = monthLabel(keys[0]) + ' · ' + money(byMonth[keys[0]].total);
+        box.innerHTML = keys.map(function(k){
+            const g = byMonth[k];
+            const isCurrent = k === todayISO().slice(0,7);
+            const rows = FIXED_COST_TYPES.map(function(ct){
+                const v = g.byType[ct] || 0;
+                if(v===0) return '';
+                return '<div class="flex justify-between text-[13px] py-[2px]"><span class="text-[var(--muted)]">' + esc(ct) + '</span><span class="font-bold">' + money(v) + '</span></div>';
+            }).join('');
+            const hasAny = FIXED_COST_TYPES.some(function(ct){ return (g.byType[ct]||0)>0; });
+            return '<div class="row" style="flex-direction:column; align-items:stretch; gap:6px;">' +
+                '<div class="flex justify-between items-center w-full"><span class="font-bold">' + esc(monthLabel(k)) + (isCurrent ? ' <span class="badge badge--ok">চলতি</span>' : '') + '</span><span class="font-extrabold text-indigo-700">' + money(g.total) + '</span></div>' +
+                (hasAny ? '<div class="w-full bg-gray-50 rounded-xl p-2">' + rows + '<div class="flex justify-between font-extrabold border-t mt-1 pt-1"><span>Total</span><span>' + money(g.total) + '</span></div></div>' : '') +
             '</div>';
         }).join('');
     }
@@ -883,7 +1098,7 @@
     }
 
     function polishLegacyNumbers() {
-        ['total-bazar', 'total-fixed', 'total-expense', 'table-total-bazar',
+        ['total-bazar', 'total-fixed', 'total-expense', 'table-total-bazar', 'table-total-fixed',
          'foot-total-rent', 'foot-total-utility', 'foot-total-fixed-all'].forEach(trimZeroDecimals);
     }
 
@@ -923,6 +1138,8 @@
         if (typeof legacyRenderFixedCostInputs === 'function') legacyRenderFixedCostInputs.apply(this, arguments);
         styleFixedRentInputs();
         renderFixedScreen();
+        // also ensure fixed pickers are in sync
+        try { renderPickers(); } catch(e){}
     };
 
     /* legacy ভাড়ার ইনপুটগুলো মোবাইল-বান্ধব রো-তে সাজাই (id/data-mem অপরিবর্তিত) */
@@ -1193,6 +1410,143 @@
         ]);
     }
 
+
+    /* ======================================================== FIXED (Bazar-like) ======= */
+    let fixedEditing = null;
+    let lastFixedEntryId = null;
+
+    function openFixedSheet(entry) {
+        fixedEditing = entry ? entry.id : null;
+        const isEdit = !!entry;
+        $('sheet-fixed-title').textContent = isEdit ? 'Edit Fixed Cost' : 'Add Fixed Cost';
+        $('fixed-save-btn').textContent = isEdit ? 'আপডেট করুন' : 'খরচ যোগ করুন';
+
+        $('fixed-date').value = entry ? entry.date : todayISO();
+        const costType = entry ? (entry.costType || FIXED_COST_TYPES[0]) : FIXED_COST_TYPES[0];
+        const costSel = $('fixed-costtype-select');
+        if (costSel) costSel.value = costType;
+        syncFixedCostTypeSelection();
+
+        const memberSel = $('fixed-member-select');
+        if (memberSel) memberSel.value = entry && entry.memberId ? entry.memberId : '';
+        syncPickerSelection('fixed-member');
+
+        $('fixed-desc').value = entry ? (entry.desc || '') : '';
+        $('fixed-amount').value = entry ? entry.amount : '';
+
+        openSheet('sheet-fixed');
+    }
+
+    function saveFixed() {
+        const date = $('fixed-date').value;
+        const costType = ($('fixed-costtype-select') ? $('fixed-costtype-select').value : FIXED_COST_TYPES[0]) || FIXED_COST_TYPES[0];
+        const memberSel = $('fixed-member-select');
+        const memberId = memberSel ? memberSel.value : '';
+        const desc = $('fixed-desc').value.trim();
+        const amount = parseFloat($('fixed-amount').value);
+
+        if (!date || !FIXED_COST_TYPES.includes(costType) || isNaN(amount) || amount <= 0) {
+            hideKeyboard();
+            window.alert('দয়া করে তারিখ, Cost Type ও টাকার পরিমাণ ঠিকভাবে দিন।');
+            return;
+        }
+
+        const d = data(); if (!d) return;
+        if (!Array.isArray(d.fixedLog)) d.fixedLog = [];
+        const wasEditing = !!fixedEditing;
+
+        // Edit: remove old entry first (like bazar)
+        if (fixedEditing) {
+            d.fixedLog = d.fixedLog.filter(function (f) { return f.id !== fixedEditing; });
+            fixedEditing = null;
+        }
+
+        const displayDate = bnDate(date);
+        const newEntry = {
+            id: 'fixed_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            date: date,
+            displayDate: displayDate,
+            costType: costType,
+            memberId: memberId || '',
+            desc: desc || costType,
+            amount: amount
+        };
+        d.fixedLog.push(newEntry);
+        d.fixedLog.sort(function(a,b){ return new Date(a.date)-new Date(b.date); });
+        lastFixedEntryId = newEntry.id;
+
+        if (typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+        hideKeyboard();
+        closeSheet('sheet-fixed');
+        renderAll();
+        window.showToast(wasEditing ? 'ফিক্সড খরচ আপডেট করা হয়েছে।' : 'ফিক্সড খরচ সফলভাবে সংরক্ষিত হয়েছে!');
+        const waBtn = $('fixed-wa-share-btn');
+        if (waBtn) waBtn.classList.toggle('hidden', !lastFixedEntryId);
+    }
+
+    function deleteFixedEntry(id) {
+        askConfirm('এই ফিক্সড খরচ এন্ট্রিটি মুছে ফেলতে চান?', 'ফিক্সড খরচ ডিলিট').then(function (ok) {
+            if (!ok) return;
+            const d = data(); if (!d) return;
+            d.fixedLog = (d.fixedLog || []).filter(function (f) { return f.id !== id; });
+            if (typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+            if (typeof window.calculateMess === 'function') window.calculateMess();
+            else renderAll();
+            window.showToast('ফিক্সড খরচ এন্ট্রি মুছে ফেলা হয়েছে।');
+            if (lastFixedEntryId === id) lastFixedEntryId = null;
+            const waBtn = $('fixed-wa-share-btn');
+            if (waBtn) waBtn.classList.toggle('hidden', !lastFixedEntryId);
+        });
+    }
+
+    function shareFixedEntry(entry) {
+        if (!entry) return;
+        const costType = entry.costType || 'Fixed Cost';
+        const amount = Number(entry.amount)||0;
+        const date = entry.displayDate || bnDate(entry.date);
+        const desc = entry.desc || costType;
+        const memberTxt = entry.memberId ? memberName(entry.memberId) : '';
+        let msg = '🏠 *ফিক্সড খরচ আপডেট*\n\n' +
+            '📅 *তারিখ:* ' + date + '\n' +
+            '🏷️ *Cost Type:* ' + costType + '\n' +
+            (memberTxt ? '👤 *সদস্য:* ' + memberTxt + '\n' : '') +
+            '📋 *বিবরণ:* ' + desc + '\n' +
+            '💵 *টাকার পরিমাণ:* ৳' + bn(amount) + ' টাকা';
+        window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    function shareFixedListOnWhatsApp() {
+        const d = data(); if (!d) return;
+        const logs = d.fixedLog || [];
+        if (!logs.length) { window.alert('কোনো ফিক্সড খরচ পাওয়া যায়নি।'); return; }
+        const byMonth = {};
+        logs.forEach(function(f){ const k = monthKey(f.date); if(!byMonth[k]) byMonth[k]=[]; byMonth[k].push(f); });
+        const keys = Object.keys(byMonth).sort(function(a,b){return b.localeCompare(a);});
+        let total = logs.reduce(function(s,f){return s+(Number(f.amount)||0);},0);
+        let msg = '🏠 *সম্পূর্ণ ফিক্সড খরচ তালিকা*\n\n';
+        keys.forEach(function(k){
+            msg += '📅 *' + monthLabel(k) + '*\n';
+            const byType = {};
+            byMonth[k].forEach(function(f){ byType[f.costType] = (byType[f.costType]||0)+(Number(f.amount)||0); });
+            FIXED_COST_TYPES.forEach(function(ct){ if(byType[ct]) msg += '  • ' + ct + ': ৳' + bn(byType[ct]) + '\n'; });
+            const monthTotal = byMonth[k].reduce(function(s,f){return s+(Number(f.amount)||0);},0);
+            msg += '  *মোট:* ৳' + bn(monthTotal) + '\n------------------\n';
+        });
+        msg += '\n💵 *সর্বমোট ফিক্সড খরচ:* ৳' + bn(total) + ' টাকা';
+        window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent(msg), '_blank');
+    }
+
+    function fixedActions(id) {
+        const d = data();
+        const entry = d ? (d.fixedLog || []).filter(function (f) { return f.id === id; })[0] : null;
+        if (!entry) return;
+        openActions((entry.costType || 'Fixed Cost') + ' · ৳' + bn(Number(entry.amount)||0), [
+            { label: 'Edit', sub: 'তারিখ / Cost Type / টাকা পরিবর্তন করুন', icon: editIcon(), run: function () { openFixedSheet(entry); } },
+            { label: 'Share', sub: 'হোয়াটসঅ্যাপে পাঠান', icon: waIcon(), tone: 'wa', run: function () { shareFixedEntry(entry); } },
+            { label: 'Delete', sub: 'এন্ট্রিটি মুছে ফেলুন', icon: trashIcon(), tone: 'danger', run: function () { deleteFixedEntry(id); } }
+        ]);
+    }
+
     /* ======================================================== MEMBER ======= */
     function memberActions(memberId) {
         const m = members().filter(function (x) { return x.id === memberId; })[0];
@@ -1239,9 +1593,29 @@
             return;
         }
 
+        // Fixed Cost Type chips
+        const ctChip = event.target.closest('.chip[data-picker="fixed-costtype"]');
+        if (ctChip) {
+            const ct = ctChip.getAttribute('data-ct');
+            const sel = $('fixed-costtype-select');
+            if (sel) sel.value = ct || FIXED_COST_TYPES[0];
+            syncFixedCostTypeSelection();
+            return;
+        }
         const chip = event.target.closest('.chip[data-picker]');
         if (chip) {
             const kind = chip.getAttribute('data-picker');
+            // fixed-member is optional: clicking same chip again deselects (no member)
+            if (kind === 'fixed-member') {
+                const memberId = chip.getAttribute('data-mid');
+                const sel = $('fixed-member-select');
+                if (sel) {
+                    if (sel.value === memberId) sel.value = '';
+                    else sel.value = memberId || '';
+                }
+                syncPickerSelection(kind);
+                return;
+            }
             const p = pickerById(kind);
             const memberId = chip.getAttribute('data-mid');
             if (p && $(p.select)) $(p.select).value = memberId || '';
@@ -1280,7 +1654,7 @@
         switch (actEl.getAttribute('data-act')) {
             case 'open-meal':   go('meal', function () { openMealSheet({}); }); break;
             case 'open-bazar':  go('bazar', function () { openBazarSheet(null); }); break;
-            case 'open-fixed':  go('fixed', function () { openSheet('sheet-fixed'); }); break;
+            case 'open-fixed':  go('fixed', function () { openFixedSheet(null); }); break;
             case 'open-member': go('members', function () { openSheet('sheet-member', { silent: true }); }); break;
             case 'member-first-meal':
                 pendingSheetAfterMember = function () { openMealSheet({}); };
@@ -1290,7 +1664,26 @@
                 pendingSheetAfterMember = function () { openBazarSheet(null); };
                 go('members', function () { openSheet('sheet-member', { silent: true }); });
                 break;
-            case 'fixed-edit':  openSheet('sheet-fixed'); break;
+            case 'fixed-edit':  openFixedSheet(null); break;
+            case 'fixed-actions':
+                fixedActions(actEl.getAttribute('data-id'));
+                break;
+            case 'fixed-share-one': {
+                const dd = data(); const e = dd ? (dd.fixedLog||[]).filter(function(f){return f.id===actEl.getAttribute('data-id');})[0] : null;
+                if(e) shareFixedEntry(e);
+                break;
+            }
+            case 'fixed-delete-one': {
+                deleteFixedEntry(actEl.getAttribute('data-id'));
+                break;
+            }
+            case 'share-last-fixed': {
+                const dd = data();
+                const e = (dd && lastFixedEntryId) ? (dd.fixedLog||[]).filter(function(f){return f.id===lastFixedEntryId;})[0] : (dd ? (dd.fixedLog||[]).slice(-1)[0] : null);
+                if(!e) { window.showToast('শেয়ার করার মতো ফিক্সড এন্ট্রি নেই।'); break; }
+                shareFixedEntry(e);
+                break;
+            }
 
             case 'meal-quick-open':
                 openMealSheet({ date: actEl.getAttribute('data-date'), memberId: actEl.getAttribute('data-mid') });
@@ -1379,10 +1772,7 @@
     });
 
     on($('fixed-save-btn'), 'click', function () {
-        /* বিদ্যমান saveFixedCosts() — input id/data-mem অপরিবর্তিত */
-        if (typeof window.saveFixedCosts === 'function') window.saveFixedCosts();
-        hideKeyboard();
-        closeSheet('sheet-fixed');
+        saveFixed();
     });
 
     on($('member-save-btn'), 'click', function () {
@@ -1456,6 +1846,10 @@
         });
     });
 
+    on($('fixed-share-list-btn'), 'click', function () {
+        runConfirmed(function () { shareFixedListOnWhatsApp(); });
+    });
+
     on($('report-share-btn'), 'click', function () {
         runConfirmed(function () {
             if (typeof window.shareAllInOneOnWhatsApp === 'function') window.shareAllInOneOnWhatsApp();
@@ -1497,6 +1891,8 @@
         if (dateInput && !dateInput.value) dateInput.value = todayISO();
         const bazarDate = $('bazar-date');
         if (bazarDate && !bazarDate.value) bazarDate.value = todayISO();
+        const fixedDate = $('fixed-date');
+        if (fixedDate && !fixedDate.value) fixedDate.value = todayISO();
 
         document.body.style.overflow = '';
         activateScreen('home');
