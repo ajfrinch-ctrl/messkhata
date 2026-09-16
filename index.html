@@ -2,8 +2,36 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Meal Khata - Mess Account Manager</title>
+    <meta name="description" content="মেসের দৈনিক মিল, বাজার খরচ, ফিক্সড খরচ ও সদস্যদের হিসাব — সহজে, মোবাইলেই। Chrome-এ অ্যাপ হিসেবে ইনস্টল করা যায়।">
+    <meta name="application-name" content="Meal Khata">
+
+    <!-- ================= PWA (Chrome-এ অ্যাপ হিসেবে ইনস্টল) ================= -->
+    <link rel="manifest" href="./manifest.webmanifest">
+    <meta name="theme-color" content="#08916d">
+    <meta name="color-scheme" content="light">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Meal Khata">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="format-detection" content="telephone=no">
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./icons/favicon-16.png">
+    <link rel="icon" href="./icons/icon-192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+    <link rel="mask-icon" href="./icons/icon-192.png" color="#08916d">
+
+    <!-- ইনস্টল প্রম্পট পেজ লোড হওয়ার আগেই ধরে রাখি (নাহলে বাটন মিস হতে পারে) -->
+    <script>
+        window.__mealKhataInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', function (event) {
+            event.preventDefault();
+            window.__mealKhataInstallPrompt = event;
+            window.dispatchEvent(new Event('meal-khata-installprompt-ready'));
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=Poppins:wght@500;600;700&display=swap');
@@ -14,6 +42,27 @@
             from { transform: translateX(100%); opacity: 0; } 
             to { transform: translateX(0); opacity: 1; }
         }
+
+        /* ===== ইনস্টলড অ্যাপ (standalone) মোডের জন্য ===== */
+        body {
+            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+            padding-left: calc(1rem + env(safe-area-inset-left));
+            padding-right: calc(1rem + env(safe-area-inset-right));
+        }
+        /* ব্রাউজারের অ্যাড্রেস বার না থাকলে উপরে একটু নিরাপদ জায়গা */
+        @media (display-mode: standalone) {
+            body { padding-top: calc(1rem + env(safe-area-inset-top)); }
+            #install-banner { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
+        }
+        @media (display-mode: standalone), (display-mode: minimal-ui) {
+            html { -webkit-tap-highlight-color: transparent; }
+        }
+        .no-select { -webkit-user-select: none; user-select: none; }
+        @keyframes bannerUp {
+            from { transform: translateY(120%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .banner-up { animation: bannerUp 0.35s ease-out; }
     </style>
 
 <script>
@@ -313,10 +362,88 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             </div>
         </div>
 
+        <div class="mt-8 bg-emerald-50 border border-emerald-200 rounded-lg p-4" id="install-section">
+            <h2 class="text-lg font-bold mb-1 text-emerald-800">📲 অ্যাপ হিসেবে ইনস্টল করুন</h2>
+            <p id="install-status-text" class="text-sm text-gray-600 mb-3">
+                Chrome-এর ঠিকানা বারের পাশে <strong>⤓ Install</strong> আইকনে ক্লিক করলে অথবা নিচের বাটনে চাপ দিলে
+                Meal Khata মোবাইল/পিসিতে আলাদা অ্যাপের মতো ইনস্টল হবে — অফলাইনেও হিসাব দেখা যাবে।
+            </p>
+            <div class="flex flex-wrap gap-2">
+                <button id="install-app-btn" onclick="promptInstallApp()" class="bg-emerald-600 text-white px-5 py-2 rounded-md font-medium hover:bg-emerald-700 hidden items-center gap-2">
+                    ⤓ অ্যাপ ইনস্টল করুন
+                </button>
+                <span id="installed-badge" class="hidden items-center gap-2 text-emerald-700 font-semibold text-sm bg-white border border-emerald-300 px-3 py-2 rounded-md">
+                    ✅ অ্যাপ হিসেবে ইনস্টল করা আছে
+                </span>
+                <button id="install-help-btn" onclick="showInstallHelp()" class="bg-white text-emerald-700 border border-emerald-300 px-5 py-2 rounded-md font-medium hover:bg-emerald-100">
+                    কীভাবে ইনস্টল করবেন?
+                </button>
+            </div>
+        </div>
+
         <div class="mt-8 flex justify-end items-center gap-3 pt-4 border-t">
             <button onclick="resetApp()" class="bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-600">
                 সব ডেটা রিসেট করুন
             </button>
+        </div>
+    </div>
+
+    <!-- ================= ইনস্টল ব্যানার (নিচে ভেসে ওঠে) ================= -->
+    <div id="install-banner" class="hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t shadow-2xl p-4 banner-up">
+        <div class="max-w-6xl mx-auto flex items-center gap-3">
+            <img src="./icons/icon-192.png" alt="Meal Khata" class="w-12 h-12 rounded-xl shadow no-select">
+            <div class="flex-grow">
+                <p class="font-bold text-gray-800 text-sm">Meal Khata অ্যাপ ইনস্টল করুন</p>
+                <p class="text-xs text-gray-500">হোম স্ক্রিন থেকে এক ট্যাপে খুলুন, অফলাইনেও কাজ করবে।</p>
+            </div>
+            <button id="banner-install-btn" onclick="promptInstallApp()" class="bg-emerald-600 text-white px-4 py-2 rounded-md font-semibold text-sm hover:bg-emerald-700 whitespace-nowrap">
+                ইনস্টল
+            </button>
+            <button onclick="dismissInstallBanner()" aria-label="বন্ধ করুন" class="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">&times;</button>
+        </div>
+    </div>
+
+    <!-- ================= ইনস্টল নির্দেশনা মডাল ================= -->
+    <div id="install-help-modal" class="hidden fixed inset-0 z-50 bg-black/50 p-4 overflow-y-auto">
+        <div class="max-w-md mx-auto mt-8 bg-white rounded-lg shadow-2xl p-5">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <h3 class="text-lg font-bold text-gray-800">📲 অ্যাপ হিসেবে ইনস্টল করার নিয়ম</h3>
+                <button onclick="closeInstallHelp()" aria-label="বন্ধ করুন" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="bg-gray-50 border rounded-lg p-3">
+                    <p class="font-bold text-emerald-700 mb-1">🤖 Android (Chrome)</p>
+                    <ol class="list-decimal ml-5 space-y-1">
+                        <li>উপরে ডান দিকের <strong>⋮</strong> মেনুতে চাপ দিন</li>
+                        <li><strong>"Install app"</strong> বা <strong>"Add to Home screen"</strong> বেছে নিন</li>
+                        <li><strong>Install</strong> চাপুন — হোম স্ক্রিনে আইকন এসে যাবে</li>
+                    </ol>
+                </div>
+                <div class="bg-gray-50 border rounded-lg p-3">
+                    <p class="font-bold text-emerald-700 mb-1">💻 Windows / Mac / Linux (Chrome)</p>
+                    <ol class="list-decimal ml-5 space-y-1">
+                        <li>অ্যাড্রেস বারের ডান পাশে <strong>⤓ Install</strong> আইকনে ক্লিক করুন</li>
+                        <li>অথবা <strong>⋮</strong> মেনু → <strong>"Install Meal Khata"</strong></li>
+                        <li>পপ-আপে <strong>Install</strong> চাপুন</li>
+                    </ol>
+                </div>
+                <div class="bg-gray-50 border rounded-lg p-3">
+                    <p class="font-bold text-emerald-700 mb-1">🍎 iPhone / iPad (Safari)</p>
+                    <ol class="list-decimal ml-5 space-y-1">
+                        <li>নিচের <strong>Share</strong> (⬆️) বাটনে চাপ দিন</li>
+                        <li><strong>"Add to Home Screen"</strong> বেছে নিন</li>
+                        <li><strong>Add</strong> চাপুন</li>
+                    </ol>
+                    <p class="text-xs text-gray-500 mt-1">নোট: iOS-এ ইনস্টল করতে Safari ব্রাউজার লাগবে, Chrome-এ অপশনটি থাকে না।</p>
+                </div>
+                <p class="text-xs text-gray-500">
+                    ইনস্টল করার জন্য সাইটটি <strong>HTTPS</strong>-এ খোলা থাকতে হয় (যেমন GitHub Pages লিংক), অথবা ব্রাউজারে
+                    <code class="bg-gray-100 px-1 rounded">localhost</code> হিসেবে চলতে হয়। সরাসরি ফাইল খুললে (<code class="bg-gray-100 px-1 rounded">file://</code>) ইনস্টল বাটন আসবে না।
+                </p>
+            </div>
+
+            <button onclick="closeInstallHelp()" class="mt-4 w-full bg-emerald-600 text-white py-2 rounded-md font-medium hover:bg-emerald-700">বুঝেছি</button>
         </div>
     </div>
 
@@ -1096,6 +1223,168 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             console.error("Firebase initialization error:", error);
             firebaseStatus("🔴 Firebase Initialization Error", false);
         }
+    })();
+    </script>
+
+    <!-- ================= PWA : ইনস্টল + অফলাইন ================= -->
+    <script>
+    (function () {
+        const BANNER_KEY = 'mealKhataInstallBannerDismissed';
+        let deferredPrompt = null;
+        let isStandalone = false;
+
+        const $ = (id) => document.getElementById(id);
+
+        function detectStandalone() {
+            const mq = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.matchMedia('(display-mode: minimal-ui)').matches ||
+                       window.matchMedia('(display-mode: fullscreen)').matches;
+            // iOS Safari-তে ইনস্টল করা অ্যাপ
+            const iosStandalone = window.navigator.standalone === true;
+            isStandalone = mq || iosStandalone;
+            return isStandalone;
+        }
+
+        function updateInstallUI() {
+            const banner = $('install-banner');
+            const installBtn = $('install-app-btn');
+            const badge = $('installed-badge');
+            const helpBtn = $('install-help-btn');
+            const statusText = $('install-status-text');
+
+            if (!banner) return;
+
+            if (isStandalone) {
+                banner.classList.add('hidden');
+                installBtn.classList.add('hidden');
+                installBtn.classList.remove('inline-flex');
+                badge.classList.remove('hidden');
+                badge.classList.add('inline-flex');
+                helpBtn.classList.add('hidden');
+                if (statusText) {
+                    statusText.innerHTML = '🎉 আপনি এখন ইনস্টল করা অ্যাপটি ব্যবহার করছেন। এখন থেকে ডেটা অফলাইনেও দেখা যাবে।';
+                }
+                return;
+            }
+
+            badge.classList.add('hidden');
+            badge.classList.remove('inline-flex');
+            helpBtn.classList.remove('hidden');
+
+            if (deferredPrompt) {
+                installBtn.classList.remove('hidden');
+                installBtn.classList.add('inline-flex');
+                if (!localStorage.getItem(BANNER_KEY)) banner.classList.remove('hidden');
+            } else {
+                installBtn.classList.add('hidden');
+                installBtn.classList.remove('inline-flex');
+                banner.classList.add('hidden');
+            }
+
+            // ব্যানার দেখা গেলে সিঙ্ক স্ট্যাটাস পিলটি ব্যানারের উপরে সরে যাবে
+            const syncPill = $('firebase-sync-status');
+            if (syncPill) syncPill.style.bottom = banner.classList.contains('hidden') ? '' : '6.5rem';
+        }
+
+        /* Chrome ইনস্টল প্রম্পট — head-এর আর্লি লিসেনার থেকে নিয়ে নিই */
+        if (window.__mealKhataInstallPrompt) {
+            deferredPrompt = window.__mealKhataInstallPrompt;
+        }
+        window.addEventListener('meal-khata-installprompt-ready', () => {
+            deferredPrompt = window.__mealKhataInstallPrompt;
+            updateInstallUI();
+        });
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredPrompt = event;
+            updateInstallUI();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            isStandalone = true;
+            localStorage.setItem(BANNER_KEY, 'yes');
+            updateInstallUI();
+            if (typeof showToast === 'function') showToast('✅ Meal Khata অ্যাপ ইনস্টল হয়েছে!');
+        });
+
+        window.promptInstallApp = async function () {
+            if (!deferredPrompt) {
+                showInstallHelp();
+                return;
+            }
+            deferredPrompt.prompt();
+            const choice = await deferredPrompt.userChoice;
+            if (choice && choice.outcome === 'accepted') {
+                if (typeof showToast === 'function') showToast('⤓ ইনস্টল শুরু হয়েছে...');
+            }
+            deferredPrompt = null;
+            window.__mealKhataInstallPrompt = null;
+            updateInstallUI();
+        };
+
+        window.dismissInstallBanner = function () {
+            localStorage.setItem(BANNER_KEY, 'yes');
+            const banner = $('install-banner');
+            if (banner) banner.classList.add('hidden');
+        };
+
+        window.showInstallHelp = function () {
+            const modal = $('install-help-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closeInstallHelp = function () {
+            const modal = $('install-help-modal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') window.closeInstallHelp();
+        });
+
+        /* Service worker রেজিস্টার — অ্যাপ শেল ও অফলাইন ক্যাশের জন্য */
+        if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+            window.addEventListener('load', () => {
+                const swUrl = new URL('./sw.js', document.baseURI).href;
+                const scope = new URL('./', document.baseURI).href;
+                navigator.serviceWorker.register(swUrl, { scope })
+                    .then((reg) => {
+                        console.log('✅ Meal Khata service worker ready:', reg.scope);
+                        reg.addEventListener('updatefound', () => {
+                            const next = reg.installing;
+                            if (!next) return;
+                            next.addEventListener('statechange', () => {
+                                if (next.state === 'installed' && navigator.serviceWorker.controller) {
+                                    if (typeof showToast === 'function') showToast('🔄 নতুন ভার্সন প্রস্তুত — রিফ্রেশ করলে পাবেন।');
+                                }
+                            });
+                        });
+                    })
+                    .catch((err) => console.warn('Service worker registration failed:', err));
+            });
+        }
+
+        /* ম্যানিফেস্ট shortcut (?tab=tab-bazar ইত্যাদি) থেকে সঠিক ট্যাব খুলি */
+        function openTabFromUrl() {
+            const tab = new URLSearchParams(location.search).get('tab');
+            if (tab && document.getElementById(tab) && typeof switchTab === 'function') {
+                switchTab(tab);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            detectStandalone();
+            updateInstallUI();
+            openTabFromUrl();
+        });
+
+        const mq = window.matchMedia('(display-mode: standalone)');
+        const onDisplayModeChange = () => { detectStandalone(); updateInstallUI(); };
+        if (mq.addEventListener) mq.addEventListener('change', onDisplayModeChange);
+        else if (mq.addListener) mq.addListener(onDisplayModeChange);
+
+        window.addEventListener('pageshow', () => { detectStandalone(); updateInstallUI(); });
     })();
     </script>
 </body>
