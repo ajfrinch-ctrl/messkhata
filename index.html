@@ -1064,6 +1064,42 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             return messData.fixedCostLog;
         }
 
+        /* ------------------------------------------------------------------
+           সদস্য তালিকার একটাই উৎস (single source of truth)
+           মিল, বাজার ও ফিক্সড খরচ — তিন জায়গাতেই এই একই লিস্ট ব্যবহার হয়,
+           তাই নতুন সদস্য যোগ/মুছে দিলে সব তালিকাই একসাথে আপডেট হয়।
+             • ক্রম  = messData.members (যে ক্রমে যোগ হয়েছে)
+             • বাদ  = id ছাড়া / ডুপ্লিকেট id-এর রেকর্ড (একই সদস্য দুইবার দেখাবে না)
+           হিসাবের কোনো নিয়ম এতে বদলায় না — এটি কেবল তালিকা সাজানোর নিয়ম।
+        ------------------------------------------------------------------ */
+        function memberList() {
+            const src = (messData && Array.isArray(messData.members)) ? messData.members : [];
+            const seen = {};
+            const out = [];
+            src.forEach(m => {
+                if (!m || !m.id || seen[m.id]) return;
+                seen[m.id] = 1;
+                out.push(m);
+            });
+            return out;
+        }
+
+        function memberNameOf(id) {
+            if (!id) return '';
+            const m = memberList().filter(x => x.id === id)[0];
+            return m ? m.name : '';
+        }
+
+        /* একটি ফিক্সড খরচ কোন সদস্যের — দেখানোর জন্য।
+           নতুন এন্ট্রি: যিনি টাকা দিয়েছেন (memberId)।
+           পুরনো রেকর্ড (scope:'member'): যার নামে খরচটি (chargeTo)। */
+        function fixedOwnerOf(entry) {
+            if (!entry) return '';
+            if (entry.memberId && memberNameOf(entry.memberId)) return entry.memberId;
+            if (entry.chargeTo && memberNameOf(entry.chargeTo)) return entry.chargeTo;
+            return entry.memberId || '';
+        }
+
         function todayISOString() {
             const d = new Date();
             const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -1307,6 +1343,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         window.getFixedEntries = getFixedEntries;
+        window.memberList = memberList;
+        window.memberNameOf = memberNameOf;
+        window.fixedOwnerOf = fixedOwnerOf;
         window.computeFixedSummary = computeFixedSummary;
         window.computeFixedSummaryFor = computeFixedSummaryFor;
         window.computeMonthSummary = computeMonthSummary;
@@ -1352,7 +1391,18 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             const name = nameInput.value.trim();
             if (name === '') return alert('দয়া করে সঠিক নাম লিখুন।');
 
-            const newMember = { id: 'mem_' + Date.now(), name: name };
+            /* id যেন কখনোই দুইবার না বসে — দ্রুত দুইবার চাপলে একই মিলিসেকেন্ডের
+               timestamp দুই সদস্যের জন্যই একই হয়ে যেত, তাহলে তালিকায় একজনের
+               নাম বাদ পড়ত। আগের ফরম্যাটই থাকে, শুধু ধোঁকা এড়ানো হয়। */
+            const baseId = 'mem_' + Date.now();
+            let newId = baseId;
+            let idGuard = 0;
+            while (idGuard < 50 && messData.members.some(m => m.id === newId)) {
+                idGuard++;
+                newId = baseId + '_' + Math.random().toString(36).slice(2, 7);
+            }
+
+            const newMember = { id: newId, name: name };
             messData.members.push(newMember);
             nameInput.value = '';
             saveToLocalStorage();
@@ -1395,21 +1445,32 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
         }
 
+        /* একটি <select>-এর সদস্যের তালিকা নতুন করে সাজানো হয় —
+           একই লিস্ট, একই ক্রম, সব পিকারে (মিল / বাজার / ফিক্সড)।
+           যা আগে বাছাই করা ছিল সেটি টিকে থাকে (সদস্যটি মুছে না গেলে)। */
+        function fillMemberSelect(sel) {
+            if (!sel) return;
+            const list = memberList();
+            const current = sel.value;
+            let html = '<option value="">সদস্য নির্বাচন করুন</option>';
+            list.forEach(member => {
+                html += `<option value="${escHtml(member.id)}">${escHtml(member.name)}</option>`;
+            });
+            sel.innerHTML = html;
+            if (current && list.some(m => m.id === current)) sel.value = current;
+            else if (list.length) sel.value = list[0].id;
+            else sel.value = '';
+        }
+
         function updateDropdowns() {
             /* মিল শিটে এখন সদস্য-লিস্ট (চিপ) ব্যবহার হয়, তাই meal-member-select
                থাকলেও চলবে, না থাকলেও সমস্যা নেই — null চেক করা হয়েছে।
-               ফিক্সড খরচের শিটও বাজারের মতোই একই সদস্য-পিকার ব্যবহার করে। */
-            const mealSelect = document.getElementById('meal-member-select');
-            const bazarSelect = document.getElementById('bazar-member-select');
-            const fixedSelect = document.getElementById('fixed-member-select');
-            if (mealSelect) mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
-            if (bazarSelect) bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
-            if (fixedSelect) fixedSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
-            messData.members.forEach(member => {
-                if (mealSelect) mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
-                if (bazarSelect) bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
-                if (fixedSelect) fixedSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
-            });
+               ফিক্সড খরচের শিটও বাজারের মতোই একই সদস্য-পিকার ব্যবহার করে —
+               লিস্টটি সবসময় messData.members থেকে সরাসরি বানানো হয়, তাই
+               নতুন সদস্য যোগ/মুছে দিলে এখানেই সাথে সাথে দেখা যায়। */
+            fillMemberSelect(document.getElementById('meal-member-select'));
+            fillMemberSelect(document.getElementById('bazar-member-select'));
+            fillMemberSelect(document.getElementById('fixed-member-select'));
         }
 
         /* innerHTML-এ বসানোর আগে HTML escape (নতুন markup-এর জন্য) */
@@ -1437,8 +1498,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if (!rawDate || !memberId || isNaN(amount) || amount <= 0) return alert('দয়া করে সঠিক তথ্য দিন।');
 
             const formattedDate = formatBanglaDate(rawDate);
-            const memberObj = messData.members.find(m => m.id === memberId);
-            const payerName = memberObj ? memberObj.name : 'সদস্য';
+            /* নামটি একই সদস্য-তালিকা (memberList) থেকে আসে — বাজারের মতোই */
+            const payerName = memberNameOf(memberId) || 'সদস্য';
 
             getFixedEntries().push({
                 id: 'fixed_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -1598,50 +1659,58 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             }
         }
 
-        /* ফিক্সড খরচের ছক — বাজারের ছকের মতোই তারিখ × সদস্য ভিত্তিক */
+        /* ফিক্সড খরচের ছক — বাজারের ছকের মতোই তারিখ × সদস্য ভিত্তিক।
+           সদস্যের কলামগুলো memberList() (মিল/বাজারের তালিকার একই উৎস) থেকে
+           আসে, তাই নতুন সদস্য যোগ করলেই এখানে তাঁর নাম চলে আসে।
+           দেখানোর বিভাজন: এন্ট্রিটি কোন সদস্যের — fixedOwnerOf() (যে টাকা
+           দিয়েছেন, আর পুরনো রেকর্ডে যার নামে খরচটি)। */
         function renderFixedGrid() {
             const container = document.getElementById('fixed-grid-container');
             if (!container) return;
-            if (messData.members.length === 0) {
+            const list = memberList();
+            if (list.length === 0) {
                 container.innerHTML = '<p class="text-sm text-gray-500 p-2">কোনো সদস্য নেই।</p>';
                 return;
             }
 
             const entries = getFixedEntries();
+            const owner = (f) => fixedOwnerOf(f);
             const dates = [...new Set(entries.map(l => l.date))].filter(Boolean).sort((a, b) => new Date(a) - new Date(b));
             let html = `<table class="w-full text-left border-collapse bg-white text-sm">
                 <thead><tr class="bg-indigo-700 text-white">
                     <th class="p-2 border min-w-[105px]">তারিখ</th>`;
-            messData.members.forEach(m => {
+            list.forEach(m => {
                 html += `<th class="p-2 border text-center min-w-[150px]">${escHtml(m.name)}</th>`;
             });
             html += `<th class="p-2 border text-center min-w-[110px]">মোট</th></tr></thead><tbody>`;
 
             if (dates.length === 0) {
-                html += `<tr><td colspan="${messData.members.length + 2}" class="p-3 text-center text-gray-500">কোনো ফিক্সড খরচের ডাটা পাওয়া যায়নি।</td></tr>`;
+                html += `<tr><td colspan="${list.length + 2}" class="p-3 text-center text-gray-500">কোনো ফিক্সড খরচের ডাটা পাওয়া যায়নি।</td></tr>`;
             } else {
                 dates.forEach(date => {
-                    let dateTotal = 0;
                     const displayDt = formatBanglaDate(date);
                     html += `<tr class="border-b hover:bg-indigo-50"><td class="p-2 border font-medium">${escHtml(displayDt)}</td>`;
-                    messData.members.forEach(m => {
-                        const items = getFixedEntries().filter(f => f.date === date && f.memberId === m.id);
+                    list.forEach(m => {
+                        const items = entries.filter(f => f.date === date && owner(f) === m.id);
                         const subtotal = items.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-                        dateTotal += subtotal;
                         const names = items.map(f => f.desc || 'ফিক্সড খরচ').join(', ');
                         html += `<td class="p-2 border align-top">${items.length ? `<div class="font-medium text-gray-700 break-words">${escHtml(names)}</div><div class="font-bold text-indigo-700 mt-1">৳${convertToBanglaNumber(subtotal.toFixed(1))}</div>` : '<span class="text-gray-300">—</span>'}</td>`;
                     });
-                    html += `<td class="p-2 border text-center font-extrabold text-indigo-800">৳${convertToBanglaNumber(dateTotal.toFixed(1))}</td></tr>`;
+                    /* 'মোট' কলাম = ওই দিনের সব এন্ট্রি (সদস্যভিত্তিক ঘরের বাইরের
+                       এন্ট্রিগুলোও সহ) — তাই ছকের যোগফল সবসময় মোট কার্ডের সাথে মেলে */
+                    const dateTotalAll = entries.filter(f => f.date === date)
+                        .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+                    html += `<td class="p-2 border text-center font-extrabold text-indigo-800">৳${convertToBanglaNumber(dateTotalAll.toFixed(1))}</td></tr>`;
                 });
             }
 
             html += `</tbody><tfoot><tr class="bg-indigo-100 font-bold text-gray-800"><td class="p-2 border text-right">সর্বমোট:</td>`;
-            messData.members.forEach(m => {
-                const memberTotal = getFixedEntries().filter(f => f.memberId === m.id)
+            list.forEach(m => {
+                const memberTotal = entries.filter(f => owner(f) === m.id)
                     .reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
                 html += `<td class="p-2 border text-center text-indigo-900">৳${convertToBanglaNumber(memberTotal.toFixed(1))}</td>`;
             });
-            const grandFixed = getFixedEntries().reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
+            const grandFixed = entries.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
             html += `<td class="p-2 border text-center text-indigo-900">৳${convertToBanglaNumber(grandFixed.toFixed(1))}</td></tr></tfoot></table>`;
             container.innerHTML = html;
         }
@@ -1729,8 +1798,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             if (fixedTableBody) {
                 fixedTableBody.innerHTML = '';
                 getFixedEntries().forEach(f => {
-                    const member = messData.members.find(m => m.id === f.memberId);
-                    const payerName = member ? member.name : '—';
+                    /* সদস্যের নাম — বাজারের টেবিলের মতোই (পুরনো রেকর্ডে যার নামে
+                       খরচটি, সেই সদস্যের নামই দেখা যায়) */
+                    const payerName = memberNameOf(fixedOwnerOf(f)) || '—';
                     const displayDt = f.displayDate || formatBanglaDate(f.date);
                     fixedTableBody.innerHTML += `
                         <tr class="border-b hover:bg-gray-100">
@@ -1959,8 +2029,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 const displayDt = formatBanglaDate(date);
                 message += `📅 *তারিখ:* ${displayDt}\n`;
 
-                messData.members.forEach(m => {
-                    const items = entries.filter(f => f.date === date && f.memberId === m.id);
+                /* সদস্যদের নাম ও ক্রম — ঠিক বাজারের তালিকার মতোই (memberList) */
+                memberList().forEach(m => {
+                    const items = entries.filter(f => f.date === date && fixedOwnerOf(f) === m.id);
                     if (items.length > 0) {
                         const subtotal = items.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
                         const itemsCombined = items.map(f => f.desc || 'ফিক্সড খরচ').join(', ');
@@ -1970,8 +2041,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 message += `------------------\n`;
             });
 
-            /* যে দিয়েছেন তাঁর নাম ছাড়া বাকি (পুরনো) এন্ট্রিগুলো আলাদাভাবে দেখানো হয় */
-            const others = entries.filter(f => !messData.members.some(m => m.id === f.memberId));
+            /* কোনো সদস্যের নামেই না থাকলে (পুরনো রেকর্ড) আলাদাভাবে দেখানো হয় */
+            const others = entries.filter(f => !memberNameOf(fixedOwnerOf(f)));
             if (others.length) {
                 const otherTotal = others.reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
                 message += `  📌 পুরনো রেকর্ড (কেউ জমা দেননি): ৳${convertToBanglaNumber(otherTotal.toFixed(1))}\n`;

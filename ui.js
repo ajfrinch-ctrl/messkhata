@@ -73,9 +73,23 @@
         return (typeof window.messData === 'object' && window.messData) ? window.messData : null;
     }
 
+    /* সদস্যের তালিকা — অ্যাপের সব জায়গায় (মিল / বাজার / ফিক্সড / রিপোর্ট)
+       এই একই ফাংশন থেকে আসে, তাই নতুন সদস্য যোগ বা মুছে দিলে তিনটি
+       তালিকাই একসাথে আপডেট হয় এবং কোনো সদস্য বাদ যায় না বা দুইবারও
+       আসে না। index.html-এর memberList() থাকলে সেটিই ব্যবহার হয়
+       (id ছাড়া / ডুপ্লিকেট id বাদ দিয়ে, ক্রম messData.members অনুযায়ী)। */
     function members() {
+        if (typeof window.memberList === 'function') {
+            try { return window.memberList() || []; } catch (e) { /* ignore */ }
+        }
         const d = data();
-        return d ? (d.members || []) : [];
+        const list = d ? (d.members || []) : [];
+        const seen = {};
+        return list.filter(function (m) {
+            if (!m || !m.id || seen[m.id]) return false;
+            seen[m.id] = 1;
+            return true;
+        });
     }
 
     function memberName(id) {
@@ -358,27 +372,36 @@
         return PICKERS.filter(function (p) { return p.kind === kind; })[0];
     }
 
-    function renderPickers() {
-        PICKERS.forEach(function (p) {
-            const select = $(p.select);
-            const box = $(p.chips);
-            if (!select || !box) return;
+    /* একটি পিকারের (বাজার বা ফিক্সড) সদস্য-তালিকা নতুন করে সাজানো হয়।
+       দুটো শিটেই হুবহু একই মার্কআপ, একই স্টাইল ও একই সদস্য লিস্ট বসে —
+       লিস্টটি members() (অর্থাৎ messData.members) থেকে সরাসরি আসে, তাই
+       সদস্য যোগ/মুছে দিলে এখানে সাথে সাথেই দেখা যায়। */
+    function renderPicker(p) {
+        const select = $(p.select);
+        const box = $(p.chips);
+        if (!select || !box) return;
 
-            const list = members();
-            const current = select.value;
+        const list = members();
+        const current = select.value;
 
-            box.innerHTML = list.map(function (m) {
-                return '<button type="button" class="chip" data-picker="' + p.kind +
-                    '" data-mid="' + esc(m.id) + '">' + esc(m.name) + '</button>';
-            }).join('');
+        box.innerHTML = list.map(function (m) {
+            return '<button type="button" class="chip" data-picker="' + p.kind +
+                '" data-mid="' + esc(m.id) + '">' + esc(m.name) + '</button>';
+        }).join('');
 
-            if (current && list.some(function (m) { return m.id === current; })) select.value = current;
-            else if (!current && list.length) select.value = list[0].id;
-            else select.value = '';
+        /* আগে যা বাছাই করা ছিল সেটি টিকে থাকে (সদস্যটি মুছে না গেলে),
+           নাহলে প্রথম সদস্য — ফাঁকা তালিকা হলে শুধু empty-state দেখানো হয় */
+        if (current && list.some(function (m) { return m.id === current; })) select.value = current;
+        else if (list.length) select.value = list[0].id;
+        else select.value = '';
 
-            syncPickerSelection(p.kind);
-        });
+        syncPickerSelection(p.kind);
     }
+
+    function renderPickers() {
+        PICKERS.forEach(function (p) { renderPicker(p); });
+    }
+
 
     function syncPickerSelection(kind) {
         const p = pickerById(kind);
@@ -648,8 +671,25 @@
     /* ================================================== FIXED COST RENDER == */
     /* Fixed Cost এখন Bazar-এর মতোই এন্ট্রি-ভিত্তিক — তালিকা, ছক ও অ্যাকশন
        সবই Bazar স্ক্রিনের হুবহু একই ধাঁচে তৈরি (ইনডিগো অ্যাকসেন্ট সহ)। */
+    /* একটি ফিক্সড এন্ট্রি দেখানো হয় কোন সদস্যের নামে:
+       • নতুন এন্ট্রি  → যিনি টাকা দিয়েছেন (memberId)
+       • পুরনো রেকর্ড → যার নামে খরচটি (scope:'member' + chargeTo)
+       এটি শুধু দেখানোর বিভাজন — হিসাবের নিয়ম (computeFixedSummary) অপরিবর্তিত। */
+    function fixedOwnerOf(entry) {
+        if (!entry) return '';
+        if (typeof window.fixedOwnerOf === 'function') {
+            try { return window.fixedOwnerOf(entry) || ''; } catch (e) { /* ignore */ }
+        }
+        const known = function (id) {
+            return !!id && members().some(function (m) { return m.id === id; });
+        };
+        if (known(entry.memberId)) return entry.memberId;
+        if (known(entry.chargeTo)) return entry.chargeTo;
+        return entry.memberId || '';
+    }
+
     function fixedEntriesOf(memberId) {
-        return fixedEntries().filter(function (f) { return f.memberId === memberId; });
+        return fixedEntries().filter(function (f) { return fixedOwnerOf(f) === memberId; });
     }
 
     function fixedEntryById(id) {
@@ -676,7 +716,8 @@
 
         box.innerHTML = list.map(function (f) {
             const amount = Number(f.amount) || 0;
-            const payer = f.memberId ? memberName(f.memberId) : '—';
+            const owner = fixedOwnerOf(f);
+            const payer = owner ? memberName(owner) : '—';
             const legacyNote = f.legacy ? ' · পুরনো রেকর্ড' : '';
             return '<div class="row">' +
                 '<div class="row__body">' +
@@ -1107,7 +1148,33 @@
     }
 
     /* ==================================================== MASTER RENDER ==== */
+    /* সদস্যের তালিকা বদলালে (যোগ/মুছে ফেলা/সিঙ্ক) যেসব ভিউ পুরোপুরি
+       সদস্য-নির্ভর, সেগুলোও নতুন করে সাজানো হয় — পিকার, ছক ও তালিকা।
+       সদস্য-লিস্ট না বদলালে এই কাজটি হয় না, তাই প্রতিবার খরচ বাড়ে না। */
+    let memberSignature = null;
+
+    function membersSignature() {
+        return members().map(function (m) { return m.id + '\u0001' + m.name; }).join('\u0002');
+    }
+
+    function refreshMemberViewsIfChanged() {
+        const sig = membersSignature();
+        if (sig === memberSignature) return false;
+        memberSignature = sig;
+        ['renderMealsGrid', 'renderBazarGrid', 'renderFixedGrid'].forEach(function (fn) {
+            if (typeof window[fn] === 'function') {
+                try { window[fn](); } catch (e) { /* ignore */ }
+            }
+        });
+        return true;
+    }
+
     function renderAll() {
+        /* সদস্যের তালিকা (মিল / বাজার / ফিক্সড পিকার) সবসময় প্রথমেই সাজানো হয় —
+           তাই সদস্য যোগ/মুছে দেওয়া, রিসেট বা ক্লাউড সিঙ্ক — যে পথেই হোক না কেন,
+           Fixed Cost-এর সদস্য লিস্ট সাথে সাথেই আপডেট থাকে */
+        renderPickers();
+        refreshMemberViewsIfChanged();
         renderHomeSummary();
         renderMenuMeta();
         renderMealScreen();
@@ -1362,10 +1429,14 @@
         $('bazar-desc').value = entry ? (entry.desc || '') : '';
         $('bazar-amount').value = entry ? entry.amount : '';
 
+        /* শিট খোলার মুহূর্তেই সদস্যের তালিকা নতুন — পুরনো কোনো ক্যাশ করা লিস্ট দেখাবে না
+           (দুই পিকারই একসাথে, যাতে বাজার ও ফিক্সডের তালিকা সবসময় হুবহু এক থাকে) */
+        renderPickers();
+
         const select = $('bazar-member-select');
         if (select) {
-            const fallback = firstMemberId();
-            select.value = entry ? entry.memberId : (select.value || fallback);
+            const wanted = (entry && entry.memberId) || select.value || firstMemberId();
+            select.value = members().some(function (m) { return m.id === wanted; }) ? wanted : firstMemberId();
         }
         syncPickerSelection('bazar');
 
@@ -1471,10 +1542,15 @@
         $('fixed-desc').value = entry ? (entry.desc || '') : '';
         $('fixed-amount').value = entry ? entry.amount : '';
 
+        /* বাজার শিটের হুবহু একই নিয়ম: খোলার মুহূর্তেই লাইভ সদস্য-তালিকা */
+        renderPickers();
+
         const select = $('fixed-member-select');
         if (select) {
-            const fallback = firstMemberId();
-            select.value = entry && entry.memberId ? entry.memberId : (select.value || fallback);
+            /* বাজারের পিকারের হুবহু একই নিয়ম — এন্ট্রির নিজের সদস্য না থাকলে
+               তালিকার প্রথম সদস্য বেছে নেওয়া হয় (তালিকা কখনো ফাঁকা রাখে না) */
+            const wanted = (entry && entry.memberId) || select.value || firstMemberId();
+            select.value = members().some(function (m) { return m.id === wanted; }) ? wanted : firstMemberId();
         }
         syncPickerSelection('fixed');
 
@@ -1932,4 +2008,14 @@
 
     /* Firebase ডেটা এসে পৌঁছালে আরেকবার রিফ্রেশ */
     window.addEventListener('load', function () { setTimeout(renderAll, 80); });
+
+    /* অ্যাপ ফিরে এলে (bfcache / ট্যাব বদল / ফোন লক-আনলক) সদস্যের তালিকা
+       আবার তাজা করা হয় — অন্য ফোনে যোগ করা সদস্যের নামও সাথে সাথে দেখায় */
+    window.addEventListener('pageshow', function () {
+        renderPickers();
+        refreshMemberViewsIfChanged();
+    });
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) renderPickers();
+    });
 })();
