@@ -7,32 +7,59 @@
 
 /* ---------------------------------------------------------------- tokens --- */
 :root {
-    --primary:        #059669;
-    --primary-dark:   #047857;
-    --primary-tint:   #e8f6f1;
-    --bg:             #f1f4f8;
+    --primary:        #04795a;
+    --primary-dark:   #036949;
+    --primary-tint:   #e2f7ef;
+    --bg:             #f4f6fc;
     --card:           #ffffff;
-    --line:           #e5eaf1;
-    --text:           #0f172a;
-    --text-2:         #475569;
-    --muted:          #7b8794;
+    --line:           #e6ebf6;
+    --text:           #111c33;
+    --text-2:         #46566f;
+    --muted:          #5f6f86;
     --meal:           #f59e0b;
-    --meal-tint:      #fef3e2;
+    --meal-tint:      #fff0d4;
     --bazar:          #10b981;
-    --bazar-tint:     #e6f7f1;
+    --bazar-tint:     #d9f7e9;
     --fixed:          #6366f1;
-    --fixed-tint:     #ecebfe;
+    --fixed-tint:     #e6e6fe;
     --report:         #3b82f6;
-    --report-tint:    #e8f1fe;
+    --report-tint:    #dfebfe;
     --members:        #8b5cf6;
-    --members-tint:   #f1ecfe;
+    --members-tint:   #ece3fe;
     --danger:         #e11d48;
-    --danger-tint:    #fdeaef;
+    --danger-tint:    #fde6ec;
     --wa:             #1faa53;
+    /* নতুন: নরম রঙিন টিন্ট, রঙিন ওয়াশ ও ইনডিগো টোকেন */
+    --sky-tint:       #e0f2fe;
+    --rose-tint:      #ffe9f0;
+    --violet:         #7c5cf6;
+    --violet-tint:    #ebe4fe;
+    --ink:            #0b2a4a;
+    --slot:           #f5f8fd;
+    --wash-1:         rgba(6, 160, 111, .10);
+    --wash-2:         rgba(99, 102, 241, .11);
     --radius:         16px;
     --radius-lg:      20px;
     --shadow-sm:      0 1px 2px rgba(15, 23, 42, .05);
     --shadow:         0 1px 3px rgba(15, 23, 42, .07), 0 6px 16px -10px rgba(15, 23, 42, .18);
+    /* বড় রঙিন বাটন ও কার্ডের গ্রেডিয়েন্ট — সব এক জায়গায় */
+    --grad-meal:      linear-gradient(135deg, #c2410c 0%, #9a3412 100%);
+    --grad-bazar:     linear-gradient(135deg, #047857 0%, #065f46 100%);
+    --grad-fixed:     linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+    --grad-members:   linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+    --grad-wa:        linear-gradient(135deg, #15803d 0%, #166534 100%);
+    --grad-primary:   linear-gradient(135deg, #047857 0%, #036949 100%);
+    --grad-report:    linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    --grad-danger:    linear-gradient(135deg, #e11d48 0%, #9f1239 100%);
+    /* একই হিউয়ের উজ্জ্বল সংস্করণ — শুধু আইকন টাইল/অ্যাকসেন্ট বার-এ (সেখানে লেখা নেই) */
+    --vivid-meal:     linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+    --vivid-bazar:    linear-gradient(135deg, #059669 0%, #047857 100%);
+    --vivid-fixed:    linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    --vivid-members:  linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+    --vivid-wa:       linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+    --vivid-primary:  linear-gradient(135deg, #059669 0%, #047857 100%);
+    --vivid-report:   linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    --vivid-danger:   linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
     --app-max:        460px;
     --nav-h:          62px;
 }
@@ -47,7 +74,11 @@ html {
 
 body {
     margin: 0;
-    background: var(--bg);
+    background:
+        radial-gradient(120% 60% at 8% -6%, var(--wash-2) 0%, transparent 60%),
+        radial-gradient(130% 65% at 96% -2%, var(--wash-1) 0%, transparent 62%),
+        var(--bg);
+    background-attachment: fixed;
     color: var(--text);
     font-family: 'Noto Sans Bengali', 'Segoe UI', Roboto, Tahoma, Geneva, Verdana, sans-serif;
     font-size: 15px;
@@ -157,7 +188,8 @@ img { max-width: 100%; display: block; }
     display: grid;
     place-items: center;
     color: #fff;
-    background: var(--primary);
+    background: var(--grad-primary);
+    box-shadow: 0 6px 14px -8px rgba(5, 150, 105, .9);
 }
 
 .appbar__btn {
@@ -194,8 +226,13 @@ img { max-width: 100%; display: block; }
 }
 
 .syncchip__txt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.syncchip.is-on  { background: #e8f6f1; color: var(--primary-dark); }
-.syncchip.is-on .syncchip__dot { background: var(--primary); }
+.syncchip.is-on  { background: var(--primary-tint); color: var(--primary-dark); }
+.syncchip.is-on .syncchip__dot { background: var(--primary); animation: pulseDot 2.4s ease-in-out infinite; }
+
+@keyframes pulseDot {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(6, 160, 111, .45); }
+    50%      { box-shadow: 0 0 0 5px rgba(6, 160, 111, 0); }
+}
 .syncchip.is-off { background: var(--danger-tint); color: #9f1239; }
 .syncchip.is-off .syncchip__dot { background: var(--danger); }
 
@@ -244,7 +281,11 @@ img { max-width: 100%; display: block; }
 /* --------------------------------------------------- home summary card --- */
 .summary {
     padding: 14px 12px 12px;
-    background: linear-gradient(180deg, #ffffff 0%, #fbfdfc 100%);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, .96) 0%, rgba(244, 252, 249, .96) 100%),
+        var(--card);
+    border-color: #dff1ea;
+    box-shadow: 0 10px 24px -18px rgba(6, 160, 111, .85);
 }
 
 .summary__head {
@@ -264,7 +305,7 @@ img { max-width: 100%; display: block; }
     min-width: 0;
     padding: 10px 6px;
     border-radius: 14px;
-    background: #f7f9fc;
+    background: var(--slot);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -281,9 +322,12 @@ img { max-width: 100%; display: block; }
 }
 
 .stat__ico .ico { width: 18px; height: 18px; }
-.stat__ico--meal   { background: var(--meal-tint);   color: #b45309; }
-.stat__ico--bazar  { background: var(--bazar-tint);  color: #047857; }
-.stat__ico--report { background: var(--report-tint); color: #1d4ed8; }
+.stat__ico--meal   { background: var(--grad-meal);    color: #fff; box-shadow: 0 6px 12px -7px rgba(245, 158, 11, .95); }
+.stat__ico--bazar  { background: var(--grad-bazar);   color: #fff; box-shadow: 0 6px 12px -7px rgba(16, 185, 129, .95); }
+.stat__ico--report { background: var(--grad-report);  color: #fff; box-shadow: 0 6px 12px -7px rgba(59, 130, 246, .95); }
+.stat:nth-child(1) { background: linear-gradient(180deg, #fffaf0 0%, #fff 78%); }
+.stat:nth-child(2) { background: linear-gradient(180deg, #f1fbf6 0%, #fff 78%); }
+.stat:nth-child(3) { background: linear-gradient(180deg, #f2f7ff 0%, #fff 78%); }
 
 .stat__label {
     font-size: clamp(10px, 3vw, 11.5px);
@@ -307,7 +351,7 @@ img { max-width: 100%; display: block; }
     margin-top: 10px;
     padding: 8px 10px;
     border-radius: 12px;
-    background: var(--primary-tint);
+    background: linear-gradient(135deg, var(--primary-tint) 0%, #eef7ff 100%);
     color: var(--primary-dark);
     font-size: 12px;
     font-weight: 600;
@@ -318,21 +362,41 @@ img { max-width: 100%; display: block; }
 .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
 .tile {
+    position: relative;
+    overflow: hidden;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 13px 14px;
+    padding: 13px 14px 13px 17px;
     box-shadow: var(--shadow-sm);
     min-width: 0;
 }
 
+/* প্রতিটি টাইলের বাঁ পাশে রঙিন অ্যাকসেন্ট বার */
+.tile::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 10px; bottom: 10px;
+    width: 5px;
+    border-radius: 0 6px 6px 0;
+    background: var(--tile-accent, var(--primary));
+}
+.tile:nth-child(1) { --tile-accent: var(--grad-bazar); }
+.tile:nth-child(2) { --tile-accent: var(--grad-fixed); }
+.tile:nth-child(3) { --tile-accent: var(--grad-meal); }
+.tile:nth-child(4) { --tile-accent: var(--grad-report); }
+.tile:nth-child(5) { --tile-accent: var(--grad-members); }
+.tile:nth-child(6) { --tile-accent: var(--grad-danger); }
+
 .tile--wide { grid-column: 1 / -1; }
 .tile--accent {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: linear-gradient(135deg, #047857 0%, #066b52 55%, #064e3b 100%);
+    border-color: #047857;
     color: #fff;
+    box-shadow: 0 14px 30px -18px rgba(4, 120, 87, .95);
 }
-.tile--accent .tile__label { color: rgba(255, 255, 255, .88); }
+.tile--accent::before { display: none; }
+.tile--accent .tile__label { color: rgba(255, 255, 255, .93); }
 .tile--accent .tile__value { color: #fff; }
 
 .tile__label {
@@ -376,17 +440,21 @@ img { max-width: 100%; display: block; }
 .quick__btn:active { background: #f4f6fa; }
 
 .quick__ico {
-    width: 44px; height: 44px;
-    border-radius: 14px;
+    width: 46px; height: 46px;
+    border-radius: 15px;
     display: grid;
     place-items: center;
+    color: #fff;
+    transition: transform .14s ease;
 }
 
-.quick__ico .ico { width: 22px; height: 22px; }
-.quick__ico--meal   { background: var(--meal-tint);   color: #b45309; }
-.quick__ico--bazar  { background: var(--bazar-tint);  color: #047857; }
-.quick__ico--fixed  { background: var(--fixed-tint);  color: #4338ca; }
-.quick__ico--report { background: var(--report-tint); color: #1d4ed8; }
+.quick__btn:active .quick__ico { transform: scale(.94); }
+
+.quick__ico .ico { width: 23px; height: 23px; }
+.quick__ico--meal   { background: var(--grad-meal);    box-shadow: 0 8px 16px -10px rgba(245, 158, 11, .95); }
+.quick__ico--bazar  { background: var(--grad-bazar);   box-shadow: 0 8px 16px -10px rgba(16, 185, 129, .95); }
+.quick__ico--fixed  { background: var(--grad-fixed);   box-shadow: 0 8px 16px -10px rgba(99, 102, 241, .95); }
+.quick__ico--report { background: var(--grad-report);  box-shadow: 0 8px 16px -10px rgba(59, 130, 246, .95); }
 
 .quick__txt {
     font-size: 11px;
@@ -422,8 +490,8 @@ img { max-width: 100%; display: block; }
     align-items: center;
     gap: 12px;
     padding: 14px;
-    background: #fffaf0;
-    border-color: #fde3b8;
+    background: linear-gradient(135deg, #fff8ec 0%, #fff 70%);
+    border-color: #fbdcac;
 }
 
 .card--start__ico {
@@ -482,7 +550,7 @@ img { max-width: 100%; display: block; }
 .row__amount {
     font-size: 15px;
     font-weight: 700;
-    color: var(--bazar);
+    color: var(--primary);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
@@ -501,11 +569,11 @@ img { max-width: 100%; display: block; }
     color: var(--text-2);
 }
 .row__ico .ico { width: 21px; height: 21px; }
-.row__ico--meal    { background: var(--meal-tint);    color: #b45309; }
-.row__ico--bazar   { background: var(--bazar-tint);   color: #047857; }
-.row__ico--fixed   { background: var(--fixed-tint);   color: #4338ca; }
-.row__ico--report  { background: var(--report-tint);  color: #1d4ed8; }
-.row__ico--members { background: var(--members-tint); color: #6d28d9; }
+.row__ico--meal    { background: var(--grad-meal);    color: #fff; }
+.row__ico--bazar   { background: var(--grad-bazar);   color: #fff; }
+.row__ico--fixed   { background: var(--grad-fixed);   color: #fff; }
+.row__ico--report  { background: var(--grad-report);  color: #fff; }
+.row__ico--members { background: var(--grad-members); color: #fff; }
 
 .rowbtn {
     width: 40px; height: 40px;
@@ -525,8 +593,8 @@ img { max-width: 100%; display: block; }
     border-radius: 13px;
     display: grid;
     place-items: center;
-    background: var(--primary-tint);
-    color: var(--primary-dark);
+    background: var(--grad-primary);
+    color: #fff;
     font-weight: 700;
     font-size: 15px;
 }
@@ -547,6 +615,8 @@ img { max-width: 100%; display: block; }
 .badge--ok  { background: var(--primary-tint); color: var(--primary-dark); }
 .badge--out { background: var(--danger-tint);  color: #b91c3c; }
 .badge--meal{ background: var(--meal-tint);    color: #b45309; }
+.badge--bazar { background: var(--bazar-tint); color: #047857; }
+.badge--fixed { background: var(--fixed-tint); color: #4338ca; }
 
 .empty {
     padding: 22px 16px;
@@ -557,13 +627,15 @@ img { max-width: 100%; display: block; }
 }
 
 .empty__mark {
-    width: 46px; height: 46px;
+    width: 52px; height: 52px;
     margin: 0 auto 10px;
-    border-radius: 15px;
+    border-radius: 16px;
     display: grid;
     place-items: center;
-    background: #f4f6fa;
-    color: #b6bfcc;
+    background: linear-gradient(135deg, var(--primary-tint) 0%, var(--report-tint) 55%, var(--members-tint) 100%);
+    color: var(--primary-dark);
+    font-size: 24px;
+    box-shadow: 0 8px 18px -12px rgba(37, 99, 235, .55);
 }
 
 .empty__mark .ico { width: 24px; height: 24px; }
@@ -599,11 +671,15 @@ img { max-width: 100%; display: block; }
 }
 
 .membercard__stat {
-    background: #f7f9fc;
+    background: var(--slot);
+    border: 1px solid #edf1fa;
     border-radius: 11px;
     padding: 7px 8px;
     min-width: 0;
 }
+.membercard__stat:nth-child(1) { background: linear-gradient(180deg, #fffaf0 0%, #fff 100%); }
+.membercard__stat:nth-child(2) { background: linear-gradient(180deg, #f1f6ff 0%, #fff 100%); }
+.membercard__stat:nth-child(3) { background: linear-gradient(180deg, #f2fbf7 0%, #fff 100%); }
 
 .membercard__stat span:first-child {
     display: block;
@@ -625,12 +701,15 @@ img { max-width: 100%; display: block; }
 
 .detailgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 .detailgrid__cell {
-    background: var(--card);
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
     border: 1px solid var(--line);
+    border-left: 4px solid var(--primary);
     border-radius: 14px;
     padding: 11px 12px;
     min-width: 0;
 }
+.detailgrid__cell:nth-child(2n) { border-left-color: var(--report); }
+.detailgrid__cell:nth-child(3n) { border-left-color: var(--meal); }
 .detailgrid__label { font-size: 11px; font-weight: 600; color: var(--muted); }
 .detailgrid__value {
     font-size: 15px;
@@ -684,18 +763,18 @@ img { max-width: 100%; display: block; }
 .btn:active { transform: scale(.985); }
 .btn .ico { width: 21px; height: 21px; flex: 0 0 21px; }
 
-.btn--primary { background: var(--primary); color: #fff; box-shadow: 0 6px 16px -8px rgba(5, 150, 105, .8); }
-.btn--primary:active { background: var(--primary-dark); }
+.btn--primary { background: var(--grad-primary); color: #fff; box-shadow: 0 10px 20px -12px rgba(5, 150, 105, .95); }
+.btn--primary:active { filter: brightness(.94); }
 
 .btn--soft { background: #f1f4f8; color: var(--text-2); }
 .btn--ghost {
-    background: #fff;
+    background: linear-gradient(135deg, #ffffff 0%, #f4fbf8 100%);
     color: var(--primary-dark);
     border: 1.5px solid #cfe9df;
     box-shadow: none;
 }
 
-.btn--danger { background: var(--danger); color: #fff; box-shadow: 0 6px 16px -8px rgba(225, 29, 72, .8); }
+.btn--danger { background: var(--grad-danger); color: #fff; box-shadow: 0 10px 20px -12px rgba(225, 29, 72, .9); }
 
 .btn--soft-border {
     background: #fff;
@@ -705,17 +784,23 @@ img { max-width: 100%; display: block; }
     font-size: 14px;
 }
 
-.btn--add { box-shadow: var(--shadow); font-size: 15.5px; }
-.btn--meal    { background: var(--meal);    color: #fff; box-shadow: 0 8px 18px -10px rgba(245, 158, 11, .95); }
-.btn--bazar   { background: var(--bazar);   color: #fff; box-shadow: 0 8px 18px -10px rgba(16, 185, 129, .95); }
-.btn--fixed   { background: var(--fixed);   color: #fff; box-shadow: 0 8px 18px -10px rgba(99, 102, 241, .95); }
-.btn--members { background: var(--members); color: #fff; box-shadow: 0 8px 18px -10px rgba(139, 92, 246, .95); }
+.btn--add { box-shadow: 0 12px 24px -14px rgba(15, 23, 42, .5); font-size: 15.5px; }
+.btn--meal    { background: var(--grad-meal);    color: #fff; box-shadow: 0 12px 22px -12px rgba(245, 158, 11, .95); }
+.btn--bazar   { background: var(--grad-bazar);   color: #fff; box-shadow: 0 12px 22px -12px rgba(16, 185, 129, .95); }
+.btn--fixed   { background: var(--grad-fixed);   color: #fff; box-shadow: 0 12px 22px -12px rgba(99, 102, 241, .95); }
+.btn--members { background: var(--grad-members); color: #fff; box-shadow: 0 12px 22px -12px rgba(139, 92, 246, .95); }
 
-.btn--wa { background: var(--wa); color: #fff; box-shadow: 0 8px 18px -10px rgba(31, 170, 83, .9); }
+.btn--wa { background: var(--grad-wa); color: #fff; box-shadow: 0 12px 22px -12px rgba(21, 128, 61, .9); }
 .btn--wa.btn--soft-border { background: #fff; color: #15803d; border-color: #cfe9d9; box-shadow: var(--shadow-sm); }
 
 .btn--sm { min-height: 42px; padding: 9px 14px; font-size: 13.5px; width: auto; flex: 0 0 auto; }
 .btn--xs { min-height: 38px; padding: 8px 14px; font-size: 13px; width: auto; flex: 0 0 auto; }
+
+/* বড় রঙিন "Add" বাটনে লেবেল মাঝে, আইকন দুই পাশে — বেশি প্রাণবন্ত দেখায় */
+.btn__txt { flex: 0 1 auto; }
+.btn--add { justify-content: center; gap: 10px; }
+.btn--add .ico { flex: 0 0 21px; }
+.btn--add .ico--end { margin-left: 2px; opacity: .92; }
 
 .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .btn-row .btn { width: auto; flex: 1 1 auto; min-width: 140px; }
@@ -747,11 +832,13 @@ img { max-width: 100%; display: block; }
 
 .chip:active { background: #f4f6fa; }
 .chip.is-on {
-    background: var(--primary);
-    border-color: var(--primary);
+    background: var(--grad-primary);
+    border-color: #08916d;
     color: #fff;
-    box-shadow: 0 6px 14px -8px rgba(5, 150, 105, .9);
+    box-shadow: 0 8px 16px -9px rgba(5, 150, 105, .95);
 }
+/* মিল শিটের চিপ — সংখ্যার জন্য উজ্জ্বল রঙ */
+.chip--mini.is-on { background: var(--grad-meal); border-color: #f59e0b; box-shadow: none; }
 
 /* ------------------------------------------ meal day-entry (per member) --- */
 .field__row {
@@ -910,7 +997,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
     padding: 10px 12px;
     border: 1.5px solid #e6ebf2;
     border-radius: 13px;
-    background: #fbfcfe;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .rentrow__name {
@@ -942,7 +1029,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
     padding: 10px 12px;
     border: 1.5px solid #e6ebf2;
     border-radius: 13px;
-    background: #fbfcfe;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .billrow__ico {
@@ -1001,10 +1088,19 @@ select.input, select.visually-hidden-control { color: var(--text); }
 }
 
 .totalcard--fixed {
-    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-    border-color: #5457e6;
-    box-shadow: 0 10px 24px -14px rgba(79, 70, 229, .8);
+    background: var(--grad-fixed);
+    border-color: #4338ca;
+    box-shadow: 0 14px 28px -16px rgba(79, 70, 229, .95);
 }
+
+/* Bazar স্ক্রিনের মোট কার্ড — সবুজ গ্রেডিয়েন্ট */
+#screen-bazar .totalcard {
+    background: var(--grad-bazar);
+    border-color: #047857;
+    box-shadow: 0 14px 28px -16px rgba(4, 120, 87, .95);
+}
+#screen-bazar .totalcard .totalcard__label { color: rgba(255, 255, 255, .88); }
+#screen-bazar .totalcard .totalcard__value { color: #fff; }
 
 .totalcard--fixed .totalcard__label { color: rgba(255, 255, 255, .85); }
 .totalcard--fixed .totalcard__value { color: #fff; }
@@ -1027,7 +1123,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
     flex: 0 0 auto;
     padding: 5px 12px;
     border-radius: 999px;
-    background: #f4f6fa;
+    background: var(--slot);
     border: 1px solid var(--line);
     font-size: 13px;
     font-weight: 800;
@@ -1119,10 +1215,10 @@ select.input, select.visually-hidden-control { color: var(--text); }
     color: var(--text-2);
 }
 .fold__ico .ico { width: 19px; height: 19px; }
-.fold__ico--meal    { background: var(--meal-tint);    color: #b45309; }
-.fold__ico--bazar   { background: var(--bazar-tint);   color: #047857; }
-.fold__ico--fixed   { background: var(--fixed-tint);   color: #4338ca; }
-.fold__ico--report  { background: var(--report-tint);  color: #1d4ed8; }
+.fold__ico--meal    { background: var(--grad-meal);    color: #fff; }
+.fold__ico--bazar   { background: var(--grad-bazar);   color: #fff; }
+.fold__ico--fixed   { background: var(--grad-fixed);   color: #fff; }
+.fold__ico--report  { background: var(--grad-report);  color: #fff; }
 
 .fold__title { flex: 1 1 auto; font-size: 14px; font-weight: 700; }
 .fold__chev { flex: 0 0 18px; color: #c3cbd6; transition: transform .2s ease; }
@@ -1174,11 +1270,14 @@ select.input, select.visually-hidden-control { color: var(--text); }
 .legacy-table th {
     font-size: 11.5px;
     font-weight: 700;
-    background: #f4f6fa;
+    background: var(--slot);
     color: var(--text-2);
     text-align: left;
     white-space: nowrap;
 }
+/* টেবিলের অ্যাকশন বাটনগুলো ছোট হলেও রঙিন */
+.legacy-table button[data-act="fixed-share"],
+.legacy-table button[data-act="fixed-delete"] { border-radius: 9px; }
 
 .legacy-table td { color: var(--text-2); }
 .legacy-table .ta-c { text-align: center; }
@@ -1197,10 +1296,11 @@ select.input, select.visually-hidden-control { color: var(--text); }
     place-items: center;
 }
 .info-card__ico .ico { width: 21px; height: 21px; }
-.info-card__ico--sync    { background: var(--primary-tint); color: var(--primary-dark); }
-.info-card__ico--install { background: var(--report-tint);  color: #1d4ed8; }
-.info-card__ico--about   { background: var(--members-tint); color: #6d28d9; }
-.info-card__ico--danger  { background: var(--danger-tint);  color: var(--danger); }
+.info-card__ico--sync    { background: var(--grad-primary); color: #fff; }
+.info-card__ico--install { background: var(--grad-report);  color: #fff; }
+.info-card__ico--about   { background: var(--grad-members); color: #fff; }
+.info-card__ico--danger  { background: var(--grad-danger);  color: #fff; }
+.info-card__ico--retention { background: var(--grad-fixed); color: #fff; }
 
 .info-card__body { flex: 1 1 auto; min-width: 0; }
 .info-card__title { font-size: 14.5px; font-weight: 700; }
@@ -1247,7 +1347,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
     gap: 3px;
     min-height: var(--nav-h);
     padding: 8px 2px 7px;
-    color: #97a3b3;
+    color: #64748b;
     min-width: 0;
 }
 
@@ -1271,8 +1371,17 @@ select.input, select.visually-hidden-control { color: var(--text); }
     width: 26px;
     height: 3px;
     border-radius: 0 0 4px 4px;
-    background: var(--primary);
+    background: var(--grad-primary);
 }
+/* প্রতিটি ট্যাবের নিজস্ব রঙ */
+.navbar__item[data-goto="meal"].is-active   { color: #d97706; }
+.navbar__item[data-goto="meal"].is-active::before   { background: var(--grad-meal); }
+.navbar__item[data-goto="bazar"].is-active  { color: #0f9d6f; }
+.navbar__item[data-goto="bazar"].is-active::before  { background: var(--grad-bazar); }
+.navbar__item[data-goto="report"].is-active { color: #2563eb; }
+.navbar__item[data-goto="report"].is-active::before { background: var(--grad-report); }
+.navbar__item[data-goto="more"].is-active   { color: #7c3aed; }
+.navbar__item[data-goto="more"].is-active::before   { background: var(--grad-members); }
 .navbar__item:active { background: #f4f6fa; }
 
 /* ------------------------------------------------------------ overlays --- */
@@ -1294,7 +1403,7 @@ select.input, select.visually-hidden-control { color: var(--text); }
     width: 100%;
     max-width: var(--app-max);
     max-height: 92dvh;
-    background: #fff;
+    background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     display: flex;
     flex-direction: column;
@@ -1310,10 +1419,10 @@ select.input, select.visually-hidden-control { color: var(--text); }
 .sheet--actions { max-height: 78dvh; }
 
 .sheet__grip {
-    width: 40px;
+    width: 44px;
     height: 4px;
     border-radius: 2px;
-    background: #dde3ec;
+    background: linear-gradient(90deg, var(--bazar) 0%, var(--report) 50%, var(--members) 100%);
     margin: 8px auto 2px;
     flex: 0 0 auto;
 }
@@ -1355,9 +1464,10 @@ select.input, select.visually-hidden-control { color: var(--text); }
 
 .sheet__hint {
     font-size: 11.5px;
-    color: var(--muted);
+    color: var(--text-2);
     line-height: 1.5;
-    background: #f7f9fc;
+    background: linear-gradient(135deg, #f2fbf7 0%, #f4f7ff 100%);
+    border: 1px solid #e3f0fb;
     border-radius: 11px;
     padding: 9px 11px;
 }
@@ -1398,13 +1508,14 @@ select.input, select.visually-hidden-control { color: var(--text); }
     border-radius: 12px;
     display: grid;
     place-items: center;
-    background: #f4f6fa;
+    background: var(--slot);
     color: var(--text-2);
 }
+.actionrow[data-action-index="0"] .actionrow__ico { background: var(--grad-report);  color: #fff; }
 .actionrow__ico .ico { width: 20px; height: 20px; }
-.actionrow--wa .actionrow__ico { background: #e7f7ee; color: #15803d; }
+.actionrow--wa .actionrow__ico { background: var(--grad-wa); color: #fff; }
 .actionrow--danger { color: var(--danger); }
-.actionrow--danger .actionrow__ico { background: var(--danger-tint); color: var(--danger); }
+.actionrow--danger .actionrow__ico { background: var(--grad-danger); color: #fff; }
 
 .actionrow__body { flex: 1 1 auto; min-width: 0; }
 .actionrow__sub { display: block; font-size: 11.5px; font-weight: 600; color: var(--muted); margin-top: 1px; }
@@ -1493,11 +1604,11 @@ select.input, select.visually-hidden-control { color: var(--text); }
     margin: 0 auto;
     padding: 12px 14px;
     border-radius: 14px;
-    background: var(--primary) !important;
+    background: var(--grad-primary) !important;
     color: #fff !important;
     font-size: 13.5px;
     font-weight: 600;
-    box-shadow: 0 12px 28px -12px rgba(15, 23, 42, .5);
+    box-shadow: 0 14px 30px -12px rgba(4, 120, 87, .75);
     animation: toastIn .26s cubic-bezier(.2, .8, .25, 1);
     transition: opacity .28s ease, transform .28s ease;
 }
@@ -1520,10 +1631,10 @@ select.input, select.visually-hidden-control { color: var(--text); }
     align-items: center;
     gap: 10px;
     padding: 11px 12px;
-    background: #fff;
-    border: 1px solid var(--line);
+    background: linear-gradient(135deg, #ffffff 0%, #f6fbff 100%);
+    border: 1px solid #dceafc;
     border-radius: 16px;
-    box-shadow: 0 16px 40px -16px rgba(15, 23, 42, .45);
+    box-shadow: 0 16px 40px -16px rgba(37, 99, 235, .45);
     animation: bannerUp .3s ease-out;
 }
 
@@ -1577,3 +1688,26 @@ select.input, select.visually-hidden-control { color: var(--text); }
     .screen.is-active, .sheet, .dialog, .toast-notification, .install-banner { animation: none; }
     * { transition: none !important; }
 }
+
+/* ------------------------------------------------- vivid accents --------- */
+/* এখানে সব জায়গায় শুধু আইকন/রঙিন দাগ — কোনো লেখা নেই, তাই উজ্জ্বল গ্রেডিয়েন্ট
+   নিরাপদ। লেখাযুক্ত বাটন/কার্ড উপরে --grad-* (গাঢ়) ব্যবহার করে, ফলে রঙও থাকে
+   আর পড়তেও আরামদায়ক। */
+.stat__ico--meal, .quick__ico--meal, .row__ico--meal, .fold__ico--meal { background: var(--vivid-meal); }
+.stat__ico--bazar, .quick__ico--bazar, .row__ico--bazar, .fold__ico--bazar { background: var(--vivid-bazar); }
+.quick__ico--fixed, .row__ico--fixed, .fold__ico--fixed, .info-card__ico--retention { background: var(--vivid-fixed); }
+.stat__ico--report, .quick__ico--report, .row__ico--report, .fold__ico--report,
+.info-card__ico--install, .actionrow[data-action-index="0"] .actionrow__ico { background: var(--vivid-report); }
+.row__ico--members, .info-card__ico--about { background: var(--vivid-members); }
+.info-card__ico--danger, .actionrow--danger .actionrow__ico { background: var(--vivid-danger); }
+.info-card__ico--sync { background: var(--vivid-primary); }
+/* আইকন টাইলের সাদা স্ট্রোকে হালকা ছায়া — উজ্জ্বল রঙেও আইকনটা পরিষ্কার দেখা যায় */
+.stat__ico .ico, .quick__ico .ico, .row__ico .ico, .fold__ico .ico,
+.info-card__ico .ico, .actionrow__ico .ico { filter: drop-shadow(0 1.2px 1.6px rgba(6, 25, 18, .35)); }
+.actionrow--wa .actionrow__ico { background: var(--vivid-wa); }
+.tile:nth-child(1) { --tile-accent: var(--vivid-bazar); }
+.tile:nth-child(2) { --tile-accent: var(--vivid-fixed); }
+.tile:nth-child(3) { --tile-accent: var(--vivid-meal); }
+.tile:nth-child(4) { --tile-accent: var(--vivid-report); }
+.tile:nth-child(5) { --tile-accent: var(--vivid-members); }
+.tile:nth-child(6) { --tile-accent: var(--vivid-danger); }
