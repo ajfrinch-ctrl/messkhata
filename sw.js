@@ -3,8 +3,8 @@
    অ্যাপ শেল ক্যাশ + অফলাইন সাপোর্ট (PWA installable)
    ============================================================ */
 
-/* UI রিডিজাইনের পর ভার্সন বাম্প — পুরনো ক্যাশ বাদ যাবে */
-const VERSION = 'meal-khata-v4';
+/* Fixed Cost এন্ট্রি UI-এর পর ভার্সন বাম্প — পুরনো ক্যাশ বাদ যাবে */
+const VERSION = 'meal-khata-v5';
 const SHELL_CACHE = `${VERSION}-shell`;
 const CDN_CACHE = `${VERSION}-cdn`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;

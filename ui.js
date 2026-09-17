@@ -347,7 +347,8 @@
     /* মিল শিটে এখন সদস্য-তালিকা (প্রতিজনের আলাদা মিল) ব্যবহার হয়,
        তাই এখানে শুধু বাজারের পিকারই দরকার। */
     const PICKERS = [
-        { kind: 'bazar', select: 'bazar-member-select', chips: 'bazar-member-chips' }
+        { kind: 'bazar', select: 'bazar-member-select', chips: 'bazar-member-chips' },
+        { kind: 'fixed', select: 'fixed-member-select', chips: 'fixed-member-chips' }
     ];
 
     function pickerById(kind) {
@@ -428,37 +429,59 @@
     }
 
     /* ====================================================== CALC HELPERS ==== */
+    /* ফিক্সড খরচের হিসাব এক জায়গাতেই (index.html-এর computeFixedSummary) হয় —
+       UI কেবল সেটাই পড়ে, তাই কোনো সংখ্যা দুইবার গোনা হয় না। */
+    function fixedSummary() {
+        if (typeof window.computeFixedSummary === 'function') {
+            try { return window.computeFixedSummary(); } catch (e) { /* ignore */ }
+        }
+        const d = data();
+        const perMember = {};
+        members().forEach(function (m) { perMember[m.id] = { share: 0, paid: 0 }; });
+        return { entries: (d && d.fixedCostLog) || [], perMember: perMember, total: 0, totalPaid: 0 };
+    }
+
+    function fixedEntries() {
+        const list = fixedSummary().entries || [];
+        return list.slice().sort(function (a, b) {
+            const diff = new Date(b.date) - new Date(a.date);
+            return diff !== 0 ? diff : String(b.id).localeCompare(String(a.id));
+        });
+    }
+
     function totals() {
-        const d = data(); if (!d) return { meals: 0, bazar: 0, rate: 0, fixed: 0, utility: 0, rent: 0 };
+        const d = data(); if (!d) return { meals: 0, bazar: 0, rate: 0, fixed: 0 };
         const meals = (d.mealsLog || []).reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
         const bazar = (d.bazarLog || []).reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const rent = Object.keys((d.fixedCosts && d.fixedCosts.rent) || {})
-            .reduce(function (s, k) { return s + (Number(d.fixedCosts.rent[k]) || 0); }, 0);
-        const bills = d.grandBills || {};
-        const utility = ['electricity', 'maid', 'wifi', 'others']
-            .reduce(function (s, k) { return s + (Number(bills[k]) || 0); }, 0);
+        const fixed = Number(fixedSummary().total) || 0;
         return {
             meals: meals,
             bazar: bazar,
             rate: meals > 0 ? bazar / meals : 0,
-            rent: rent,
-            utility: utility,
-            fixed: rent + utility
+            fixed: fixed
         };
     }
 
     function memberStats(memberId) {
-        const d = data(); if (!d) return { meals: 0, spent: 0, rent: 0, expense: 0, balance: 0 };
+        const d = data(); if (!d) return { meals: 0, spent: 0, rent: 0, share: 0, expense: 0, balance: 0 };
         const t = totals();
         const meals = (d.mealsLog || []).filter(function (l) { return l.memberId === memberId; })
             .reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
-        const spent = (d.bazarLog || []).filter(function (b) { return b.memberId === memberId; })
+        const bazarSpent = (d.bazarLog || []).filter(function (b) { return b.memberId === memberId; })
             .reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const rent = Number((d.fixedCosts && d.fixedCosts.rent ? d.fixedCosts.rent[memberId] : 0)) || 0;
-        const count = members().length;
-        const share = count ? t.utility / count : 0;
-        const expense = meals * t.rate + rent + share;
-        return { meals: meals, spent: spent, rent: rent, share: share, expense: expense, balance: spent - expense };
+        const f = fixedSummary().perMember[memberId] || { share: 0, paid: 0 };
+        const expense = meals * t.rate + f.share;
+        const spent = bazarSpent + f.paid;
+        return {
+            meals: meals,
+            bazarSpent: bazarSpent,
+            fixedPaid: f.paid,
+            spent: spent,
+            share: f.share,
+            rent: f.share,
+            expense: expense,
+            balance: spent - expense
+        };
     }
 
     /* ======================================================= HOME RENDER ==== */
@@ -620,139 +643,53 @@
     }
 
     /* ================================================== FIXED COST RENDER == */
-    /* Fixed Cost ক্যাটাগরি — একই রকম SVG আইকন (ইমোজির বদলে, সব ডিভাইসে একই দেখাবে) */
-    const ICONS = {
-        rent: '<svg class="ico" viewBox="0 0 24 24"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg>',
-        elec: '<svg class="ico" viewBox="0 0 24 24"><path d="M13 3.5 6.5 13.5h4.2L11 20.5l6.5-10h-4.2z"/></svg>',
-        maid: '<svg class="ico" viewBox="0 0 24 24"><path d="M16 4.5 11 12.5"/><path d="M5.5 20.5l3-5.5 4.2 2.3-2.6 3.2z"/><path d="M12.6 15.2l.9-1.6"/></svg>',
-        wifi: '<svg class="ico" viewBox="0 0 24 24"><path d="M4.5 9.5a11 11 0 0 1 15 0"/><path d="M7.6 13a7 7 0 0 1 8.8 0"/><path d="M10.6 16.4a3 3 0 0 1 2.8 0"/><circle cx="12" cy="19.4" r=".9"/></svg>',
-        water:'<svg class="ico" viewBox="0 0 24 24"><path d="M12 3.5c3 3.7 5.5 6.6 5.5 9.4a5.5 5.5 0 0 1-11 0C6.5 10.1 9 7.2 12 3.5Z"/></svg>',
-        other:'<svg class="ico" viewBox="0 0 24 24"><path d="M4.5 8.4 12 4.5l7.5 3.9v7.2L12 19.5l-7.5-3.9z"/><path d="M4.5 8.4 12 12.3l7.5-3.9"/><path d="M12 12.3v7.2"/></svg>'
-    };
-
-    const BILL_ROWS = [
-        { key: 'electricity', label: 'Electricity', sub: 'বিদ্যুৎ বিল',   ico: ICONS.elec,  cls: 'elec' },
-        { key: 'maid',        label: 'Maid',        sub: 'বুয়া বিল',     ico: ICONS.maid,  cls: 'maid' },
-        { key: 'wifi',        label: 'WiFi',        sub: 'ওয়াইফাই বিল',  ico: ICONS.wifi,  cls: 'wifi' },
-        { key: 'others',      label: 'Others',      sub: 'অন্যান্য বিল',   ico: ICONS.other, cls: 'other' }
-    ];
-
-    function fixedRow(ico, cls, title, sub, amount, group) {
-        return '<button type="button" class="row row--tap" data-act="fixed-edit"' +
-            (group ? ' data-fixed-group="' + group + '"' : '') + '>' +
-            '<span class="billrow__ico ' + (cls ? 'billrow__ico--' + cls : '') + '">' + ico + '</span>' +
-            '<span class="row__body">' +
-                '<span class="row__title">' + esc(title) + '</span>' +
-                '<span class="row__sub">' + esc(sub) + '</span>' +
-            '</span>' +
-            '<span class="row__right"><span class="row__amount row__amount--fixed">' + amount + '</span></span>' +
-            '<span class="menu__chev">' + chevronRight() + '</span>' +
-        '</button>';
+    /* Fixed Cost এখন Bazar-এর মতোই এন্ট্রি-ভিত্তিক — তালিকা, ছক ও অ্যাকশন
+       সবই Bazar স্ক্রিনের হুবহু একই ধাঁচে তৈরি (ইনডিগো অ্যাকসেন্ট সহ)। */
+    function fixedEntriesOf(memberId) {
+        return fixedEntries().filter(function (f) { return f.memberId === memberId; });
     }
 
-    function fixedRentRow(member, rent) {
-        return '<button type="button" class="row row--tap" data-act="fixed-edit" data-fixed-group="rent">' +
-            '<span class="avatar">' + esc(String(member.name || '?').trim().charAt(0).toUpperCase()) + '</span>' +
-            '<span class="row__body">' +
-                '<span class="row__title">' + esc(member.name) + '</span>' +
-                '<span class="row__sub">ব্যক্তিগত বাসা ভাড়া</span>' +
-            '</span>' +
-            '<span class="row__right"><span class="row__amount row__amount--fixed">' + money(rent) + '</span></span>' +
-            '<span class="menu__chev">' + chevronRight() + '</span>' +
-        '</button>';
+    function fixedEntryById(id) {
+        return fixedEntries().filter(function (f) { return f.id === id; })[0] || null;
     }
 
     function renderFixedScreen() {
         const d = data(); if (!d) return;
-        const rentBox = $('fixed-rent-list');
-        const billBox = $('fixed-bill-list');
-        const memberBox = $('fixed-member-list');
-        if (!rentBox || !billBox || !memberBox) return;
+        const box = $('fixed-list');
+        if (!box) return;
 
-        const t = totals();
-        const bills = d.grandBills || {};
-        const list = members();
-        const rentOf = function (id) {
-            return Number(d.fixedCosts && d.fixedCosts.rent ? d.fixedCosts.rent[id] : 0) || 0;
-        };
+        const list = fixedEntries();
+        const summary = fixedSummary();
+        const totalEl = $('foot-total-fixed-all');
+        if (totalEl) totalEl.textContent = bn(Number(summary.total || 0).toFixed(1));
+        const countEl = $('fixed-count');
+        if (countEl) countEl.textContent = bn(list.length) + 'টি এন্ট্রি';
 
-        /* বাসা ভাড়া — প্রতি সদস্যের ব্যক্তিগত ইনপুট */
         if (!list.length) {
-            rentBox.innerHTML = emptyState('🏠', 'এখনো কোনো সদস্য নেই।', 'সদস্য যোগ করলে প্রত্যেকের ব্যক্তিগত ভাড়া এখানে লিখতে পারবেন।');
-        } else {
-            rentBox.innerHTML = list.map(function (m) {
-                return fixedRentRow(m, rentOf(m.id));
-            }).join('');
-        }
-
-        /* ইউটিলিটি বিল — ফিক্সড চারটি ক্যাটাগরি, সবার মধ্যে সমান ভাগ */
-        billBox.innerHTML = BILL_ROWS.map(function (b) {
-            return fixedRow(b.ico, b.cls, b.label, b.sub, money(Number(bills[b.key]) || 0), 'util');
-        }).join('');
-
-        /* সদস্যভিত্তিক সমবণ্টন — ব্যক্তিগত ভাড়া + সমান ইউটিলিটি */
-        if (!list.length) {
-            memberBox.innerHTML = emptyState('👥', 'কোনো সদস্য নেই।', 'সদস্য যোগ করলে ফিক্সড খরচ ভাগ হবে।');
+            box.innerHTML = emptyState('🏷️', 'কোনো ফিক্সড খরচ নেই।',
+                '“Add Fixed Cost” চেপে প্রথম খরচ যোগ করুন — যেমন বাসা ভাড়া বা কলা।');
             return;
         }
-        const share = t.utility / list.length;
-        memberBox.innerHTML = list.map(function (m) {
-            const rent = rentOf(m.id);
+
+        box.innerHTML = list.map(function (f) {
+            const amount = Number(f.amount) || 0;
+            const payer = f.memberId ? memberName(f.memberId) : '—';
+            const legacyNote = f.legacy ? ' · পুরনো রেকর্ড' : '';
             return '<div class="row">' +
-                '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0).toUpperCase()) + '</span>' +
                 '<div class="row__body">' +
-                    '<div class="row__title">' + esc(m.name) + '</div>' +
-                    '<div class="row__sub">ভাড়া ' + money(rent) + ' · ইউটিলিটি ' + money(share) + '</div>' +
+                    '<div class="row__title">' + esc(f.desc || 'ফিক্সড খরচ') + '</div>' +
+                    '<div class="row__sub">' + esc(f.displayDate || bnDate(f.date)) + ' · ' + esc(payer) + esc(legacyNote) + '</div>' +
                 '</div>' +
-                '<div class="row__right">' +
-                    '<span class="row__amount row__amount--fixed">' + money(rent + share) + '</span>' +
-                    '<span class="row__right-note">ফিক্সড মোট</span>' +
+                '<div class="row__right"><span class="row__amount row__amount--fixed">৳' + bn(amount) + '</span></div>' +
+                '<div class="row__actions">' +
+                    '<button type="button" class="rowbtn" data-act="fixed-actions" data-id="' + esc(f.id) +
+                    '" aria-label="আরও অপশন">' + dotsIcon() + '</button>' +
                 '</div>' +
             '</div>';
         }).join('');
     }
 
-    /* Fixed sheet খোলা — ট্যাপ করা রো অনুযায়ী সঠিক গ্রুপে স্ক্রল */
-    function openFixedSheet(group) {
-        openSheet('sheet-fixed');
-        updateSheetFixedTotals();
-        setTimeout(function () {
-            const body = document.querySelector('#sheet-fixed .sheet__body');
-            if (!body) return;
-            if (group === 'rent' || group === 'util') {
-                const target = $(group === 'rent' ? 'fixed-group-rent' : 'fixed-group-util');
-                if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            } else {
-                body.scrollTop = 0;
-            }
-        }, 90);
-    }
-
-    /* শিটের ভেতরের লাইভ টোটাল — শুধু উপস্থাপনা; সংরক্ষণের সময় বিদ্যমান
-       saveFixedCosts()-ই input-এর মান পড়ে (কোনো calculation পরিবর্তন নেই) */
-    function updateSheetFixedTotals() {
-        const rentEl = $('sheet-rent-total');
-        const billEl = $('sheet-bill-total');
-        const totalEl = $('sheet-fixed-total');
-        if (!rentEl || !billEl || !totalEl) return;
-        let rent = 0;
-        $$('#fixed-rent-inputs .rent-input').forEach(function (input) {
-            rent += Number(input.value) || 0;
-        });
-        let bills = 0;
-        ['bill-electricity', 'bill-maid', 'bill-wifi', 'bill-others'].forEach(function (id) {
-            const el = $(id);
-            if (el) bills += Number(el.value) || 0;
-        });
-        rentEl.textContent = money(rent);
-        billEl.textContent = money(bills);
-        totalEl.textContent = money(rent + bills);
-    }
-
-    on($('fixed-rent-inputs'), 'input', updateSheetFixedTotals);
-    ['bill-electricity', 'bill-maid', 'bill-wifi', 'bill-others'].forEach(function (id) {
-        on($(id), 'input', updateSheetFixedTotals);
-    });
+    /* ===================================================== REPORT RENDER ==== */
 
     /* ===================================================== REPORT RENDER ==== */
     function memberCardHtml(memberId, opts) {
@@ -804,7 +741,7 @@
                     '<div class="membercard__stats">' +
                         '<div class="membercard__stat"><span>মিল</span><span>' + bn(s.meals) + '</span></div>' +
                         '<div class="membercard__stat"><span>মোট খরচ</span><span>' + money(s.expense) + '</span></div>' +
-                        '<div class="membercard__stat"><span>বাজার জমা</span><span>' + money(s.spent) + '</span></div>' +
+                        '<div class="membercard__stat"><span>মোট জমা</span><span>' + money(s.spent) + '</span></div>' +
                     '</div>' +
                     '<div class="btn-row">' +
                         '<button type="button" class="btn btn--soft-border btn--sm" data-act="share-member" data-mid="' +
@@ -816,16 +753,58 @@
             }).join('');
         }
 
+        /* ফাইনাল সেটেলমেন্ট — মিল + বাজার + ফিক্সড খরচ মিলিয়ে কে পাবে, কে দেবে */
+        const settleBox = $('report-settlement-list');
+        if (settleBox) {
+            if (!list.length) {
+                settleBox.innerHTML = emptyState('⚖️', 'সেটেলমেন্টের জন্য সদস্য দরকার।', 'আগে সদস্য যোগ করুন।');
+            } else {
+                let receivable = 0;
+                let payable = 0;
+                const rows = list.map(function (m) {
+                    const s = memberStats(m.id);
+                    if (s.balance >= 0) receivable += s.balance;
+                    else payable += Math.abs(s.balance);
+                    return '<div class="row">' +
+                        '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0)) + '</span>' +
+                        '<div class="row__body">' +
+                            '<div class="row__title">' + esc(m.name) + '</div>' +
+                            '<div class="row__sub">মোট খরচ ' + money(s.expense) + ' · জমা ' + money(s.spent) + '</div>' +
+                        '</div>' +
+                        '<div class="row__right">' +
+                            (s.balance >= 0
+                                ? '<span class="badge badge--ok">পাবে ' + money(s.balance) + '</span>'
+                                : '<span class="badge badge--out">দেবে ' + money(Math.abs(s.balance)) + '</span>') +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+                settleBox.innerHTML = rows +
+                    '<div class="row">' +
+                        '<div class="row__body">' +
+                            '<div class="row__title">সর্বমোট</div>' +
+                            '<div class="row__sub">যারা পাবে ' + money(receivable) + ' · যারা দেবে ' + money(payable) + '</div>' +
+                        '</div>' +
+                    '</div>';
+            }
+        }
+
         const group = {};
         (d.bazarLog || []).forEach(function (b) {
             const k = monthKey(b.date);
-            if (!group[k]) group[k] = { bazar: 0, meals: 0 };
+            if (!group[k]) group[k] = { bazar: 0, meals: 0, fixed: 0 };
             group[k].bazar += Number(b.amount) || 0;
         });
         (d.mealsLog || []).forEach(function (l) {
             const k = monthKey(l.date);
-            if (!group[k]) group[k] = { bazar: 0, meals: 0 };
+            if (!group[k]) group[k] = { bazar: 0, meals: 0, fixed: 0 };
             group[k].meals += Number(l.count) || 0;
+        });
+        /* মাসিক মোটে ফিক্সড খরচও যোগ হয় (তারিখ অনুযায়ী) */
+        (fixedSummary().entries || []).forEach(function (f) {
+            const k = monthKey(f.date);
+            if (!k) return;
+            if (!group[k]) group[k] = { bazar: 0, meals: 0, fixed: 0 };
+            group[k].fixed += Number(f.amount) || 0;
         });
 
         const keys = Object.keys(group).sort(function (a, b) { return b.localeCompare(a); });
@@ -840,8 +819,8 @@
                     '<div class="row__body">' +
                         '<div class="row__title">' + esc(monthLabel(k)) +
                             (k === currentKey ? ' <span class="badge badge--ok">চলতি</span>' : '') + '</div>' +
-                        '<div class="row__sub">বাজার ' + money(g.bazar) + ' · মিল ' +
-                            bn(Number.isInteger(g.meals) ? g.meals : g.meals.toFixed(1)) + '</div>' +
+                        '<div class="row__sub">বাজার ' + money(g.bazar) + ' · ফিক্সড ' + money(g.fixed) +
+                            ' · মিল ' + bn(Number.isInteger(g.meals) ? g.meals : g.meals.toFixed(1)) + '</div>' +
                     '</div>' +
                     '<div class="row__right">' +
                         '<span class="row__amount row__amount--muted">৳' + bn(rate.toFixed(2)) + '</span>' +
@@ -908,16 +887,27 @@
                 '</div>';
             }).join('');
 
+        const recentFixed = fixedEntriesOf(memberId).slice(0, 5)
+            .map(function (f) {
+                return '<div class="row">' +
+                    '<div class="row__body">' +
+                        '<div class="row__title">' + esc(f.desc || 'ফিক্সড খরচ') + '</div>' +
+                        '<div class="row__sub">' + esc(f.displayDate || bnDate(f.date)) + '</div>' +
+                    '</div>' +
+                    '<div class="row__right"><span class="row__amount row__amount--fixed">৳' + bn(Number(f.amount) || 0) + '</span></div>' +
+                '</div>';
+            }).join('');
+
         body.innerHTML =
             '<div class="sec">' +
                 '<div class="sec__head"><h2 class="sec__title">খরচের হিসাব</h2></div>' +
                 '<div class="detailgrid">' +
                     cell('মিল', bn(s.meals) + ' টি') +
                     cell('মিলের খরচ', money(s.meals * totals().rate)) +
-                    cell('বাসা ভাড়া', money(s.rent)) +
-                    cell('ইউটিলিটি শেয়ার', money(s.share)) +
+                    cell('ফিক্সড খরচের ভাগ', money(s.share)) +
                     cell('মোট খরচ', money(s.expense)) +
-                    cell('বাজার জমা', money(s.spent)) +
+                    cell('বাজার জমা', money(s.bazarSpent)) +
+                    cell('ফিক্সড খরচ জমা', money(s.fixedPaid)) +
                 '</div>' +
             '</div>' +
             '<div class="sec">' +
@@ -932,6 +922,10 @@
             '<div class="sec">' +
                 '<div class="sec__head"><h2 class="sec__title">সাম্প্রতিক বাজার</h2></div>' +
                 '<div class="card">' + (recent || emptyState('🛒', 'এই সদস্যের কোনো বাজার নেই।', '')) + '</div>' +
+            '</div>' +
+            '<div class="sec">' +
+                '<div class="sec__head"><h2 class="sec__title">সাম্প্রতিক ফিক্সড খরচ</h2></div>' +
+                '<div class="card">' + (recentFixed || emptyState('🏷️', 'এই সদস্যের কোনো ফিক্সড খরচ নেই।', '')) + '</div>' +
             '</div>' +
             '<div class="sec">' +
                 '<button type="button" class="btn btn--danger" data-act="member-delete" data-mid="' + esc(memberId) + '">' +
@@ -950,7 +944,7 @@
 
     function polishLegacyNumbers() {
         ['total-bazar', 'total-fixed', 'total-expense', 'table-total-bazar',
-         'foot-total-rent', 'foot-total-utility', 'foot-total-fixed-all'].forEach(trimZeroDecimals);
+         'foot-total-fixed-all'].forEach(trimZeroDecimals);
     }
 
     /* ==================================================== MASTER RENDER ==== */
@@ -984,30 +978,12 @@
         renderBazarScreen();
     };
 
+    /* পুরনো ফিক্সড কস্ট ইনপুট ফর্ম আর নেই — legacy নামটি শুধু নিরাপদে এগিয়ে দিই */
     const legacyRenderFixedCostInputs = window.renderFixedCostInputs;
     window.renderFixedCostInputs = function () {
         if (typeof legacyRenderFixedCostInputs === 'function') legacyRenderFixedCostInputs.apply(this, arguments);
-        styleFixedRentInputs();
-        updateSheetFixedTotals();
         renderFixedScreen();
     };
-
-    /* legacy ভাড়ার ইনপুটগুলো মোবাইল-বান্ধব রো-তে সাজাই (id/data-mem অপরিবর্তিত) */
-    function styleFixedRentInputs() {
-        $$('#fixed-rent-inputs > div').forEach(function (wrap) {
-            const label = wrap.querySelector('label');
-            const input = wrap.querySelector('input.rent-input');
-            wrap.className = 'rentrow';
-            if (label) label.className = 'rentrow__name';
-            if (input) {
-                input.className = 'input rent-input';
-                input.setAttribute('inputmode', 'decimal');
-                if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', '০');
-                const name = label ? label.textContent.trim() : '';
-                if (name) input.setAttribute('aria-label', name + ' এর বাসা ভাড়া');
-            }
-        });
-    }
 
     /* ======================================================= ACTIONS UI ===== */
     function openActions(title, items) {
@@ -1320,6 +1296,131 @@
         ]);
     }
 
+    /* ==================================================== FIXED COST ENTRY == */
+    /* Bazar এন্ট্রির মতোই — একই ফিল্ড, একই সেভ/এডিট/ডিলিট/শেয়ার ওয়ার্কফ্লো */
+    let fixedEditing = null;
+    let lastFixedEntryId = null;
+
+    function openFixedSheet(entry) {
+        fixedEditing = entry ? entry.id : null;
+        $('sheet-fixed-title').textContent = entry ? 'Edit Fixed Cost' : 'Add Fixed Cost';
+        $('fixed-save-btn').textContent = entry ? 'আপডেট করুন' : 'খরচ যোগ করুন';
+
+        $('fixed-date').value = entry ? entry.date : todayISO();
+        $('fixed-desc').value = entry ? (entry.desc || '') : '';
+        $('fixed-amount').value = entry ? entry.amount : '';
+
+        const select = $('fixed-member-select');
+        if (select) {
+            const fallback = firstMemberId();
+            select.value = entry && entry.memberId ? entry.memberId : (select.value || fallback);
+        }
+        syncPickerSelection('fixed');
+
+        const waBtn = $('fixed-wa-share-btn');
+        if (waBtn) waBtn.classList.add('hidden');
+
+        $('fixed-save-btn').classList.toggle('hidden', !members().length);
+        $('fixed-add-member-btn').classList.toggle('hidden', members().length > 0);
+
+        openSheet('sheet-fixed');
+    }
+
+    function saveFixed() {
+        const date = $('fixed-date').value;
+        const select = $('fixed-member-select');
+        const memberId = select ? select.value : '';
+        const desc = $('fixed-desc').value.trim();
+        const amount = parseFloat($('fixed-amount').value);
+
+        if (!members().length) {
+            hideKeyboard();
+            window.alert('আগে সদস্য যোগ করুন, তারপর ফিক্সড খরচ যোগ করুন।');
+            return;
+        }
+        if (!date || !memberId || !desc || isNaN(amount) || amount <= 0) {
+            hideKeyboard();
+            window.alert('দয়া করে তারিখ, সদস্য, খরচের নাম ও টাকার পরিমাণ ঠিকভাবে দিন।');
+            return;
+        }
+
+        /* edit মোডে আগের এন্ট্রিটি সরিয়ে বিদ্যমান addFixedCost() দিয়ে নতুন করে লেখা হয় —
+           এতে পুরনো এন্ট্রির সংখ্যা একবারই গোনা হয় (ডাবল-কাউন্ট নেই) */
+        if (fixedEditing) {
+            const d = data();
+            if (d) {
+                d.fixedCostLog = (d.fixedCostLog || []).filter(function (f) { return f.id !== fixedEditing; });
+                if (typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
+            }
+            fixedEditing = null;
+        }
+
+        if (typeof window.addFixedCost === 'function') window.addFixedCost();
+
+        const fresh = data();
+        if (fresh) {
+            const match = (fresh.fixedCostLog || []).filter(function (f) {
+                return f.date === date && f.memberId === memberId &&
+                    (Number(f.amount) || 0) === amount &&
+                    (f.desc || '') === (desc || 'ফিক্সড খরচ');
+            }).pop();
+            lastFixedEntryId = match ? match.id : null;
+            const waBtn = $('fixed-wa-share-btn');
+            if (waBtn) waBtn.classList.toggle('hidden', !lastFixedEntryId);
+        }
+
+        hideKeyboard();
+        closeSheet('sheet-fixed');
+        renderAll();
+    }
+
+    function shareFixedEntry(entry) {
+        const info = {
+            payer: entry.memberId ? memberName(entry.memberId) : '—',
+            date: entry.displayDate || bnDate(entry.date),
+            desc: entry.desc || 'ফিক্সড খরচ',
+            amount: entry.amount
+        };
+        if (typeof window.shareSpecificFixedOnWhatsApp === 'function') {
+            runConfirmed(function () {
+                window.shareSpecificFixedOnWhatsApp(info.payer, info.date, info.desc, info.amount);
+            });
+            return;
+        }
+        window.open(shareUrlFor('🏷️ *ফিক্সড খরচ আপডেট*\n\n👤 *টাকা দিয়েছেন:* ' + info.payer +
+            '\n📅 *তারিখ:* ' + info.date + '\n📋 *খরচের নাম:*\n' + info.desc +
+            '\n\n💵 *টাকার পরিমাণ:* ' + bn(info.amount) + ' টাকা'), '_blank');
+    }
+
+    function deleteFixedEntry(id) {
+        askConfirm('এই ফিক্সড খরচ এন্ট্রিটি মুছে ফেলতে চান?', 'ফিক্সড খরচ ডিলিট').then(function (ok) {
+            if (!ok) return;
+            runConfirmed(function () {
+                if (typeof window.deleteFixedCost === 'function') window.deleteFixedCost(id);
+            });
+        });
+    }
+
+    function fixedActions(id) {
+        const entry = fixedEntryById(id);
+        if (!entry) return;
+
+        openActions(entry.desc || 'ফিক্সড খরচ এন্ট্রি', [
+            {
+                label: 'Edit', sub: 'নাম, তারিখ বা টাকা পরিবর্তন করুন', icon: editIcon(),
+                run: function () { openFixedSheet(entry); }
+            },
+            {
+                label: 'Share', sub: 'হোয়াটসঅ্যাপে পাঠান', icon: waIcon(), tone: 'wa',
+                run: function () { shareFixedEntry(entry); }
+            },
+            {
+                label: 'Delete', sub: 'এন্ট্রিটি মুছে ফেলুন', icon: trashIcon(), tone: 'danger',
+                run: function () { deleteFixedEntry(id); }
+            }
+        ]);
+    }
+
     /* ======================================================== MEMBER ======= */
     function memberActions(memberId) {
         const m = members().filter(function (x) { return x.id === memberId; })[0];
@@ -1406,7 +1507,7 @@
         switch (actEl.getAttribute('data-act')) {
             case 'open-meal':   go('meal', function () { openMealSheet({}); }); break;
             case 'open-bazar':  go('bazar', function () { openBazarSheet(null); }); break;
-            case 'open-fixed':  go('fixed', function () { openFixedSheet(''); }); break;
+            case 'open-fixed':  go('fixed', function () { openFixedSheet(null); }); break;
             case 'open-member': go('members', function () { openSheet('sheet-member', { silent: true }); }); break;
             case 'member-first-meal':
                 pendingSheetAfterMember = function () { openMealSheet({}); };
@@ -1416,7 +1517,10 @@
                 pendingSheetAfterMember = function () { openBazarSheet(null); };
                 go('members', function () { openSheet('sheet-member', { silent: true }); });
                 break;
-            case 'fixed-edit':  openFixedSheet(actEl.getAttribute('data-fixed-group') || ''); break;
+            case 'member-first-fixed':
+                pendingSheetAfterMember = function () { openFixedSheet(null); };
+                go('members', function () { openSheet('sheet-member', { silent: true }); });
+                break;
 
             case 'meal-quick-open':
                 openMealSheet({ date: actEl.getAttribute('data-date'), memberId: actEl.getAttribute('data-mid') });
@@ -1432,6 +1536,15 @@
                 break;
             case 'bazar-actions':
                 bazarActions(actEl.getAttribute('data-id'));
+                break;
+            case 'fixed-actions':
+                fixedActions(actEl.getAttribute('data-id'));
+                break;
+            case 'fixed-share':
+                shareFixedEntry(fixedEntryById(actEl.getAttribute('data-id')) || {});
+                break;
+            case 'fixed-delete':
+                deleteFixedEntry(actEl.getAttribute('data-id'));
                 break;
             case 'member-actions':
             case 'member-delete':
@@ -1449,6 +1562,14 @@
                     : (d ? (d.bazarLog || []).slice(-1)[0] : null);
                 if (!entry) { window.showToast('শেয়ার করার মতো বাজার এন্ট্রি নেই।'); break; }
                 shareEntry(entry);
+                break;
+            }
+            case 'share-last-fixed': {
+                const entry = lastFixedEntryId
+                    ? fixedEntryById(lastFixedEntryId)
+                    : fixedEntries()[0];
+                if (!entry) { window.showToast('শেয়ার করার মতো ফিক্সড খরচ এন্ট্রি নেই।'); break; }
+                shareFixedEntry(entry);
                 break;
             }
 
@@ -1498,12 +1619,7 @@
         renderMealRows();
     });
 
-    on($('fixed-save-btn'), 'click', function () {
-        /* বিদ্যমান saveFixedCosts() — input id/data-mem অপরিবর্তিত */
-        if (typeof window.saveFixedCosts === 'function') window.saveFixedCosts();
-        hideKeyboard();
-        closeSheet('sheet-fixed');
-    });
+    on($('fixed-save-btn'), 'click', saveFixed);
 
     on($('member-save-btn'), 'click', function () {
         const input = $('member-name');
@@ -1573,6 +1689,13 @@
         if (!d || !(d.bazarLog || []).length) { window.alert('কোনো বাজার খরচ পাওয়া যায়নি।'); return; }
         runConfirmed(function () {
             if (typeof window.shareBazarListOnWhatsApp === 'function') window.shareBazarListOnWhatsApp();
+        });
+    });
+
+    on($('fixed-share-list-btn'), 'click', function () {
+        if (!fixedEntries().length) { window.alert('কোনো ফিক্সড খরচ পাওয়া যায়নি।'); return; }
+        runConfirmed(function () {
+            if (typeof window.shareFixedListOnWhatsApp === 'function') window.shareFixedListOnWhatsApp();
         });
     });
 
