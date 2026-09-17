@@ -92,6 +92,9 @@
 `sw.js`-এর cache version `meal-khata-v4` → **`meal-khata-v5`** (পরের ধাপে **v6**) — পুরনো cache বাদ যাবে, নতুন UI সবাই পাবেন।
 
 > পরবর্তী পরিবর্তন (বিগত মাসের হিসাব + পুরনো ডেটা স্থায়ীভাবে ডিলিট): দেখুন [`MONTH_HISTORY_AND_RETENTION.md`](./MONTH_HISTORY_AND_RETENTION.md)।
+>
+> **Fixed Cost-এর সদস্য-তালিকার বাগ ফিক্স** (নতুন সদস্য যোগ করলেই তাঁর নাম Fixed Cost-এ দেখায়,
+> বাজারের হুবহু একই UI/সদস্য লিস্ট): দেখুন [`FIXED_COST_MEMBER_SYNC.md`](./FIXED_COST_MEMBER_SYNC.md)।
 
 > নোট: কোনো ডিভাইসে যদি পুরনো ক্যাশে করা অ্যাপ চালু থাকে, সে লেখার সময় `fixedCostLog` ফিল্ডটি বাদ দিতে পারে
 > (কারণ পুরনো কোড ওই ফিল্ড চেনে না)। তখন নতুন অ্যাপ খোলার সময় পুরনো `fixedCosts.rent`/`grandBills` থেকে
