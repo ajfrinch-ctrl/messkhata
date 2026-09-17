@@ -206,69 +206,6 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     </button>
                 </div>
             </section>
-
-            <section class="sec">
-                <div class="sec__head">
-                    <h2 class="sec__title">Main Menu</h2>
-                </div>
-                <div class="menu">
-                    <button type="button" class="menu__item" data-goto="meal">
-                        <span class="menu__ico menu__ico--meal">
-                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11h16a8 8 0 0 1-8 8 8 8 0 0 1-8-8Z"/><path d="M9 8V6.2"/><path d="M12 8V5.4"/><path d="M15 8V6.2"/></svg>
-                        </span>
-                        <span class="menu__body">
-                            <span class="menu__title">Daily Meal</span>
-                            <span class="menu__sub">দৈনিক মিল ব্যবস্থাপনা</span>
-                        </span>
-                        <span class="menu__meta" id="menu-meta-meal">—</span>
-                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
-                    </button>
-                    <button type="button" class="menu__item" data-goto="bazar">
-                        <span class="menu__ico menu__ico--bazar">
-                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.3 10.3a1.8 1.8 0 0 0 1.8 1.4h7.8a1.8 1.8 0 0 0 1.8-1.4L20.5 7H6.3"/><circle cx="10" cy="19.4" r="1.3"/><circle cx="17" cy="19.4" r="1.3"/></svg>
-                        </span>
-                        <span class="menu__body">
-                            <span class="menu__title">Bazar</span>
-                            <span class="menu__sub">দৈনিক বাজার খরচ</span>
-                        </span>
-                        <span class="menu__meta" id="menu-meta-bazar">—</span>
-                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
-                    </button>
-                    <button type="button" class="menu__item" data-goto="fixed">
-                        <span class="menu__ico menu__ico--fixed">
-                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 3.5h11v17l-2.75-1.9-2.75 1.9-2.75-1.9-2.75 1.9v-17Z"/><path d="M9.5 8.5h5"/><path d="M9.5 12h5"/></svg>
-                        </span>
-                        <span class="menu__body">
-                            <span class="menu__title">Fixed Cost</span>
-                            <span class="menu__sub">ফিক্সড খরচ ব্যবস্থাপনা</span>
-                        </span>
-                        <span class="menu__meta" id="menu-meta-fixed">—</span>
-                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
-                    </button>
-                    <button type="button" class="menu__item" data-goto="report">
-                        <span class="menu__ico menu__ico--report">
-                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
-                        </span>
-                        <span class="menu__body">
-                            <span class="menu__title">Accounts</span>
-                            <span class="menu__sub">হিসাব ও রিপোর্ট</span>
-                        </span>
-                        <span class="menu__meta" id="menu-meta-report">—</span>
-                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
-                    </button>
-                    <button type="button" class="menu__item" data-goto="members">
-                        <span class="menu__ico menu__ico--members">
-                            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 20v-1.7a4 4 0 0 0-4-4h-4a4 4 0 0 0-4 4V20"/><circle cx="10.5" cy="7.3" r="3.3"/><path d="M17.5 4.6a3.3 3.3 0 0 1 0 6.4"/><path d="M21 20v-1.6a4 4 0 0 0-2.6-3.7"/></svg>
-                        </span>
-                        <span class="menu__body">
-                            <span class="menu__title">Members</span>
-                            <span class="menu__sub">সদস্যদের তথ্য</span>
-                        </span>
-                        <span class="menu__meta" id="menu-meta-members">—</span>
-                        <span class="menu__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg></span>
-                    </button>
-                </div>
-            </section>
         </section>
 
         <!--------------------------------------------------------------------
@@ -729,23 +666,26 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <input id="meal-date" type="date" class="input">
                 </div>
                 <div class="field">
-                    <span class="field__label">সদস্য</span>
-                    <select id="meal-member-select" class="visually-hidden-control" tabindex="-1" aria-hidden="true"></select>
-                    <div class="chips" id="meal-member-chips" data-picker="meal"></div>
-                </div>
-                <div class="field">
-                    <label class="field__label" for="meal-count">মিলের সংখ্যা</label>
-                    <input id="meal-count" type="number" step="0.5" min="0" inputmode="decimal" placeholder="যেমন: ১, ১.৫, ২" class="input">
-                    <div class="chips chips--count" id="meal-count-chips">
-                        <button type="button" class="chip" data-count="0.5">০.৫</button>
-                        <button type="button" class="chip" data-count="1">১</button>
-                        <button type="button" class="chip" data-count="1.5">১.৫</button>
-                        <button type="button" class="chip" data-count="2">২</button>
-                        <button type="button" class="chip" data-count="2.5">২.৫</button>
-                        <button type="button" class="chip" data-count="3">৩</button>
+                    <div class="field__row">
+                        <span class="field__label">এক চাপে সবার জন্য</span>
+                        <span class="field__note">দরকার হলে নিচে থেকে বদলান</span>
+                    </div>
+                    <div class="chips chips--apply" id="meal-apply-chips">
+                        <button type="button" class="chip chip--apply" data-apply="0">সবাই ০</button>
+                        <button type="button" class="chip chip--apply" data-apply="0.5">সবাই ০.৫</button>
+                        <button type="button" class="chip chip--apply" data-apply="1">সবাই ১</button>
+                        <button type="button" class="chip chip--apply" data-apply="1.5">সবাই ১.৫</button>
+                        <button type="button" class="chip chip--apply" data-apply="2">সবাই ২</button>
                     </div>
                 </div>
-                <p class="sheet__hint" id="meal-sheet-hint">একাধিক মিল একসাথে: সেভ করলেই পরের সদস্যে চলে যাবে।</p>
+                <div class="field">
+                    <div class="field__row">
+                        <span class="field__label">সদস্য ধরে ধরে মিল</span>
+                        <span class="field__note field__note--strong" id="meal-day-total">মোট ০ মিল</span>
+                    </div>
+                    <div class="mealrows" id="meal-member-rows"></div>
+                </div>
+                <p class="sheet__hint" id="meal-sheet-hint">প্রতিটি সদস্যের পাশ থেকে মিলের সংখ্যা বেছে নিন — ০ মানে ওই দিন মিল নেই।</p>
             </div>
             <div class="sheet__foot">
                 <button type="button" class="btn btn--primary" id="meal-save-btn">মিল সংরক্ষণ করুন</button>
@@ -1086,13 +1026,15 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function updateDropdowns() {
+            /* মিল শিটে এখন সদস্য-লিস্ট (চিপ) ব্যবহার হয়, তাই meal-member-select
+               থাকলেও চলবে, না থাকলেও সমস্যা নেই — null চেক করা হয়েছে। */
             const mealSelect = document.getElementById('meal-member-select');
             const bazarSelect = document.getElementById('bazar-member-select');
-            mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
-            bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            if (mealSelect) mealSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
+            if (bazarSelect) bazarSelect.innerHTML = '<option value="">সদস্য নির্বাচন করুন</option>';
             messData.members.forEach(member => {
-                mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
-                bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if (mealSelect) mealSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
+                if (bazarSelect) bazarSelect.innerHTML += `<option value="${member.id}">${member.name}</option>`;
             });
         }
 
@@ -1114,25 +1056,41 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             document.getElementById('bill-others').value = messData.grandBills.others || '';
         }
 
-        function addMeals() {
-            const date = document.getElementById('meal-date').value;
-            const memberId = document.getElementById('meal-member-select').value;
-            const count = parseFloat(document.getElementById('meal-count').value);
+        /* একদিনের জন্য সব সদস্যের মিল একসাথে সেভ/আপডেট/বাতিল।
+           counts = { memberId: count } — 0 (বা খালি) মানে ওই দিন ওই সদস্যের মিল নেই।
+           ফিরিয়ে দেয় { added, updated, removed, total } — UI এই দেখে টোস্ট দেখায়। */
+        function saveMealsForDate(date, counts) {
+            const result = { added: 0, updated: 0, removed: 0, total: 0 };
+            if (!date || !counts) return result;
+            if (!Array.isArray(messData.mealsLog)) messData.mealsLog = [];
 
-            if (!date || !memberId || isNaN(count) || count < 0) return alert('দয়া করে সঠিক তথ্য দিন।');
+            Object.keys(counts).forEach(memberId => {
+                const raw = counts[memberId];
+                const count = (raw === '' || raw === null || raw === undefined) ? 0 : Number(raw);
+                if (!isFinite(count) || count < 0) return;
 
-            const existingIndex = messData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
-            if (existingIndex !== -1) {
-                messData.mealsLog[existingIndex].count = count;
-                showToast('মিলের হিসাব আপডেট করা হয়েছে।');
-            } else {
-                messData.mealsLog.push({ id: 'meal_' + Date.now(), date, memberId, count });
-                showToast('মিল অটো-সেভ করা হয়েছে।');
-            }
+                const existingIndex = messData.mealsLog.findIndex(l => l.date === date && l.memberId === memberId);
 
-            document.getElementById('meal-count').value = '';
+                if (count > 0) {
+                    if (existingIndex !== -1) {
+                        if (Number(messData.mealsLog[existingIndex].count) !== count) {
+                            messData.mealsLog[existingIndex].count = count;
+                            result.updated++;
+                        }
+                    } else {
+                        messData.mealsLog.push({ id: 'meal_' + Date.now() + '_' + memberId, date, memberId, count });
+                        result.added++;
+                    }
+                    result.total += count;
+                } else if (existingIndex !== -1) {
+                    messData.mealsLog.splice(existingIndex, 1);
+                    result.removed++;
+                }
+            });
+
             saveToLocalStorage();
             calculateMess();
+            return result;
         }
 
         function addBazar() {

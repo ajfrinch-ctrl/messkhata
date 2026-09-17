@@ -5,7 +5,7 @@
 
    ⚠️ Business logic এখানে নতুন করে লেখা হয়নি —
    meal / bazar / fixed cost / member / report এর সব calculation, Firebase sync
-   এবং WhatsApp share আগের ফাংশনগুলোকেই (addMeals, addBazar, saveFixedCosts,
+   এবং WhatsApp share আগের ফাংশনগুলোকেই (saveMealsForDate, addBazar, saveFixedCosts,
    deleteBazar, deleteMember, resetApp, calculateMess, updateDropdowns,
    renderMealsGrid, renderBazarGrid, share*) কল করা হয়েছে।
    শুধু রেন্ডারিং ও navigation এর ধাপগুলো মোবাইল-বান্ধব করা হয়েছে।
@@ -344,8 +344,9 @@
     }
 
     /* ==================================================== MEMBER PICKERS ==== */
+    /* মিল শিটে এখন সদস্য-তালিকা (প্রতিজনের আলাদা মিল) ব্যবহার হয়,
+       তাই এখানে শুধু বাজারের পিকারই দরকার। */
     const PICKERS = [
-        { kind: 'meal', select: 'meal-member-select', chips: 'meal-member-chips' },
         { kind: 'bazar', select: 'bazar-member-select', chips: 'bazar-member-chips' }
     ];
 
@@ -484,15 +485,11 @@
         if (startCard) startCard.classList.toggle('hidden', members().length > 0);
     }
 
+    /* হোম থেকে Main Menu বাদ দেওয়া হয়েছে — শুধু “More” স্ক্রিনের মেটা থাকে */
     function renderMenuMeta() {
         const d = data(); if (!d) return;
         const t = totals();
         const set = function (id, text) { const el = $(id); if (el) el.textContent = text; };
-        set('menu-meta-meal', bn(Number.isInteger(t.meals) ? t.meals : t.meals.toFixed(1)) + ' মিল');
-        set('menu-meta-bazar', money(t.bazar));
-        set('menu-meta-fixed', money(t.fixed));
-        set('menu-meta-report', '৳' + bn(t.rate.toFixed(2)));
-        set('menu-meta-members', bn(members().length) + ' জন');
         set('more-meta-meal', bn(Number.isInteger(t.meals) ? t.meals : t.meals.toFixed(1)) + ' মিল');
         set('more-meta-bazar', money(t.bazar));
         set('more-meta-fixed', money(t.fixed));
@@ -855,8 +852,7 @@
             '</div>' +
             '<div class="sec">' +
                 '<button type="button" class="btn btn--add btn--meal btn--flush" data-act="edit-meal-for" ' +
-                    'data-mid="' + esc(memberId) + '" data-date="' + esc(latest ? latest.date : todayISO()) + '" ' +
-                    'data-count="' + esc(latest ? latest.count : 1) + '">' +
+                    'data-mid="' + esc(memberId) + '" data-date="' + esc(latest ? latest.date : todayISO()) + '">' +
                     '<svg class="ico" viewBox="0 0 24 24"><path d="M12 5.5v13"/><path d="M5.5 12h13"/></svg>' +
                     (latest ? ' সাম্প্রতিক মিল এডিট করুন' : ' এই সদস্যের মিল যোগ করুন') +
                 '</button>' +
@@ -970,7 +966,12 @@
     }
 
     /* ========================================================== MEAL ======= */
-    let mealEditing = null;
+    /* একদিনের জন্য সব সদস্যের মিল একসাথে — প্রতিটি সদস্যের ঘর থেকে কত মিল,
+       তা চিপে চাপ দিয়ে বেছে নেওয়া হয়। ড্রাফট এখানে রাখা হয়:
+       mealDraft = { date: 'YYYY-MM-DD', counts: { memberId: number } }        */
+    const MEAL_CHOICES = [0, 0.5, 1, 1.5, 2, 2.5, 3];
+    let mealDraft = { date: '', counts: {} };
+    let mealFocusMemberId = '';
 
     function findMeal(date, memberId) {
         const d = data(); if (!d) return null;
@@ -979,82 +980,138 @@
         })[0] || null;
     }
 
-    function markCountChip(count) {
-        const box = $('meal-count-chips');
+    /* সংখ্যা → বাংলা লেবেল: 1 → ১, 1.5 → ১.৫ */
+    function countLabel(value) {
+        const n = Number(value) || 0;
+        return bn(Number.isInteger(n) ? n : n.toFixed(1));
+    }
+
+    /* কোনো তারিখের বর্তমান মিল — { memberId: count } আকারে */
+    function countsForDate(date) {
+        const d = data();
+        const counts = {};
+        members().forEach(function (m) { counts[m.id] = 0; });
+        if (d) {
+            (d.mealsLog || []).forEach(function (l) {
+                if (l.date === date && Object.prototype.hasOwnProperty.call(counts, l.memberId)) {
+                    counts[l.memberId] = Number(l.count) || 0;
+                }
+            });
+        }
+        return counts;
+    }
+
+    function loadMealDraft(date, memberId) {
+        mealDraft = { date: date, counts: countsForDate(date) };
+        mealFocusMemberId = memberId || '';
+    }
+
+    function mealDraftTotal() {
+        return Object.keys(mealDraft.counts).reduce(function (sum, id) {
+            return sum + (Number(mealDraft.counts[id]) || 0);
+        }, 0);
+    }
+
+    function updateMealTotal() {
+        const total = countLabel(mealDraftTotal());
+        const note = $('meal-day-total');
+        if (note) note.textContent = 'মোট ' + total + ' মিল';
+        const btn = $('meal-save-btn');
+        if (btn) btn.textContent = 'মিল সংরক্ষণ · ' + total + ' মিল';
+    }
+
+    function renderMealRows() {
+        const box = $('meal-member-rows');
         if (!box) return;
-        $$('.chip', box).forEach(function (chip) {
-            chip.classList.toggle('is-on', String(chip.getAttribute('data-count')) === String(count));
-        });
+
+        box.innerHTML = members().map(function (m) {
+            const value = Number(mealDraft.counts[m.id]) || 0;
+            const chips = MEAL_CHOICES.map(function (c) {
+                const on = value === c;
+                return '<button type="button" class="chip chip--mini' + (on ? ' is-on' : '') + '"' +
+                    ' data-mid="' + esc(m.id) + '" data-count="' + c + '"' +
+                    ' aria-pressed="' + (on ? 'true' : 'false') + '">' + countLabel(c) + '</button>';
+            }).join('');
+
+            return '<div class="mealrow' + (m.id === mealFocusMemberId ? ' mealrow--focus' : '') + '"' +
+                    ' data-mid="' + esc(m.id) + '">' +
+                    '<div class="mealrow__head">' +
+                        '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0) || '?') + '</span>' +
+                        '<span class="mealrow__name">' + esc(m.name) + '</span>' +
+                        '<span class="mealrow__val' + (value > 0 ? ' is-on' : '') + '">' +
+                            (value > 0 ? countLabel(value) + ' মিল' : 'মিল নেই') + '</span>' +
+                    '</div>' +
+                    '<div class="chips chips--mini" role="group" aria-label="' + esc(m.name) + ' এর মিল">' +
+                        chips +
+                    '</div>' +
+                '</div>';
+        }).join('');
+
+        updateMealTotal();
     }
 
     function openMealSheet(opts) {
         opts = opts || {};
-        const date = opts.date || todayISO();
-        const memberId = opts.memberId || firstMemberId();
-        const entry = opts.entry || findMeal(date, memberId);
-        const count = (opts.count !== undefined && opts.count !== null && opts.count !== '')
-            ? opts.count
-            : (entry ? entry.count : '');
+        const date = opts.date || $('meal-date').value || todayISO();
+        const memberId = opts.memberId || '';
 
-        mealEditing = entry ? { date: entry.date, memberId: entry.memberId } : null;
-
-        $('sheet-meal-title').textContent = entry ? 'Edit Meal' : 'Add Meal';
-        $('meal-save-btn').textContent = entry ? 'মিল আপডেট করুন' : 'মিল সংরক্ষণ করুন';
+        $('sheet-meal-title').textContent = 'দিনের মিল এন্ট্রি';
         $('meal-date').value = date;
-        $('meal-count').value = count;
+        loadMealDraft(date, memberId);
+
         $('meal-sheet-hint').textContent = members().length
-            ? (entry
-                ? 'সংখ্যা বদলে আপডেট করুন — একই তারিখ ও সদস্যের আগের এন্ট্রি আপডেট হবে।'
-                : 'একাধিক মিল একসাথে লিখতে পারবেন — সেভ করলেই এন্ট্রি যোগ হবে।')
+            ? 'প্রতিটি সদস্যের ঘর থেকে মিলের সংখ্যা বেছে নিন — ০ মানে ওই দিন মিল নেই। ' +
+              'একবার সেভেই পুরো দিনের হিসাব সংরক্ষণ হবে।'
             : 'আগে সদস্য যোগ করুন — নিচের বাটনে চাপুন, তারপর মিল লিখতে পারবেন।';
 
         /* সদস্য না থাকলে সেভ করার কিছু নেই — আগে সদস্য যোগ করতে হবে */
         $('meal-save-btn').classList.toggle('hidden', !members().length);
         $('meal-add-member-btn').classList.toggle('hidden', members().length > 0);
 
-        const select = $('meal-member-select');
-        if (select) select.value = memberId || '';
-        syncPickerSelection('meal');
-        markCountChip(count);
-
+        renderMealRows();
         openSheet('sheet-meal');
+
+        /* কোনো নির্দিষ্ট সদস্য থেকে খোলা হলে সেই সারিটি চোখে পড়ার মতো রাখি */
+        if (memberId) {
+            const row = $$('#meal-member-rows .mealrow').filter(function (r) {
+                return r.getAttribute('data-mid') === memberId;
+            })[0];
+            if (row && typeof row.scrollIntoView === 'function') {
+                setTimeout(function () { row.scrollIntoView({ block: 'nearest' }); }, 240);
+            }
+        }
     }
 
     function saveMeal() {
         const date = $('meal-date').value;
-        const select = $('meal-member-select');
-        const memberId = select ? select.value : '';
-        const count = parseFloat($('meal-count').value);
 
         if (!members().length) {
             hideKeyboard();
             window.alert('আগে সদস্য যোগ করুন, তারপর মিল লিখুন।');
             return;
         }
-        if (!date || !memberId || isNaN(count) || count < 0) {
+        if (!date) {
             hideKeyboard();
-            window.alert('দয়া করে তারিখ, সদস্য ও মিলের সংখ্যা ঠিকভাবে দিন।');
+            window.alert('দয়া করে তারিখ ঠিকভাবে দিন।');
             return;
         }
 
-        /* Edit করার সময় তারিখ/সদস্য বদলালে পুরনো এন্ট্রি সরানো হয়,
-           তারপর বিদ্যমান addMeals() একই নিয়মে নতুন/পুরনো এন্ট্রি হ্যান্ডেল করে। */
-        if (mealEditing && !(mealEditing.date === date && mealEditing.memberId === memberId)) {
-            const d = data();
-            if (d) {
-                d.mealsLog = (d.mealsLog || []).filter(function (l) {
-                    return !(l.date === mealEditing.date && l.memberId === mealEditing.memberId);
-                });
-                if (typeof window.saveToLocalStorage === 'function') window.saveToLocalStorage();
-            }
-        }
+        const result = (typeof window.saveMealsForDate === 'function')
+            ? window.saveMealsForDate(date, mealDraft.counts)
+            : null;
 
-        if (typeof window.addMeals === 'function') window.addMeals();
-
-        mealEditing = null;
         hideKeyboard();
         closeSheet('sheet-meal');
         renderAll();
+
+        if (!result) {
+            window.showToast('মিল সংরক্ষণ করা যায়নি।');
+            return;
+        }
+        const changed = result.added + result.updated + result.removed;
+        window.showToast(changed
+            ? bnDate(date) + ' · মোট ' + countLabel(result.total) + ' মিল সংরক্ষণ হয়েছে।'
+            : bnDate(date) + ' · কোনো পরিবর্তন হয়নি।');
     }
 
     function deleteMeal(date, memberId) {
@@ -1072,12 +1129,11 @@
 
     function mealActions(date, memberId) {
         const entry = findMeal(date, memberId);
-        if (!entry) { openMealSheet({ date: date, memberId: memberId }); return; }
 
         openActions(memberName(memberId) + ' · ' + bnDate(date), [
             {
-                label: 'Edit', sub: 'মিলের সংখ্যা পরিবর্তন করুন', icon: editIcon(),
-                run: function () { openMealSheet({ entry: entry }); }
+                label: entry ? 'Edit' : 'Add', sub: 'মিলের সংখ্যা ঠিক করুন', icon: editIcon(),
+                run: function () { openMealSheet({ date: date, memberId: memberId }); }
             },
             {
                 label: 'Delete', sub: 'এন্ট্রিটি মুছে ফেলুন', icon: trashIcon(), tone: 'danger',
@@ -1243,27 +1299,26 @@
         if (chip) {
             const kind = chip.getAttribute('data-picker');
             const p = pickerById(kind);
-            const memberId = chip.getAttribute('data-mid');
-            if (p && $(p.select)) $(p.select).value = memberId || '';
-            if (kind === 'meal') {
-                const date = $('meal-date').value;
-                const entry = findMeal(date, memberId);
-                if (entry) {
-                    $('meal-count').value = entry.count;
-                    mealEditing = { date: entry.date, memberId: entry.memberId };
-                } else {
-                    mealEditing = null;
-                }
-                markCountChip(entry ? entry.count : '');
-            }
+            if (p && $(p.select)) $(p.select).value = chip.getAttribute('data-mid') || '';
             syncPickerSelection(kind);
             return;
         }
 
-        const countChip = event.target.closest('.chip[data-count]');
+        /* মিল শিট — “সবাই X”: এক চাপে সবার মিল একই সংখ্যায় */
+        const applyChip = event.target.closest('.chip[data-apply]');
+        if (applyChip) {
+            const value = Number(applyChip.getAttribute('data-apply')) || 0;
+            members().forEach(function (m) { mealDraft.counts[m.id] = value; });
+            renderMealRows();
+            return;
+        }
+
+        /* মিল শিট — একজন সদস্যের জন্য কত মিল */
+        const countChip = event.target.closest('.chip[data-count][data-mid]');
         if (countChip) {
-            $('meal-count').value = countChip.getAttribute('data-count');
-            markCountChip(countChip.getAttribute('data-count'));
+            const memberId = countChip.getAttribute('data-mid');
+            mealDraft.counts[memberId] = Number(countChip.getAttribute('data-count')) || 0;
+            renderMealRows();
             return;
         }
 
@@ -1298,8 +1353,7 @@
             case 'edit-meal-for':
                 openMealSheet({
                     date: actEl.getAttribute('data-date'),
-                    memberId: actEl.getAttribute('data-mid'),
-                    count: actEl.getAttribute('data-count')
+                    memberId: actEl.getAttribute('data-mid')
                 });
                 break;
             case 'meal-actions':
@@ -1366,16 +1420,11 @@
     on($('meal-save-btn'), 'click', saveMeal);
     on($('bazar-save-btn'), 'click', saveBazar);
 
+    /* তারিখ বদলালে ওই দিনের সংরক্ষিত মিল দিয়ে তালিকা নতুন করে সাজানো হয় */
     on($('meal-date'), 'change', function () {
-        const date = $('meal-date').value;
-        const select = $('meal-member-select');
-        const memberId = select ? select.value : '';
-        const entry = findMeal(date, memberId);
-        mealEditing = entry ? { date: entry.date, memberId: entry.memberId } : null;
-        if (entry) {
-            $('meal-count').value = entry.count;
-            markCountChip(entry.count);
-        }
+        const date = $('meal-date').value || todayISO();
+        loadMealDraft(date, '');
+        renderMealRows();
     });
 
     on($('fixed-save-btn'), 'click', function () {

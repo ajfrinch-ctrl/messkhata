@@ -396,57 +396,9 @@ img { max-width: 100%; display: block; }
     line-height: 1.2;
 }
 
-/* --------------------------------------------------------- main menu ------ */
-.menu { display: flex; flex-direction: column; gap: 10px; }
-
-.menu__item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 13px 14px;
-    text-align: left;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    transition: transform .12s ease, background .12s ease;
-}
-
-.menu__item:active { transform: scale(.985); background: #fbfcfe; }
-
-.menu__ico {
-    width: 46px; height: 46px;
-    flex: 0 0 46px;
-    border-radius: 15px;
-    display: grid;
-    place-items: center;
-}
-
-.menu__ico .ico { width: 23px; height: 23px; }
-.menu__ico--meal    { background: var(--meal-tint);    color: #b45309; }
-.menu__ico--bazar   { background: var(--bazar-tint);   color: #047857; }
-.menu__ico--fixed   { background: var(--fixed-tint);   color: #4338ca; }
-.menu__ico--report  { background: var(--report-tint);  color: #1d4ed8; }
-.menu__ico--members { background: var(--members-tint); color: #6d28d9; }
-
-.menu__body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-
-.menu__title {
-    font-family: 'Poppins', 'Noto Sans Bengali', sans-serif;
-    font-size: 15px;
-    font-weight: 600;
-    letter-spacing: -.2px;
-    color: var(--text);
-}
-
-.menu__sub {
-    font-size: 12px;
-    color: var(--muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+/* --------------------------------------------- more-screen row extras ------ */
+/* (হোমের Main Menu বাদ — .menu/.menu__item ব্লক সরানো হয়েছে;
+   .menu__meta ও .menu__chev এখনো “More” স্ক্রিন ও অ্যাকশন শিটে ব্যবহৃত হয়) */
 
 .menu__meta {
     flex: 0 0 auto;
@@ -772,7 +724,6 @@ img { max-width: 100%; display: block; }
 
 /* -------------------------------------------------------------- chips ---- */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chips--count { margin-top: 10px; }
 .chips:empty::after {
     content: "কোনো সদস্য নেই — আগে সদস্য যোগ করুন";
     font-size: 12.5px;
@@ -800,6 +751,92 @@ img { max-width: 100%; display: block; }
     color: #fff;
     box-shadow: 0 6px 14px -8px rgba(5, 150, 105, .9);
 }
+
+/* ------------------------------------------ meal day-entry (per member) --- */
+.field__row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.field__row .field__label { margin-bottom: 0; }
+
+.field__note {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+}
+.field__note--strong {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.chips--apply { margin-top: 2px; }
+.chip--apply { min-height: 38px; padding: 6px 12px; font-size: 12.5px; }
+
+.mealrows { display: flex; flex-direction: column; gap: 8px; }
+.mealrows:empty::after {
+    content: "কোনো সদস্য নেই — আগে সদস্য যোগ করুন";
+    font-size: 12.5px;
+    color: var(--muted);
+}
+
+.mealrow {
+    border: 1.5px solid var(--line);
+    border-radius: 15px;
+    padding: 10px 10px 11px;
+    background: #fff;
+}
+
+.mealrow--focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, .12);
+}
+
+.mealrow__head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.mealrow__head .avatar {
+    width: 34px; height: 34px;
+    flex: 0 0 34px;
+    border-radius: 11px;
+    font-size: 14px;
+}
+
+.mealrow__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.mealrow__val {
+    flex: 0 0 auto;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f1f4f8;
+    color: var(--muted);
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.mealrow__val.is-on { background: var(--meal-tint); color: #b45309; }
+
+.chips--mini { gap: 5px; }
+.chip--mini {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 38px;
+    padding: 6px 2px;
+    justify-content: center;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+.chip--mini.is-on { box-shadow: none; }
 
 /* -------------------------------------------------------------- inputs --- */
 .field { margin-bottom: 14px; }
@@ -1412,8 +1449,6 @@ select.input, select.visually-hidden-control { color: var(--text); }
     .stat__value { font-size: 16px; }
     .tile__value { font-size: 17px; }
     .navbar__label { font-size: 9.5px; }
-    .menu__title { font-size: 14px; }
-    .menu__sub { font-size: 11px; }
     .menu__meta { max-width: 68px; font-size: 11.5px; }
 }
 

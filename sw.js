@@ -4,7 +4,7 @@
    ============================================================ */
 
 /* UI রিডিজাইনের পর ভার্সন বাম্প — পুরনো ক্যাশ বাদ যাবে */
-const VERSION = 'meal-khata-v2';
+const VERSION = 'meal-khata-v3';
 const SHELL_CACHE = `${VERSION}-shell`;
 const CDN_CACHE = `${VERSION}-cdn`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
