@@ -435,9 +435,6 @@
     function dotsIcon() {
         return '<svg class="ico" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5.4" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="18.6" r="1.7"/></svg>';
     }
-    function chevronRight() {
-        return '<svg class="ico" viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg>';
-    }
     function chevronDown() {
         return '<svg class="ico" viewBox="0 0 24 24"><path d="M6 9.5 12 15.5 18 9.5"/></svg>';
     }
@@ -525,15 +522,6 @@
             const diff = new Date(b.date) - new Date(a.date);
             return diff !== 0 ? diff : String(b.id).localeCompare(String(a.id));
         });
-    }
-
-    function fixedTotal() {
-        const d = data(); if (!d) return 0;
-        if (Array.isArray(d.fixedLog) && d.fixedLog.length) {
-            return d.fixedLog.reduce(function (s, f) { return s + (Number(f.amount) || 0); }, 0);
-        }
-        const t = totals();
-        return t.fixed;
     }
 
     /* ======================================================= HOME RENDER ==== */
@@ -728,25 +716,6 @@
         return 'other';
     }
 
-    const BILL_ROWS = [
-        { key: 'electricity', label: 'Electricity', sub: 'বিদ্যুৎ বিল',   ico: ICONS.elec,  cls: 'elec' },
-        { key: 'maid',        label: 'Maid',        sub: 'বুয়া বিল',     ico: ICONS.maid,  cls: 'maid' },
-        { key: 'wifi',        label: 'WiFi',        sub: 'ওয়াইফাই বিল',  ico: ICONS.wifi,  cls: 'wifi' },
-        { key: 'others',      label: 'Others',      sub: 'অন্যান্য বিল',  ico: ICONS.other, cls: 'other' }
-    ];
-
-    function fixedRow(ico, cls, title, sub, amount) {
-        return '<button type="button" class="row row--tap" data-act="fixed-edit">' +
-            '<span class="billrow__ico ' + (cls ? 'billrow__ico--' + cls : '') + '">' + ico + '</span>' +
-            '<span class="row__body">' +
-                '<span class="row__title">' + esc(title) + '</span>' +
-                '<span class="row__sub">' + esc(sub) + '</span>' +
-            '</span>' +
-            '<span class="row__right"><span class="row__amount row__amount--muted">' + amount + '</span></span>' +
-            '<span class="menu__chev">' + chevronRight() + '</span>' +
-        '</button>';
-    }
-
     function renderFixedScreen() {
         const d = data(); if (!d) return;
         const box = $('fixed-list');
@@ -790,13 +759,9 @@
         renderFixedGrid();
         renderFixedTable();
         renderFixedMonthSummary();
-        // Keep legacy member list element empty but present
+        // Legacy hidden holder — kept empty (old field-based list UI removed)
         const legacyMemberBox = $('fixed-member-list');
         if (legacyMemberBox) legacyMemberBox.innerHTML = '';
-        const legacyBreakdown = $('fixed-cost-member-breakdown');
-        if (legacyBreakdown && !legacyBreakdown.closest('.hidden')) {
-            // only if not hidden, but our hidden one should stay
-        }
     }
 
     function renderFixedGrid() {
@@ -1434,6 +1399,10 @@
         $('fixed-desc').value = entry ? (entry.desc || '') : '';
         $('fixed-amount').value = entry ? entry.amount : '';
 
+        // Same as Bazar: hide "share last entry" while the sheet is open
+        const waBtn = $('fixed-wa-share-btn');
+        if (waBtn) waBtn.classList.add('hidden');
+
         openSheet('sheet-fixed');
     }
 
@@ -1664,7 +1633,6 @@
                 pendingSheetAfterMember = function () { openBazarSheet(null); };
                 go('members', function () { openSheet('sheet-member', { silent: true }); });
                 break;
-            case 'fixed-edit':  openFixedSheet(null); break;
             case 'fixed-actions':
                 fixedActions(actEl.getAttribute('data-id'));
                 break;
