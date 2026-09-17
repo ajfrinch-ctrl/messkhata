@@ -970,6 +970,119 @@ select.input, select.visually-hidden-control { color: var(--text); }
 .billrow__ico--wifi  { background: #e9f0fe; color: #1d4ed8; }
 .billrow__ico--other { background: #f2f0fe; color: #6d28d9; }
 
+/* ------------------------------------------------ totalcard (স্ক্রিনের মোট) -- */
+/* Bazar-এর মোট কার্ডের সাথে একই প্যাটার্ন — Fixed-এ indigo accent */
+.totalcard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 14px 16px;
+}
+
+.totalcard__label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--muted);
+    min-width: 0;
+}
+
+.totalcard__value {
+    font-size: clamp(19px, 6.4vw, 26px);
+    font-weight: 800;
+    letter-spacing: -.6px;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    text-align: right;
+    min-width: 0;
+}
+
+.totalcard--fixed {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    border-color: #5457e6;
+    box-shadow: 0 10px 24px -14px rgba(79, 70, 229, .8);
+}
+
+.totalcard--fixed .totalcard__label { color: rgba(255, 255, 255, .85); }
+.totalcard--fixed .totalcard__value { color: #fff; }
+
+/* Fixed সেকশনের সংখ্যায় সেকশনের নিজস্ব indigo টিন্ট */
+.row__amount--fixed { color: #4f46e5; }
+
+/* amount-এর নিচে ছোট নোট (যেমন "ফিক্সড মোট") */
+.row__right-note {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 1px;
+}
+
+/* group head-এর ডানে লাইভ টোটাল চিপ */
+.group__total {
+    margin-left: auto;
+    flex: 0 0 auto;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #f4f6fa;
+    border: 1px solid var(--line);
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* শিট ফুটারে লাইভ টোটাল প্রিভিউ */
+.sheet__total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #f7f9fc;
+    border: 1px solid var(--line);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+.sheet__total strong {
+    font-size: 17px;
+    font-weight: 800;
+    color: #4338ca;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* শিটে সদস্য না থাকলে হিন্ট */
+.rentlist__empty {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--muted);
+    text-align: center;
+    background: #f7f9fc;
+    border: 1.5px dashed #d8e0ea;
+    border-radius: 13px;
+    padding: 14px;
+}
+
+/* rentrow-এর avatar একটু ছোট — রো কম জায়গা নেবে */
+.rentrow .avatar {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    border-radius: 11px;
+    font-size: 13.5px;
+}
+
+/* শিট টপ-এ hint-এর নিচে সামান্য ফাঁকা জায়গা */
+.sheet__hint { margin-bottom: 14px; }
+
+
 /* -------------------------------------------------------------- folds ---- */
 .folds { display: flex; flex-direction: column; gap: 10px; }
 

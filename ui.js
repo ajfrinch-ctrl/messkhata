@@ -634,55 +634,125 @@
         { key: 'electricity', label: 'Electricity', sub: 'বিদ্যুৎ বিল',   ico: ICONS.elec,  cls: 'elec' },
         { key: 'maid',        label: 'Maid',        sub: 'বুয়া বিল',     ico: ICONS.maid,  cls: 'maid' },
         { key: 'wifi',        label: 'WiFi',        sub: 'ওয়াইফাই বিল',  ico: ICONS.wifi,  cls: 'wifi' },
-        { key: 'others',      label: 'Others',      sub: 'অন্যান্য বিল',  ico: ICONS.other, cls: 'other' }
+        { key: 'others',      label: 'Others',      sub: 'অন্যান্য বিল',   ico: ICONS.other, cls: 'other' }
     ];
 
-    function fixedRow(ico, cls, title, sub, amount) {
-        return '<button type="button" class="row row--tap" data-act="fixed-edit">' +
+    function fixedRow(ico, cls, title, sub, amount, group) {
+        return '<button type="button" class="row row--tap" data-act="fixed-edit"' +
+            (group ? ' data-fixed-group="' + group + '"' : '') + '>' +
             '<span class="billrow__ico ' + (cls ? 'billrow__ico--' + cls : '') + '">' + ico + '</span>' +
             '<span class="row__body">' +
                 '<span class="row__title">' + esc(title) + '</span>' +
                 '<span class="row__sub">' + esc(sub) + '</span>' +
             '</span>' +
-            '<span class="row__right"><span class="row__amount row__amount--muted">' + amount + '</span></span>' +
+            '<span class="row__right"><span class="row__amount row__amount--fixed">' + amount + '</span></span>' +
+            '<span class="menu__chev">' + chevronRight() + '</span>' +
+        '</button>';
+    }
+
+    function fixedRentRow(member, rent) {
+        return '<button type="button" class="row row--tap" data-act="fixed-edit" data-fixed-group="rent">' +
+            '<span class="avatar">' + esc(String(member.name || '?').trim().charAt(0).toUpperCase()) + '</span>' +
+            '<span class="row__body">' +
+                '<span class="row__title">' + esc(member.name) + '</span>' +
+                '<span class="row__sub">ব্যক্তিগত বাসা ভাড়া</span>' +
+            '</span>' +
+            '<span class="row__right"><span class="row__amount row__amount--fixed">' + money(rent) + '</span></span>' +
             '<span class="menu__chev">' + chevronRight() + '</span>' +
         '</button>';
     }
 
     function renderFixedScreen() {
         const d = data(); if (!d) return;
-        const box = $('fixed-list');
+        const rentBox = $('fixed-rent-list');
+        const billBox = $('fixed-bill-list');
         const memberBox = $('fixed-member-list');
-        if (!box || !memberBox) return;
+        if (!rentBox || !billBox || !memberBox) return;
 
         const t = totals();
         const bills = d.grandBills || {};
-
-        let html = fixedRow(ICONS.rent, 'rent', 'House Rent', 'বাসা ভাড়া (ব্যক্তিগত)', money(t.rent));
-        BILL_ROWS.forEach(function (b) {
-            html += fixedRow(b.ico, b.cls, b.label, b.sub, money(Number(bills[b.key]) || 0));
-        });
-        box.innerHTML = html;
-
         const list = members();
+        const rentOf = function (id) {
+            return Number(d.fixedCosts && d.fixedCosts.rent ? d.fixedCosts.rent[id] : 0) || 0;
+        };
+
+        /* বাসা ভাড়া — প্রতি সদস্যের ব্যক্তিগত ইনপুট */
+        if (!list.length) {
+            rentBox.innerHTML = emptyState('🏠', 'এখনো কোনো সদস্য নেই।', 'সদস্য যোগ করলে প্রত্যেকের ব্যক্তিগত ভাড়া এখানে লিখতে পারবেন।');
+        } else {
+            rentBox.innerHTML = list.map(function (m) {
+                return fixedRentRow(m, rentOf(m.id));
+            }).join('');
+        }
+
+        /* ইউটিলিটি বিল — ফিক্সড চারটি ক্যাটাগরি, সবার মধ্যে সমান ভাগ */
+        billBox.innerHTML = BILL_ROWS.map(function (b) {
+            return fixedRow(b.ico, b.cls, b.label, b.sub, money(Number(bills[b.key]) || 0), 'util');
+        }).join('');
+
+        /* সদস্যভিত্তিক সমবণ্টন — ব্যক্তিগত ভাড়া + সমান ইউটিলিটি */
         if (!list.length) {
             memberBox.innerHTML = emptyState('👥', 'কোনো সদস্য নেই।', 'সদস্য যোগ করলে ফিক্সড খরচ ভাগ হবে।');
             return;
         }
-
         const share = t.utility / list.length;
         memberBox.innerHTML = list.map(function (m) {
-            const s = memberStats(m.id);
+            const rent = rentOf(m.id);
             return '<div class="row">' +
-                '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0)) + '</span>' +
+                '<span class="avatar">' + esc(String(m.name || '?').trim().charAt(0).toUpperCase()) + '</span>' +
                 '<div class="row__body">' +
                     '<div class="row__title">' + esc(m.name) + '</div>' +
-                    '<div class="row__sub">ভাড়া ' + money(s.rent) + ' · ইউটিলিটি ' + money(share) + '</div>' +
+                    '<div class="row__sub">ভাড়া ' + money(rent) + ' · ইউটিলিটি ' + money(share) + '</div>' +
                 '</div>' +
-                '<div class="row__right"><span class="row__amount row__amount--muted">' + money(s.rent + share) + '</span></div>' +
+                '<div class="row__right">' +
+                    '<span class="row__amount row__amount--fixed">' + money(rent + share) + '</span>' +
+                    '<span class="row__right-note">ফিক্সড মোট</span>' +
+                '</div>' +
             '</div>';
         }).join('');
     }
+
+    /* Fixed sheet খোলা — ট্যাপ করা রো অনুযায়ী সঠিক গ্রুপে স্ক্রল */
+    function openFixedSheet(group) {
+        openSheet('sheet-fixed');
+        updateSheetFixedTotals();
+        setTimeout(function () {
+            const body = document.querySelector('#sheet-fixed .sheet__body');
+            if (!body) return;
+            if (group === 'rent' || group === 'util') {
+                const target = $(group === 'rent' ? 'fixed-group-rent' : 'fixed-group-util');
+                if (target && target.scrollIntoView) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                body.scrollTop = 0;
+            }
+        }, 90);
+    }
+
+    /* শিটের ভেতরের লাইভ টোটাল — শুধু উপস্থাপনা; সংরক্ষণের সময় বিদ্যমান
+       saveFixedCosts()-ই input-এর মান পড়ে (কোনো calculation পরিবর্তন নেই) */
+    function updateSheetFixedTotals() {
+        const rentEl = $('sheet-rent-total');
+        const billEl = $('sheet-bill-total');
+        const totalEl = $('sheet-fixed-total');
+        if (!rentEl || !billEl || !totalEl) return;
+        let rent = 0;
+        $$('#fixed-rent-inputs .rent-input').forEach(function (input) {
+            rent += Number(input.value) || 0;
+        });
+        let bills = 0;
+        ['bill-electricity', 'bill-maid', 'bill-wifi', 'bill-others'].forEach(function (id) {
+            const el = $(id);
+            if (el) bills += Number(el.value) || 0;
+        });
+        rentEl.textContent = money(rent);
+        billEl.textContent = money(bills);
+        totalEl.textContent = money(rent + bills);
+    }
+
+    on($('fixed-rent-inputs'), 'input', updateSheetFixedTotals);
+    ['bill-electricity', 'bill-maid', 'bill-wifi', 'bill-others'].forEach(function (id) {
+        on($(id), 'input', updateSheetFixedTotals);
+    });
 
     /* ===================================================== REPORT RENDER ==== */
     function memberCardHtml(memberId, opts) {
@@ -918,6 +988,7 @@
     window.renderFixedCostInputs = function () {
         if (typeof legacyRenderFixedCostInputs === 'function') legacyRenderFixedCostInputs.apply(this, arguments);
         styleFixedRentInputs();
+        updateSheetFixedTotals();
         renderFixedScreen();
     };
 
@@ -1335,7 +1406,7 @@
         switch (actEl.getAttribute('data-act')) {
             case 'open-meal':   go('meal', function () { openMealSheet({}); }); break;
             case 'open-bazar':  go('bazar', function () { openBazarSheet(null); }); break;
-            case 'open-fixed':  go('fixed', function () { openSheet('sheet-fixed'); }); break;
+            case 'open-fixed':  go('fixed', function () { openFixedSheet(''); }); break;
             case 'open-member': go('members', function () { openSheet('sheet-member', { silent: true }); }); break;
             case 'member-first-meal':
                 pendingSheetAfterMember = function () { openMealSheet({}); };
@@ -1345,7 +1416,7 @@
                 pendingSheetAfterMember = function () { openBazarSheet(null); };
                 go('members', function () { openSheet('sheet-member', { silent: true }); });
                 break;
-            case 'fixed-edit':  openSheet('sheet-fixed'); break;
+            case 'fixed-edit':  openFixedSheet(actEl.getAttribute('data-fixed-group') || ''); break;
 
             case 'meal-quick-open':
                 openMealSheet({ date: actEl.getAttribute('data-date'), memberId: actEl.getAttribute('data-mid') });

@@ -336,32 +336,42 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 Add Fixed Cost
             </button>
 
+            <div class="card totalcard totalcard--fixed">
+                <span class="totalcard__label">সর্বমোট ফিক্সড খরচ</span>
+                <span class="totalcard__value">৳<span id="foot-total-fixed-all">০</span></span>
+            </div>
+
             <div class="tiles">
-                <div class="tile tile--fixed">
-                    <span class="tile__label">মোট বাসা ভাড়া</span>
+                <div class="tile">
+                    <span class="tile__label">বাসা ভাড়া (সদস্যভিত্তিক)</span>
                     <span class="tile__value" id="foot-total-rent">৳০</span>
                 </div>
-                <div class="tile tile--fixed">
-                    <span class="tile__label">মোট ইউটিলিটি</span>
+                <div class="tile">
+                    <span class="tile__label">ইউটিলিটি (সমান ভাগ)</span>
                     <span class="tile__value" id="foot-total-utility">৳০</span>
-                </div>
-                <div class="tile tile--fixed tile--wide">
-                    <span class="tile__label">সর্বমোট ফিক্সড খরচ</span>
-                    <span class="tile__value tile__value--lg" id="foot-total-fixed-all">৳০</span>
                 </div>
             </div>
 
             <section class="sec">
                 <div class="sec__head">
-                    <h2 class="sec__title">Fixed Cost তালিকা</h2>
+                    <h2 class="sec__title">বাসা ভাড়া</h2>
                     <span class="sec__note">ট্যাপ করে সম্পাদনা</span>
                 </div>
-                <div class="card" id="fixed-list"></div>
+                <div class="card" id="fixed-rent-list"></div>
+            </section>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">ইউটিলিটি বিল</h2>
+                    <span class="sec__note">সব সদস্যের মধ্যে সমান ভাগ</span>
+                </div>
+                <div class="card" id="fixed-bill-list"></div>
             </section>
 
             <section class="sec">
                 <div class="sec__head">
                     <h2 class="sec__title">সদস্যভিত্তিক সমবণ্টন</h2>
+                    <span class="sec__note">ভাড়া + ইউটিলিটির ভাগ</span>
                 </div>
                 <div class="card" id="fixed-member-list"></div>
             </section>
@@ -734,37 +744,41 @@ window.convertToBanglaNumber = convertToBanglaNumber;
     </div>
 
     <!--------------------------------------------------------------------
-         SHEET : FIXED COST (ইন্টারফেস — বিদ্যমান ইনপুট ও লজিক অপরিবর্তিত)
+         SHEET : FIXED COST (রিডিজাইন — input id / data-mem / logic অপরিবর্তিত)
     --------------------------------------------------------------------->
     <div class="overlay" id="sheet-fixed" role="dialog" aria-modal="true" aria-labelledby="sheet-fixed-title">
         <div class="overlay__bd" data-close="1"></div>
         <div class="sheet">
             <span class="sheet__grip"></span>
             <div class="sheet__head">
-                <h2 class="sheet__title" id="sheet-fixed-title">Fixed Cost</h2>
+                <h2 class="sheet__title" id="sheet-fixed-title">ফিক্সড খরচ</h2>
                 <button type="button" class="sheet__close" data-close="1" aria-label="বন্ধ করুন">
                     <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11"/><path d="M17.5 6.5l-11 11"/></svg>
                 </button>
             </div>
             <div class="sheet__body">
-                <div class="group">
+                <p class="sheet__hint">বাসা ভাড়া প্রতিটি সদস্যের জন্য আলাদা আলাদা লিখুন; ইউটিলিটি বিল সবার মাঝে সমানভাবে বণ্টন হবে।</p>
+
+                <div class="group" id="fixed-group-rent">
                     <div class="group__head">
                         <span class="group__ico group__ico--rent"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.6 12 4l8 6.6V20H4v-9.4Z"/><path d="M9.6 20v-5.2h4.8V20"/></svg></span>
                         <div>
-                            <p class="group__title">House Rent · বাসা ভাড়া</p>
+                            <p class="group__title">বাসা ভাড়া · House Rent</p>
                             <p class="group__sub">প্রতিটি সদস্যের ব্যক্তিগত বাসা ভাড়া</p>
                         </div>
+                        <span class="group__total" id="sheet-rent-total">৳০</span>
                     </div>
                     <div class="rentlist" id="fixed-rent-inputs"></div>
                 </div>
 
-                <div class="group">
+                <div class="group" id="fixed-group-util">
                     <div class="group__head">
                         <span class="group__ico group__ico--util"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.6 17.2h4.8"/><path d="M10.4 20.4h3.2"/><path d="M12 3.6a6 6 0 0 0-3.3 11c.3.2.5.5.5.9v1.7h5.6v-1.7c0-.4.2-.7.5-.9A6 6 0 0 0 12 3.6Z"/></svg></span>
                         <div>
-                            <p class="group__title">ইউটিলিটি বিল · Water, WiFi, Electricity</p>
-                            <p class="group__sub">সবার মাঝে সমানভাবে বণ্টন হবে</p>
+                            <p class="group__title">ইউটিলিটি বিল</p>
+                            <p class="group__sub">Water, WiFi, Electricity, Maid</p>
                         </div>
+                        <span class="group__total" id="sheet-bill-total">৳০</span>
                     </div>
                     <div class="billlist">
                         <label class="billrow">
@@ -803,6 +817,10 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 </div>
             </div>
             <div class="sheet__foot">
+                <div class="sheet__total">
+                    <span>সর্বমোট ফিক্সড খরচ</span>
+                    <strong id="sheet-fixed-total">৳০</strong>
+                </div>
                 <button type="button" class="btn btn--primary" id="fixed-save-btn">ফিক্সড খরচ সংরক্ষণ করুন</button>
             </div>
         </div>
@@ -1038,18 +1056,30 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
         }
 
+        /* innerHTML-এ বসানোর আগে HTML escape (নতুন markup-এর জন্য) */
+        function escHtml(value) {
+            return String(value === undefined || value === null ? '' : value)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        /* ভাড়ার ইনপুট-রো নতুন ডিজাইনে সাজাই — input class (.rent-input), data-mem,
+           value-এর আচরণ এবং bill-input id গুলো সম্পূর্ণ অপরিবর্তিত। */
         function renderFixedCostInputs() {
             const div = document.getElementById('fixed-rent-inputs');
-            div.innerHTML = '';
+            if (!div) return;
+            let html = '';
             messData.members.forEach(member => {
                 const savedVal = messData.fixedCosts.rent[member.id] !== undefined ? messData.fixedCosts.rent[member.id] : '';
-                div.innerHTML += `
-                    <div class="flex flex-col bg-white p-2 rounded-md border border-gray-200">
-                        <label class="text-xs font-semibold text-gray-600 mb-1 truncate">${member.name}</label>
-                        <input type="number" data-mem="${member.id}" value="${savedVal}" placeholder="ভাড়া" class="rent-input border bg-gray-50 p-2 rounded text-sm">
-                    </div>
-                `;
+                const name = String(member.name || '?').trim();
+                html += `
+                    <div class="rentrow">
+                        <span class="avatar" aria-hidden="true">${escHtml(name.charAt(0).toUpperCase())}</span>
+                        <label class="rentrow__name" for="rent-input-${escHtml(member.id)}">${escHtml(name)}</label>
+                        <input type="number" id="rent-input-${escHtml(member.id)}" data-mem="${escHtml(member.id)}" value="${savedVal}" placeholder="০" class="input rent-input" inputmode="decimal" aria-label="${escHtml(name)}-এর বাসা ভাড়া">
+                    </div>`;
             });
+            div.innerHTML = html || '<p class="rentlist__empty">আগে সদস্য যোগ করুন, তারপর এখানে ভাড়া লিখুন।</p>';
             document.getElementById('bill-electricity').value = messData.grandBills.electricity || '';
             document.getElementById('bill-maid').value = messData.grandBills.maid || '';
             document.getElementById('bill-wifi').value = messData.grandBills.wifi || '';
