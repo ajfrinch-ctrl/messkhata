@@ -448,7 +448,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <h2 class="sec__title">Previous Months</h2>
                 </div>
                 <div class="card" id="report-month-list"></div>
-                <p class="sec__foot-note">মাস অনুযায়ী বাজার ও মিলের যোগফল দেখানো হয়েছে।</p>
+                <p class="sec__foot-note">মাসে ট্যাপ করলে ওই মাসের পূর্ণ হিসাব (মিল, বাজার, ফিক্সড ও কে পাবে/দেবে) দেখা যাবে। চলতি মাস + বিগত ৩ মাস রাখা হয়।</p>
             </section>
 
             <section class="sec">
@@ -490,6 +490,99 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 <button type="button" class="btn btn--wa btn--soft-border" id="report-share-btn">
                     <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
                     সম্পূর্ণ রিপোর্ট শেয়ার করুন
+                </button>
+            </section>
+        </section>
+
+        <!--------------------------------------------------------------------
+             MONTH ACCOUNTS (বিগত মাসের হিসাব)
+        --------------------------------------------------------------------->
+        <section class="screen" id="screen-month" data-screen="month">
+            <div class="card">
+                <div class="row">
+                    <button type="button" class="rowbtn" id="month-prev" aria-label="আগের মাস">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+                    </button>
+                    <div class="row__body" style="text-align:center">
+                        <div class="row__title" id="month-nav-label">—</div>
+                        <div class="row__sub" id="month-nav-sub">বিগত মাসের হিসাব</div>
+                    </div>
+                    <button type="button" class="rowbtn" id="month-next" aria-label="পরের মাস">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="tiles">
+                <div class="tile">
+                    <span class="tile__label">মোট বাজার খরচ</span>
+                    <span class="tile__value">৳<span id="month-total-bazar">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মোট ফিক্সড খরচ</span>
+                    <span class="tile__value">৳<span id="month-total-fixed">০</span></span>
+                </div>
+                <div class="tile tile--wide tile--accent">
+                    <span class="tile__label">সর্বমোট খরচ</span>
+                    <span class="tile__value tile__value--lg">৳<span id="month-total-expense">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মোট মিল</span>
+                    <span class="tile__value"><span id="month-total-meals">০</span></span>
+                </div>
+                <div class="tile">
+                    <span class="tile__label">মিল রেট</span>
+                    <span class="tile__value">৳<span id="month-meal-rate">০.০০</span></span>
+                </div>
+            </div>
+
+            <section class="sec">
+                <div class="sec__head">
+                    <h2 class="sec__title">সদস্যদের হিসাব</h2>
+                    <span class="sec__note" id="month-count">—</span>
+                </div>
+                <div class="card" id="month-member-list"></div>
+            </section>
+
+            <section class="sec">
+                <details class="fold fold--tools">
+                    <summary>
+                        <span class="fold__ico fold__ico--report"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 5.5h15v13h-15z"/><path d="M4.5 10.2h15"/><path d="M10.2 5.5v13"/></svg></span>
+                        <span class="fold__title">বিস্তারিত টেবিল</span>
+                        <span class="fold__chev"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5 12 15.5 18 9.5"/></svg></span>
+                    </summary>
+                    <div class="fold__body">
+                        <p class="fold__hint">প্রয়োজনে টেবিলটি ডানে-বায়ে স্ক্রল করুন।</p>
+                        <div class="tablescroll">
+                            <table class="legacy-table">
+                                <thead>
+                                    <tr class="bg-blue-900 text-white">
+                                        <th>সদস্য</th><th>মিল</th><th>মিলের খরচ</th><th>ফিক্সড খরচের ভাগ</th><th>মোট খরচ</th><th>বাজার জমা</th><th>ফিক্সড জমা</th><th>অবস্থা</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="month-table-body" class="text-sm"></tbody>
+                                <tfoot>
+                                    <tr class="bg-blue-100 font-bold text-gray-900">
+                                        <td>সর্বমোট:</td>
+                                        <td class="ta-c" id="month-foot-meals">০</td>
+                                        <td id="month-foot-meal-cost">৳০</td>
+                                        <td id="month-foot-fixed">৳০</td>
+                                        <td id="month-foot-total-cost">৳০</td>
+                                        <td id="month-foot-bazar">৳০</td>
+                                        <td id="month-foot-fixed-paid">৳০</td>
+                                        <td></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </details>
+            </section>
+
+            <section class="sec">
+                <button type="button" class="btn btn--wa btn--soft-border" id="month-share-btn">
+                    <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.6a7.6 7.6 0 0 1-11.1 6.8L4.5 20l1.6-4.3A7.6 7.6 0 1 1 20 11.6Z"/></svg>
+                    এই মাসের হিসাব হোয়াটসঅ্যাপে শেয়ার করুন
                 </button>
             </section>
         </section>
@@ -606,6 +699,18 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                         ইনস্টল করা আছে
                     </span>
                     <button type="button" class="btn btn--ghost" id="install-help-btn" data-act="install-help">কীভাবে ইনস্টল করবেন?</button>
+                </div>
+            </div>
+
+            <div class="card info-card">
+                <div class="info-card__row">
+                    <span class="info-card__ico info-card__ico--retention">
+                        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.5h15"/><path d="M6.5 6.5V19a1.5 1.5 0 0 0 1.5 1.5h8A1.5 1.5 0 0 0 17.5 19V6.5"/><path d="M9.5 6.5V4.8h5v1.7"/><path d="M10.4 10.5v6"/><path d="M13.6 10.5v6"/></svg>
+                    </span>
+                    <div class="info-card__body">
+                        <p class="info-card__title">ডেটা ধরে রাখার নিয়ম</p>
+                        <p class="info-card__text" id="retention-text">চলতি মাস + বিগত ৩ মাসের হিসাব রাখা হয়।</p>
+                    </div>
                 </div>
             </div>
 
@@ -1019,8 +1124,9 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         /* খাতা খোলার সময়ই পুরনো ডেটা একবার মাইগ্রেট */
         migrateFixedCostData(messData);
 
-        /* প্রতিটি ফিক্সড খরচ সদস্যদের মধ্যে কীভাবে ভাগ হবে + কে কত জমা দিয়েছেন */
-        function computeFixedSummary() {
+        /* প্রতিটি ফিক্সড খরচ সদস্যদের মধ্যে কীভাবে ভাগ হবে + কে কত জমা দিয়েছেন।
+           monthKey দিলে শুধু ওই মাসের এন্ট্রি ধরা হয় (null = সব মাস)। */
+        function computeFixedSummaryFor(monthKey) {
             const entries = getFixedEntries();
             const memberList = messData.members || [];
             const perMember = {};
@@ -1030,6 +1136,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             let totalPaid = 0;
 
             entries.forEach(entry => {
+                if (monthKey && monthKeyOf(entry && entry.date) !== monthKey) return;
+
                 const amount = Number(entry && entry.amount) || 0;
                 total += amount;
 
@@ -1052,10 +1160,160 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             return { entries: entries, perMember: perMember, total: total, totalPaid: totalPaid };
         }
 
+        function computeFixedSummary() {
+            return computeFixedSummaryFor(null);
+        }
+
+        /* ------------------------------------------------------------------
+           মাসের হিসাব (বিগত মাস দেখার জন্য) — সব মাসের জন্য একই সূত্র:
+             মিল রেট = ওই মাসের বাজার ÷ ওই মাসের মিল
+             খরচ      = মিলের খরচ + ওই মাসের ফিক্সড খরচের ভাগ
+             জমা       = ওই মাসের বাজার জমা + ওই মাসের ফিক্সড জমা
+        ------------------------------------------------------------------ */
+        function monthKeyOf(value) {
+            const k = String(value || '').slice(0, 7);
+            return /^\d{4}-\d{2}$/.test(k) ? k : '';
+        }
+
+        function computeMonthSummary(monthKey) {
+            const inMonth = (dt) => (!monthKey ? true : monthKeyOf(dt) === monthKey);
+            const fixed = computeFixedSummaryFor(monthKey || null);
+
+            let totalMeals = 0;
+            let totalBazar = 0;
+            const rows = (messData.members || []).map(m => {
+                const meals = (messData.mealsLog || [])
+                    .filter(l => l.memberId === m.id && inMonth(l.date))
+                    .reduce((sum, l) => sum + (Number(l.count) || 0), 0);
+                const bazarSpent = (messData.bazarLog || [])
+                    .filter(b => b.memberId === m.id && inMonth(b.date))
+                    .reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
+                const f = fixed.perMember[m.id] || { share: 0, paid: 0 };
+                totalMeals += meals;
+                totalBazar += bazarSpent;
+                return {
+                    id: m.id, name: m.name, meals: meals, bazarSpent: bazarSpent,
+                    fixedShare: f.share, fixedPaid: f.paid
+                };
+            });
+
+            const rate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+            rows.forEach(r => {
+                r.mealCost = r.meals * rate;
+                r.expense = r.mealCost + r.fixedShare;
+                r.deposit = r.bazarSpent + r.fixedPaid;
+                r.balance = r.deposit - r.expense;
+            });
+
+            return {
+                monthKey: monthKey || '',
+                rows: rows,
+                totalMeals: totalMeals,
+                totalBazar: totalBazar,
+                rate: rate,
+                totalFixed: fixed.total,
+                totalFixedPaid: fixed.totalPaid,
+                totalExpense: totalBazar + fixed.total
+            };
+        }
+
+        /* ------------------------------------------------------------------
+           RETENTION — বিগত মাসের হিসাব রাখা, পুরনো ডেটা স্থায়ীভাবে মুছে ফেলা
+           ------------------------------------------------------------------
+           নিয়ম: চলতি মাস + বিগত RETENTION_PREVIOUS_MONTHS মাস রাখা হয়;
+           তার চেয়ে পুরনো মিল, বাজার ও ফিক্সড খরচের এন্ট্রি স্থায়ীভাবে
+           মুছে যায় — localStorage ও Firebase দুই জায়গা থেকেই।
+           তারিখহীন পুরনো (legacy) ফিক্সড রেকর্ড = খাতার চলতি অবস্থা, তাই
+           সেগুলো মোছা হয় না।
+        ------------------------------------------------------------------ */
+        const RETENTION_PREVIOUS_MONTHS = 3;   /* বিগত ৩ মাস */
+
+        function monthKeyOfDate(dateObj) {
+            return dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0');
+        }
+
+        /* এই মাসটি বা তার পরে যেগুলো — থাকবে */
+        function retentionCutoffKey() {
+            const d = new Date();
+            d.setDate(1);
+            d.setMonth(d.getMonth() - RETENTION_PREVIOUS_MONTHS);
+            return monthKeyOfDate(d);
+        }
+
+        /* চলতি মাস + বিগত মাসগুলো কোন কোন মাস (পুরনো → নতুন) */
+        function retainedMonthKeys() {
+            const keys = [];
+            const d = new Date();
+            d.setDate(1);
+            d.setMonth(d.getMonth() - RETENTION_PREVIOUS_MONTHS);
+            for (let i = 0; i <= RETENTION_PREVIOUS_MONTHS; i++) {
+                keys.push(monthKeyOfDate(d));
+                d.setMonth(d.getMonth() + 1);
+            }
+            return keys;
+        }
+
+        function isPurgeableDate(value) {
+            const key = monthKeyOf(value);
+            return !!key && key < retentionCutoffKey();
+        }
+
+        function purgeOldData() {
+            const before = {
+                meals: (messData.mealsLog || []).length,
+                bazar: (messData.bazarLog || []).length,
+                fixed: getFixedEntries().length
+            };
+
+            messData.mealsLog = (messData.mealsLog || []).filter(l => !isPurgeableDate(l && l.date));
+            messData.bazarLog = (messData.bazarLog || []).filter(b => !isPurgeableDate(b && b.date));
+            /* legacy রেকর্ড (তারিখহীন পুরনো ভাড়া/বিল) রাখা হয় — ওগুলোই খাতার চলতি মান */
+            messData.fixedCostLog = getFixedEntries().filter(f => f.legacy || !isPurgeableDate(f && f.date));
+
+            const removed = {
+                meals: before.meals - messData.mealsLog.length,
+                bazar: before.bazar - messData.bazarLog.length,
+                fixed: before.fixed - messData.fixedCostLog.length
+            };
+            const totalRemoved = removed.meals + removed.bazar + removed.fixed;
+
+            if (totalRemoved > 0) {
+                saveToLocalStorage();
+                try {
+                    localStorage.setItem('messKhataLastPurge', JSON.stringify({
+                        at: new Date().toISOString(), removed: removed, total: totalRemoved
+                    }));
+                } catch (e) { /* ignore */ }
+            }
+
+            const info = {
+                cutoffKey: retentionCutoffKey(),
+                keptMonths: retainedMonthKeys(),
+                removed: removed,
+                totalRemoved: totalRemoved
+            };
+            window.__lastPurgeInfo = info;
+            return info;
+        }
+
+        function lastPurgeInfo() {
+            try {
+                return JSON.parse(localStorage.getItem('messKhataLastPurge') || 'null');
+            } catch (e) { return null; }
+        }
+
         window.getFixedEntries = getFixedEntries;
         window.computeFixedSummary = computeFixedSummary;
+        window.computeFixedSummaryFor = computeFixedSummaryFor;
+        window.computeMonthSummary = computeMonthSummary;
         window.migrateFixedCostData = migrateFixedCostData;
         window.todayISOString = todayISOString;
+        window.monthKeyOf = monthKeyOf;
+        window.purgeOldData = purgeOldData;
+        window.retentionCutoffKey = retentionCutoffKey;
+        window.retainedMonthKeys = retainedMonthKeys;
+        window.lastPurgeInfo = lastPurgeInfo;
+        window.RETENTION_PREVIOUS_MONTHS = RETENTION_PREVIOUS_MONTHS;
 
         function showToast(message) {
             const container = document.getElementById('toast-container');
@@ -1766,6 +2024,41 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
         }
 
+        /* একটি নির্দিষ্ট মাসের (বিগত মাস) রিপোর্ট শেয়ার */
+        function formatBanglaMonthKey(key) {
+            const parts = String(key || '').split('-');
+            if (parts.length < 2) return String(key || '');
+            const names = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+                'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+            const monthName = names[Number(parts[1]) - 1] || parts[1];
+            return monthName + ' ' + convertToBanglaNumber(parts[0]);
+        }
+
+        function shareMonthOnWhatsApp(monthKey) {
+            const summary = computeMonthSummary(monthKey);
+            if (!summary || !summary.rows.length) return alert('এই মাসের কোনো হিসাব পাওয়া যায়নি।');
+
+            let message = `🗓️ *${formatBanglaMonthKey(monthKey)} — মাসের হিসাব*\n\n` +
+                          `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(summary.totalBazar.toFixed(1))}\n` +
+                          `🏷️ মোট ফিক্সড খরচ: ৳${convertToBanglaNumber(summary.totalFixed.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(summary.totalExpense.toFixed(1))}\n` +
+                          `🍚 মোট মিল: ${convertToBanglaNumber(summary.totalMeals)}\n` +
+                          `📈 মিল রেট: ৳${convertToBanglaNumber(summary.rate.toFixed(2))}\n\n` +
+                          `👥 *সদস্যদের হিসাব:*\n`;
+
+            summary.rows.forEach(r => {
+                const status = r.balance >= 0
+                    ? `পাবে: ৳${convertToBanglaNumber(r.balance.toFixed(1))}`
+                    : `দেবে: ৳${convertToBanglaNumber(Math.abs(r.balance).toFixed(1))}`;
+                message += `🔹 *${r.name}* | মিল: ${convertToBanglaNumber(r.meals)} | খরচ: ৳${convertToBanglaNumber(r.expense.toFixed(1))} | জমা: ৳${convertToBanglaNumber(r.deposit.toFixed(1))} | ${status}\n`;
+            });
+
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
+        }
+
+        window.formatBanglaMonthKey = formatBanglaMonthKey;
+        window.shareMonthOnWhatsApp = shareMonthOnWhatsApp;
+
         function shareAllInOneOnWhatsApp() {
             let totalMeals = 0;
             let totalBazar = 0;
@@ -1826,9 +2119,16 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         window.onload = function() {
+            /* খাতা খোলার সময়ই বিগত ৩ মাসের বাইরের পুরনো ডেটা স্থায়ীভাবে মুছে যায় */
+            const purgeResult = purgeOldData();
             updateDropdowns();
             renderMembersList();
             calculateMess();
+            if (purgeResult.totalRemoved > 0) {
+                showToast('পুরনো ' + convertToBanglaNumber(purgeResult.totalRemoved) +
+                    'টি এন্ট্রি স্থায়ীভাবে মুছে ফেলা হয়েছে (বিগত ' +
+                    convertToBanglaNumber(RETENTION_PREVIOUS_MONTHS) + ' মাস রাখা হয়েছে)।');
+            }
         };
     </script>
 
@@ -1902,12 +2202,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     if (Array.isArray(cloud.fixedCostLog)) messData.fixedCostLog = cloud.fixedCostLog;
                     /* পুরনো ক্লাউড ডেটায় fixedCostLog না থাকলে একবার মাইগ্রেট করে সিঙ্ক */
                     const migratedCloud = migrateFixedCostData(messData);
+                    /* বিগত ৩ মাসের বাইরের ডেটা ক্লাউড থেকেও স্থায়ীভাবে মুছে যায় */
+                    const purgedCloud = purgeOldData().totalRemoved > 0;
                     localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
                     updateDropdowns();
                     renderMembersList();
                     calculateMess();
                     applyingFirebase = false;
-                    if (migratedCloud) ref.set(messData).catch(console.error);
+                    if (migratedCloud || purgedCloud) ref.set(messData).catch(console.error);
                 } else if (local && local.members) {
                     migrateFixedCostData(local);
                     messData = local;
@@ -1937,11 +2239,15 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 };
                 if (Array.isArray(cloud.fixedCostLog)) messData.fixedCostLog = cloud.fixedCostLog;
                 migrateFixedCostData(messData);
+                /* বিগত ৩ মাসের বাইরের ডেটা ক্লাউড থেকেও স্থায়ীভাবে মুছে যায় */
+                const purgedRealtime = purgeOldData().totalRemoved > 0;
                 localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
                 updateDropdowns();
                 renderMembersList();
                 calculateMess();
                 applyingFirebase = false;
+                /* পুরনো ডেটা কোনো ডিভাইস থেকে ফিরে এলেও সাথে সাথে আবার মুছে যায় */
+                if (purgedRealtime) ref.set(messData).catch(console.error);
                 firebaseStatus("🟢 Real-time Sync আপডেট হয়েছে", true);
             }, err => {
                 console.error("Firebase listener error:", err);

@@ -516,6 +516,7 @@ img { max-width: 100%; display: block; }
 }
 
 .rowbtn:active { background: #f1f4f8; }
+.rowbtn:disabled { opacity: .35; }
 .rowbtn .ico { width: 20px; height: 20px; }
 
 .avatar {

@@ -210,6 +210,7 @@
         bazar:   ['Bazar', 'দৈনিক বাজার খরচ'],
         fixed:   ['Fixed Cost', 'ফিক্সড খরচ ব্যবস্থাপনা'],
         report:  ['Accounts', 'হিসাব ও রিপোর্ট'],
+        month:   ['Month Accounts', 'মাসের হিসাব'],
         members: ['Members', 'সদস্যদের তথ্য'],
         member:  ['Member Details', 'সদস্যের হিসাব'],
         more:    ['More', 'সেটিংস ও অন্যান্য']
@@ -217,7 +218,8 @@
 
     const NAV_FOR_SCREEN = {
         home: 'home', meal: 'meal', bazar: 'bazar', report: 'report',
-        fixed: 'more', members: 'more', member: 'more', more: 'more'
+        fixed: 'more', members: 'more', member: 'more', more: 'more',
+        month: 'report'
     };
 
     let navStack = ['home'];
@@ -232,6 +234,7 @@
 
         /* প্রতিটি স্ক্রিনে ঢোকার আগে নির্দিষ্ট রেন্ডার হুক */
         if (name === 'member') renderMemberDetail(currentMemberId);
+        if (name === 'month') renderMonthScreen();
 
         $$('.screen').forEach(function (s) { s.classList.remove('is-active'); });
         target.classList.add('is-active');
@@ -815,20 +818,176 @@
             monthBox.innerHTML = keys.map(function (k) {
                 const g = group[k];
                 const rate = g.meals > 0 ? g.bazar / g.meals : 0;
-                return '<div class="row">' +
+                return '<button type="button" class="row row--tap" data-act="month-open" data-month="' + esc(k) + '">' +
                     '<div class="row__body">' +
                         '<div class="row__title">' + esc(monthLabel(k)) +
                             (k === currentKey ? ' <span class="badge badge--ok">চলতি</span>' : '') + '</div>' +
                         '<div class="row__sub">বাজার ' + money(g.bazar) + ' · ফিক্সড ' + money(g.fixed) +
+                            ' · মোট খরচ ' + money(g.bazar + g.fixed) +
                             ' · মিল ' + bn(Number.isInteger(g.meals) ? g.meals : g.meals.toFixed(1)) + '</div>' +
                     '</div>' +
                     '<div class="row__right">' +
                         '<span class="row__amount row__amount--muted">৳' + bn(rate.toFixed(2)) + '</span>' +
                         '<div class="row__sub">মিল রেট</div>' +
                     '</div>' +
-                '</div>';
+                    '<span class="menu__chev">' + chevronRight() + '</span>' +
+                '</button>';
             }).join('');
         }
+    }
+
+    /* ===================================================== MONTH RENDER ===== */
+    /* বিগত মাসের হিসাব — Report স্ক্রিনের মাসের তালিকা থেকে ট্যাপ করে খোলা হয়।
+       সব সংখ্যা index.html-এর computeMonthSummary() থেকেই আসে (একই সূত্র)। */
+    let monthViewKey = '';
+
+    function monthSummaryFor(key) {
+        if (typeof window.computeMonthSummary === 'function') {
+            try { return window.computeMonthSummary(key); } catch (e) { /* ignore */ }
+        }
+        return { monthKey: key, rows: [], totalMeals: 0, totalBazar: 0, rate: 0, totalFixed: 0, totalFixedPaid: 0, totalExpense: 0 };
+    }
+
+    function monthLabelOf(key) {
+        if (typeof window.formatBanglaMonthKey === 'function') return window.formatBanglaMonthKey(key);
+        return monthLabel(key);
+    }
+
+    /* যে মাসগুলো দেখা যাবে — ডেটা আছে এমন মাস + ধরে রাখা পুরো সময় (চলতি মাস + বিগত ৩ মাস),
+       নতুন থেকে পুরনো ক্রমে। ফলে ডেটা না থাকলেও পুরনো মাসে যাওয়া যায়। */
+    function availableMonthKeys() {
+        const d = data();
+        const keys = {};
+        if (d) {
+            (d.mealsLog || []).forEach(function (l) { const k = monthKey(l.date); if (k) keys[k] = 1; });
+            (d.bazarLog || []).forEach(function (b) { const k = monthKey(b.date); if (k) keys[k] = 1; });
+            (fixedSummary().entries || []).forEach(function (f) { const k = monthKey(f.date); if (k) keys[k] = 1; });
+        }
+        if (typeof window.retainedMonthKeys === 'function') {
+            window.retainedMonthKeys().forEach(function (k) { keys[k] = 1; });
+        }
+        keys[todayISO().slice(0, 7)] = 1;
+        return Object.keys(keys).sort(function (a, b) { return b.localeCompare(a); });
+    }
+
+    function openMonth(key) {
+        monthViewKey = key || todayISO().slice(0, 7);
+        go('month');
+    }
+
+    function monthRowsHtml(rows) {
+        return rows.map(function (r) {
+            const badge = r.balance >= 0
+                ? '<span class="badge badge--ok">পাবে ' + money(r.balance) + '</span>'
+                : '<span class="badge badge--out">দেবে ' + money(Math.abs(r.balance)) + '</span>';
+            return '<div class="row">' +
+                '<span class="avatar">' + esc(String(r.name || '?').trim().charAt(0)) + '</span>' +
+                '<div class="row__body">' +
+                    '<div class="row__title">' + esc(r.name) + '</div>' +
+                    '<div class="row__sub">মিল ' + bn(Number.isInteger(r.meals) ? r.meals : r.meals.toFixed(1)) +
+                        ' · খরচ ' + money(r.expense) + ' · জমা ' + money(r.deposit) + '</div>' +
+                '</div>' +
+                '<div class="row__right">' + badge + '</div>' +
+            '</div>';
+        }).join('');
+    }
+
+    function renderMonthScreen() {
+        const d = data(); if (!d) return;
+        const listBox = $('month-member-list');
+        if (!listBox) return;
+
+        const keys = availableMonthKeys();
+        if (!monthViewKey || keys.indexOf(monthViewKey) === -1) {
+            monthViewKey = keys.length ? keys[0] : todayISO().slice(0, 7);
+        }
+
+        const idx = keys.indexOf(monthViewKey);
+        const s = monthSummaryFor(monthViewKey);
+        const isCurrent = monthViewKey === todayISO().slice(0, 7);
+
+        $('month-nav-label').textContent = monthLabelOf(monthViewKey) + (isCurrent ? ' (চলতি)' : '');
+        const sub = $('month-nav-sub');
+        if (sub) {
+            sub.textContent = keys.length > 1
+                ? 'বিগত মাসের হিসাব · ' + bn(idx + 1) + '/' + bn(keys.length)
+                : 'বিগত মাসের হিসাব';
+        }
+        const prev = $('month-prev'), next = $('month-next');
+        if (prev) prev.disabled = (idx <= 0);
+        if (next) next.disabled = (idx < 0 || idx >= keys.length - 1);
+        const navMeta = $('appbar-sub');
+        if (navMeta && currentScreen() === 'month') navMeta.textContent = monthLabelOf(monthViewKey) + ' · মাসের হিসাব';
+
+        $('month-total-bazar').textContent = bn(s.totalBazar.toFixed(1));
+        $('month-total-fixed').textContent = bn(s.totalFixed.toFixed(1));
+        $('month-total-expense').textContent = bn(s.totalExpense.toFixed(1));
+        $('month-total-meals').textContent = bn(Number.isInteger(s.totalMeals) ? s.totalMeals : s.totalMeals.toFixed(1));
+        $('month-meal-rate').textContent = bn(s.rate.toFixed(2));
+        const countEl = $('month-count');
+        if (countEl) countEl.textContent = bn(s.rows.length) + ' জন সদস্য';
+
+        if (!members().length) {
+            listBox.innerHTML = emptyState('🗓️', 'হিসাব দেখাতে সদস্য দরকার।', 'আগে সদস্য যোগ করুন।');
+        } else if (!s.rows.some(function (r) { return r.meals || r.bazarSpent || r.fixedShare || r.fixedPaid; })) {
+            listBox.innerHTML = emptyState('🗓️', 'এই মাসের কোনো এন্ট্রি নেই।', 'অন্য মাস দেখতে উপরের ◀ ▶ বাটন ব্যবহার করুন।');
+        } else {
+            listBox.innerHTML = monthRowsHtml(s.rows);
+        }
+
+        const body = $('month-table-body');
+        if (body) {
+            body.innerHTML = s.rows.map(function (r) {
+                const balanceText = r.balance >= 0
+                    ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-sm font-bold">পাবে: ৳' + bn(r.balance.toFixed(1)) + '</span>'
+                    : '<span class="bg-rose-100 text-rose-800 px-2 py-1 rounded-sm font-bold">দেবে: ৳' + bn(Math.abs(r.balance).toFixed(1)) + '</span>';
+                return '<tr class="border-b hover:bg-gray-50">' +
+                    '<td class="p-2 border font-semibold">' + esc(r.name) + '</td>' +
+                    '<td class="p-2 border text-center">' + bn(r.meals) + '</td>' +
+                    '<td class="p-2 border text-gray-700">৳' + bn(r.mealCost.toFixed(1)) + '</td>' +
+                    '<td class="p-2 border text-gray-600">৳' + bn(r.fixedShare.toFixed(1)) + '</td>' +
+                    '<td class="p-2 border font-bold text-blue-700">৳' + bn(r.expense.toFixed(1)) + '</td>' +
+                    '<td class="p-2 border text-emerald-600 font-semibold">৳' + bn(r.bazarSpent) + '</td>' +
+                    '<td class="p-2 border text-indigo-600 font-semibold">৳' + bn(r.fixedPaid) + '</td>' +
+                    '<td class="p-2 border">' + balanceText + '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        const mealCostSum = s.rows.reduce(function (sum, r) { return sum + r.mealCost; }, 0);
+        $('month-foot-meals').textContent = bn(Number.isInteger(s.totalMeals) ? s.totalMeals : s.totalMeals.toFixed(1));
+        $('month-foot-meal-cost').textContent = '৳' + bn(mealCostSum.toFixed(1));
+        $('month-foot-fixed').textContent = '৳' + bn(s.totalFixed.toFixed(1));
+        $('month-foot-total-cost').textContent = '৳' + bn(s.totalExpense.toFixed(1));
+        $('month-foot-bazar').textContent = '৳' + bn(s.totalBazar.toFixed(1));
+        $('month-foot-fixed-paid').textContent = '৳' + bn(s.totalFixedPaid.toFixed(1));
+    }
+
+    function stepMonth(delta) {
+        const keys = availableMonthKeys();
+        const idx = keys.indexOf(monthViewKey);
+        const nextIdx = idx + delta;
+        if (nextIdx < 0 || nextIdx >= keys.length) return;
+        monthViewKey = keys[nextIdx];
+        renderMonthScreen();
+        window.scrollTo(0, 0);
+    }
+
+    /* ডেটা ধরে রাখার নিয়ম — More স্ক্রিনের তথ্য কার্ডে দেখানো হয় */
+    function renderRetentionInfo() {
+        const el = $('retention-text');
+        if (!el) return;
+        const months = (typeof window.RETENTION_PREVIOUS_MONTHS === 'number') ? window.RETENTION_PREVIOUS_MONTHS : 3;
+        const keys = (typeof window.retainedMonthKeys === 'function') ? window.retainedMonthKeys() : [];
+        const labels = keys.map(monthLabelOf).join(', ');
+        let text = 'চলতি মাস + বিগত ' + bn(months) + ' মাসের হিসাব রাখা হয়' +
+            (labels ? ' (' + labels + ')' : '') +
+            '। এর চেয়ে পুরনো মিল, বাজার ও ফিক্সড খরচ খাতা খোলার সময়ই স্থায়ীভাবে মুছে যায় — এই ডিভাইস ও Firebase দুই জায়গা থেকেই।';
+        const last = (typeof window.lastPurgeInfo === 'function') ? window.lastPurgeInfo() : null;
+        if (last && last.total) {
+            text += ' সর্বশেষ পরিষ্কারে ' + bn(last.total) + 'টি পুরনো এন্ট্রি মুছে গেছে।';
+        }
+        el.textContent = text;
     }
 
     /* ==================================================== MEMBERS RENDER ==== */
@@ -955,6 +1114,8 @@
         renderBazarScreen();
         renderFixedScreen();
         renderReportScreen();
+        renderRetentionInfo();
+        renderMonthScreen();
         renderMembersScreen();
         if (currentScreen() === 'member' && currentMemberId) renderMemberDetail(currentMemberId);
         polishLegacyNumbers();
@@ -1540,6 +1701,9 @@
             case 'fixed-actions':
                 fixedActions(actEl.getAttribute('data-id'));
                 break;
+            case 'month-open':
+                openMonth(actEl.getAttribute('data-month'));
+                break;
             case 'fixed-share':
                 shareFixedEntry(fixedEntryById(actEl.getAttribute('data-id')) || {});
                 break;
@@ -1689,6 +1853,16 @@
         if (!d || !(d.bazarLog || []).length) { window.alert('কোনো বাজার খরচ পাওয়া যায়নি।'); return; }
         runConfirmed(function () {
             if (typeof window.shareBazarListOnWhatsApp === 'function') window.shareBazarListOnWhatsApp();
+        });
+    });
+
+    on($('month-prev'), 'click', function () { stepMonth(+1); });   /* তালিকা নতুন→পুরনো, তাই +1 = আগের মাস */
+    on($('month-next'), 'click', function () { stepMonth(-1); });
+
+    on($('month-share-btn'), 'click', function () {
+        if (!monthViewKey) return;
+        runConfirmed(function () {
+            if (typeof window.shareMonthOnWhatsApp === 'function') window.shareMonthOnWhatsApp(monthViewKey);
         });
     });
 
