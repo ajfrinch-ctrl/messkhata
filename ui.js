@@ -452,38 +452,44 @@
         });
     }
 
+    let currentMonthSummaryCache = null;
+
+    function currentMonthSummary() {
+        const monthKey = todayISO().slice(0, 7);
+        if (currentMonthSummaryCache && currentMonthSummaryCache.monthKey === monthKey) return currentMonthSummaryCache;
+        currentMonthSummaryCache = null;
+        if (typeof window.computeCurrentMonthSummary === 'function') {
+            try {
+                currentMonthSummaryCache = window.computeCurrentMonthSummary();
+                return currentMonthSummaryCache;
+            } catch (e) { /* ignore */ }
+        }
+        return { rows: [], totalMeals: 0, totalBazar: 0, rate: 0, totalFixed: 0, totalExpense: 0 };
+    }
+
     function totals() {
-        const d = data(); if (!d) return { meals: 0, bazar: 0, rate: 0, fixed: 0 };
-        const meals = (d.mealsLog || []).reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
-        const bazar = (d.bazarLog || []).reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const fixed = Number(fixedSummary().total) || 0;
+        const summary = currentMonthSummary();
         return {
-            meals: meals,
-            bazar: bazar,
-            rate: meals > 0 ? bazar / meals : 0,
-            fixed: fixed
+            meals: Number(summary.totalMeals) || 0,
+            bazar: Number(summary.totalBazar) || 0,
+            rate: Number(summary.rate) || 0,
+            fixed: Number(summary.totalFixed) || 0
         };
     }
 
     function memberStats(memberId) {
-        const d = data(); if (!d) return { meals: 0, spent: 0, rent: 0, share: 0, expense: 0, balance: 0 };
-        const t = totals();
-        const meals = (d.mealsLog || []).filter(function (l) { return l.memberId === memberId; })
-            .reduce(function (s, l) { return s + (Number(l.count) || 0); }, 0);
-        const bazarSpent = (d.bazarLog || []).filter(function (b) { return b.memberId === memberId; })
-            .reduce(function (s, b) { return s + (Number(b.amount) || 0); }, 0);
-        const f = fixedSummary().perMember[memberId] || { share: 0, paid: 0 };
-        const expense = meals * t.rate + f.share;
-        const spent = bazarSpent + f.paid;
+        const row = currentMonthSummary().rows.filter(function (r) { return r.id === memberId; })[0];
+        if (!row) return { meals: 0, bazarSpent: 0, fixedPaid: 0, spent: 0, rent: 0, share: 0, expense: 0, balance: 0 };
+        const spent = row.deposit;
         return {
-            meals: meals,
-            bazarSpent: bazarSpent,
-            fixedPaid: f.paid,
+            meals: row.meals,
+            bazarSpent: row.bazarSpent,
+            fixedPaid: row.fixedPaid,
             spent: spent,
-            share: f.share,
-            rent: f.share,
-            expense: expense,
-            balance: spent - expense
+            share: row.fixedShare,
+            rent: row.fixedShare,
+            expense: row.expense,
+            balance: row.balance
         };
     }
 
@@ -504,7 +510,7 @@
         $('home-today-bazar').textContent = money(todayBazar);
         /* সাধারণত ২ দশমিক; ১০০০+ হলে দশমিক বাদ দিলে ছোট স্ক্রিনেও এক লাইনে ধরে */
         $('home-meal-rate').textContent = '৳' + bn(t.rate.toFixed(t.rate >= 1000 ? 0 : 2));
-        $('home-summary-note').textContent = 'মোট খরচ ' + money(t.bazar + t.fixed) +
+        $('home-summary-note').textContent = 'চলতি মাসের খরচ ' + money(t.bazar + t.fixed) +
             ' · ' + bn(members().length) + ' জন সদস্য';
 
         const startCard = $('home-start-card');
@@ -662,9 +668,9 @@
         if (!box) return;
 
         const list = fixedEntries();
-        const summary = fixedSummary();
+        const t = totals();
         const totalEl = $('foot-total-fixed-all');
-        if (totalEl) totalEl.textContent = bn(Number(summary.total || 0).toFixed(1));
+        if (totalEl) totalEl.textContent = bn(t.fixed.toFixed(1));
         const countEl = $('fixed-count');
         if (countEl) countEl.textContent = bn(list.length) + 'টি এন্ট্রি';
 
@@ -714,9 +720,9 @@
                     : '') +
             '</div>' +
             '<div class="membercard__stats">' +
-                '<div class="membercard__stat"><span>Meals</span><span>' + bn(s.meals) + '</span></div>' +
-                '<div class="membercard__stat"><span>Expense</span><span>' + money(s.expense) + '</span></div>' +
-                '<div class="membercard__stat"><span>Balance</span><span>' + signedMoney(s.balance) + '</span></div>' +
+                '<div class="membercard__stat"><span>চলতি মাসের মিল</span><span>' + bn(s.meals) + '</span></div>' +
+                '<div class="membercard__stat"><span>চলতি মাসের খরচ</span><span>' + money(s.expense) + '</span></div>' +
+                '<div class="membercard__stat"><span>ব্যালেন্স</span><span>' + signedMoney(s.balance) + '</span></div>' +
             '</div>' +
         '</div>';
     }
@@ -837,7 +843,7 @@
     }
 
     /* ===================================================== MONTH RENDER ===== */
-    /* বিগত মাসের হিসাব — Report স্ক্রিনের মাসের তালিকা থেকে ট্যাপ করে খোলা হয়।
+    /* মাসভিত্তিক হিসাব — Report স্ক্রিনের মাসের তালিকা থেকে ট্যাপ করে খোলা হয়।
        সব সংখ্যা index.html-এর computeMonthSummary() থেকেই আসে (একই সূত্র)। */
     let monthViewKey = '';
 
@@ -910,8 +916,8 @@
         const sub = $('month-nav-sub');
         if (sub) {
             sub.textContent = keys.length > 1
-                ? 'বিগত মাসের হিসাব · ' + bn(idx + 1) + '/' + bn(keys.length)
-                : 'বিগত মাসের হিসাব';
+                ? 'মাসভিত্তিক হিসাব · ' + bn(idx + 1) + '/' + bn(keys.length)
+                : 'মাসভিত্তিক হিসাব';
         }
         const prev = $('month-prev'), next = $('month-next');
         if (prev) prev.disabled = (idx <= 0);
@@ -995,7 +1001,7 @@
         const d = data(); if (!d) return;
         const box = $('members-list-container');
         const countEl = $('members-count');
-        if (countEl) countEl.textContent = bn(members().length) + ' জন';
+        if (countEl) countEl.textContent = bn(members().length) + ' জন · চলতি মাস';
         if (!box) return;
 
         if (!members().length) {
@@ -1024,7 +1030,7 @@
 
         head.innerHTML =
             '<div class="memberhead__name">' + esc(m.name) + '</div>' +
-            '<div class="memberhead__meta">' + bn(s.meals) + ' মিল · ' + bnDate(todayISO()) + ' পর্যন্ত</div>' +
+            '<div class="memberhead__meta">চলতি মাসে ' + bn(s.meals) + ' মিল</div>' +
             '<div class="memberhead__balance ' + (s.balance >= 0 ? 'is-in' : 'is-out') + '">' +
                 '<span>' + (s.balance >= 0 ? 'পাবে' : 'দেবে') + '</span>' +
                 '<span>' + money(Math.abs(s.balance)) + '</span>' +
@@ -1107,7 +1113,10 @@
     }
 
     /* ==================================================== MASTER RENDER ==== */
+    let lastRenderedMonthKey = todayISO().slice(0, 7);
+
     function renderAll() {
+        lastRenderedMonthKey = todayISO().slice(0, 7);
         renderHomeSummary();
         renderMenuMeta();
         renderMealScreen();
@@ -1123,9 +1132,32 @@
 
     const legacyCalculateMess = window.calculateMess;
     window.calculateMess = function () {
+        currentMonthSummaryCache = null;
         if (typeof legacyCalculateMess === 'function') legacyCalculateMess.apply(this, arguments);
         renderAll();
     };
+
+    /* অ্যাপ খোলা রেখেও মাস পাল্টালে নতুন মাসের হিসাব সঙ্গে সঙ্গে দেখান;
+       background-এ timer থেমে থাকলে app-এ ফিরে আসার সময়ও পরীক্ষা হবে। */
+    function refreshIfMonthChanged() {
+        if (todayISO().slice(0, 7) === lastRenderedMonthKey) return;
+        if (typeof window.calculateMess === 'function') window.calculateMess();
+    }
+
+    function scheduleMonthRolloverCheck() {
+        const now = new Date();
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        window.setTimeout(function () {
+            refreshIfMonthChanged();
+            scheduleMonthRolloverCheck();
+        }, Math.max(1000, nextMonth.getTime() - now.getTime() + 100));
+    }
+
+    window.addEventListener('focus', refreshIfMonthChanged);
+    document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refreshIfMonthChanged();
+    });
+    scheduleMonthRolloverCheck();
 
     const legacyRenderMealsGrid = window.renderMealsGrid;
     window.renderMealsGrid = function () {

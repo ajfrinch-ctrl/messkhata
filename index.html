@@ -165,7 +165,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                         <span class="stat__ico stat__ico--report">
                             <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7.5 20v-6.5"/><path d="M12 20V6"/><path d="M16.5 20v-9.5"/></svg>
                         </span>
-                        <span class="stat__label">মিল রেট</span>
+                        <span class="stat__label">চলতি মাসের মিল রেট</span>
                         <span class="stat__value" id="home-meal-rate">৳০</span>
                     </div>
                 </div>
@@ -271,7 +271,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             </button>
 
             <div class="card totalcard">
-                <span class="totalcard__label">সর্বমোট বাজার খরচ</span>
+                <span class="totalcard__label">চলতি মাসের বাজার খরচ</span>
                 <span class="totalcard__value">৳<span id="table-total-bazar">০</span></span>
             </div>
 
@@ -344,7 +344,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             </button>
 
             <div class="card totalcard totalcard--fixed">
-                <span class="totalcard__label">সর্বমোট ফিক্সড খরচ</span>
+                <span class="totalcard__label">চলতি মাসের ফিক্সড খরচ</span>
                 <span class="totalcard__value">৳<span id="foot-total-fixed-all">০</span></span>
             </div>
             <p class="sec__foot-note">প্রতিটি ফিক্সড খরচ সব সদস্যের মধ্যে সমান ভাগে ভাগ হয়; যে সদস্য টাকা দেন তাঁর অ্যাকাউন্টে পুরো টাকা জমা হয়।</p>
@@ -409,26 +409,27 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         <section class="screen" id="screen-report" data-screen="report">
             <div class="tiles">
                 <div class="tile">
-                    <span class="tile__label">মোট বাজার খরচ</span>
+                    <span class="tile__label">চলতি মাসের বাজার</span>
                     <span class="tile__value">৳<span id="total-bazar">০</span></span>
                 </div>
                 <div class="tile">
-                    <span class="tile__label">মোট ফিক্সড খরচ</span>
+                    <span class="tile__label">চলতি মাসের ফিক্সড</span>
                     <span class="tile__value">৳<span id="total-fixed">০</span></span>
                 </div>
                 <div class="tile tile--wide tile--accent">
-                    <span class="tile__label">সর্বমোট খরচ</span>
+                    <span class="tile__label">এই মাসের মোট খরচ</span>
                     <span class="tile__value tile__value--lg">৳<span id="total-expense">০</span></span>
                 </div>
                 <div class="tile">
-                    <span class="tile__label">মোট মিল</span>
+                    <span class="tile__label">চলতি মাসের মিল</span>
                     <span class="tile__value"><span id="total-meals">০</span></span>
                 </div>
                 <div class="tile">
-                    <span class="tile__label">মিল রেট</span>
+                    <span class="tile__label">চলতি মাসের মিল রেট</span>
                     <span class="tile__value">৳<span id="meal-rate">০.০০</span></span>
                 </div>
             </div>
+            <p class="sec__foot-note">চলতি মাসের মিল রেট ও সদস্যদের হিসাব শুধু এই মাসের এন্ট্রি দিয়ে গণনা হয়। মাস বদলালে নতুন মাসের হিসাব আলাদা করে শুরু হবে; আগের মাসগুলো নিচে সংরক্ষিত থাকবে।</p>
 
             <section class="sec">
                 <div class="sec__head">
@@ -443,7 +444,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     <span class="sec__note">মিল + বাজার + ফিক্সড খরচ</span>
                 </div>
                 <div class="card" id="report-settlement-list"></div>
-                <p class="sec__foot-note">সব খরচ (মিল, বাজার ও ফিক্সড) যোগ করার পর কে পাবে আর কে দেবে।</p>
+                <p class="sec__foot-note">চলতি মাসের মিল, বাজার ও ফিক্সড খরচ ধরে কে পাবে আর কে দেবে দেখানো হচ্ছে।</p>
             </section>
 
             <section class="sec">
@@ -498,7 +499,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         </section>
 
         <!--------------------------------------------------------------------
-             MONTH ACCOUNTS (বিগত মাসের হিসাব)
+             MONTH ACCOUNTS (মাসভিত্তিক হিসাব)
         --------------------------------------------------------------------->
         <section class="screen" id="screen-month" data-screen="month">
             <div class="card">
@@ -508,7 +509,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     </button>
                     <div class="row__body" style="text-align:center">
                         <div class="row__title" id="month-nav-label">—</div>
-                        <div class="row__sub" id="month-nav-sub">বিগত মাসের হিসাব</div>
+                        <div class="row__sub" id="month-nav-sub">মাসভিত্তিক হিসাব</div>
                     </div>
                     <button type="button" class="rowbtn" id="month-next" aria-label="পরের মাস">
                         <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
@@ -1169,7 +1170,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         /* ------------------------------------------------------------------
-           মাসের হিসাব (বিগত মাস দেখার জন্য) — সব মাসের জন্য একই সূত্র:
+           মাসভিত্তিক হিসাব (চলতি ও বিগত মাস) — সব মাসের জন্য একই সূত্র:
              মিল রেট = ওই মাসের বাজার ÷ ওই মাসের মিল
              খরচ      = মিলের খরচ + ওই মাসের ফিক্সড খরচের ভাগ
              জমা       = ওই মাসের বাজার জমা + ওই মাসের ফিক্সড জমা
@@ -1219,6 +1220,16 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                 totalFixedPaid: fixed.totalPaid,
                 totalExpense: totalBazar + fixed.total
             };
+        }
+
+        /* চলতি মাসের হিসাব সবসময় ক্যালেন্ডারের বর্তমান মাস অনুযায়ী নতুন করে হয়;
+           আগের মাসের এন্ট্রি সংরক্ষিত থাকে এবং মাসভিত্তিক রিপোর্টে দেখা যায়। */
+        function currentMonthKey() {
+            return monthKeyOf(todayISOString());
+        }
+
+        function computeCurrentMonthSummary() {
+            return computeMonthSummary(currentMonthKey());
         }
 
         /* ------------------------------------------------------------------
@@ -1310,6 +1321,8 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         window.computeFixedSummary = computeFixedSummary;
         window.computeFixedSummaryFor = computeFixedSummaryFor;
         window.computeMonthSummary = computeMonthSummary;
+        window.currentMonthKey = currentMonthKey;
+        window.computeCurrentMonthSummary = computeCurrentMonthSummary;
         window.migrateFixedCostData = migrateFixedCostData;
         window.todayISOString = todayISOString;
         window.monthKeyOf = monthKeyOf;
@@ -1647,53 +1660,31 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function calculateMess() {
-            let totalMeals = 0;
-            let totalBazar = 0;
-
-            let memberSummary = {};
+            /* প্রতিটি ক্যালেন্ডার মাসের হিসাব আলাদা। আগের মাসের ডেটা মুছে না দিয়ে
+               শুধু বর্তমান মাসের মিল, বাজার ও ফিক্সড খরচ দিয়ে রেট/সেটেলমেন্ট হয়। */
+            const monthSummary = computeCurrentMonthSummary();
+            const totalMeals = monthSummary.totalMeals;
+            const totalBazar = monthSummary.totalBazar;
+            const mealRate = monthSummary.rate;
+            const totalFixedAll = monthSummary.totalFixed;
+            const totalFixedPaidAll = monthSummary.totalFixedPaid;
+            const memberSummary = {};
 
             messData.bazarLog.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-            messData.members.forEach(m => {
-                memberSummary[m.id] = { name: m.name, meals: 0, bazarSpent: 0, fixed: 0, fixedPaid: 0 };
-            });
-
-            messData.mealsLog.forEach(log => {
-                if (memberSummary[log.memberId]) {
-                    memberSummary[log.memberId].meals += log.count;
-                    totalMeals += log.count;
-                }
-            });
-
-            messData.bazarLog.forEach(log => {
-                if (memberSummary[log.memberId]) {
-                    memberSummary[log.memberId].bazarSpent += log.amount;
-                    totalBazar += log.amount;
-                }
-            });
-
-            /* মিল রেট আগের মতোই — শুধু বাজারের টাকা ÷ মোট মিল (ফিক্সড খরচ এতে যোগ হয় না) */
-            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
-
-            /* ---------- ফিক্সড খরচ (এন্ট্রি-ভিত্তিক নতুন মডেল) ----------
-               প্রতিটি এন্ট্রি সব সদস্যের মধ্যে সমান ভাগে ভাগ হয়; যে সদস্য
-               টাকা দিয়েছেন তাঁর অ্যাকাউন্টে পুরো টাকা জমা (credit) হয়।
-               পুরনো রেকর্ডগুলো migrate হয়ে একই লিস্টেই থাকে — একবারই ধরা হয়,
-               তাই কোনো ডাবল-কাউন্ট নেই। */
-            const fixedSummary = computeFixedSummary();
-            const totalFixedAll = fixedSummary.total;
-            let totalFixedPaidAll = 0;
-
-            messData.members.forEach(m => {
-                const f = fixedSummary.perMember[m.id] || { share: 0, paid: 0 };
-                memberSummary[m.id].fixed = f.share;
-                memberSummary[m.id].fixedPaid = f.paid;
-                totalFixedPaidAll += f.paid;
+            monthSummary.rows.forEach(row => {
+                memberSummary[row.id] = {
+                    name: row.name,
+                    meals: row.meals,
+                    bazarSpent: row.bazarSpent,
+                    fixed: row.fixedShare,
+                    fixedPaid: row.fixedPaid
+                };
             });
 
             document.getElementById('foot-total-fixed-all').innerText = `৳${convertToBanglaNumber(totalFixedAll.toFixed(1))}`;
 
-            const totalExpenseAll = totalBazar + totalFixedAll;
+            const totalExpenseAll = monthSummary.totalExpense;
 
             document.getElementById('total-expense').innerText = convertToBanglaNumber(totalExpenseAll.toFixed(1));
             document.getElementById('total-bazar').innerText = convertToBanglaNumber(totalBazar.toFixed(1));
@@ -1983,46 +1974,23 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         }
 
         function shareMemberOnWhatsApp(memberId) {
-            let totalMeals = 0; 
-            let totalBazar = 0;
-            messData.mealsLog.forEach(l => totalMeals += l.count);
-            messData.bazarLog.forEach(l => totalBazar += l.amount);
-            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
+            const summary = computeCurrentMonthSummary();
+            const row = summary.rows.find(r => r.id === memberId);
+            if (!row) return;
 
-            const member = messData.members.find(m => m.id === memberId);
-            if (!member) return;
+            const statusStr = row.balance >= 0
+                ? `পাবে: ৳${convertToBanglaNumber(row.balance.toFixed(1))}`
+                : `দেবে: ৳${convertToBanglaNumber(Math.abs(row.balance).toFixed(1))}`;
 
-            const myMeals = messData.mealsLog.filter(l => l.memberId === memberId);
-            const myBazar = messData.bazarLog.filter(l => l.memberId === memberId);
-
-            /* ফিক্সড খরচ — নতুন এন্ট্রি-ভিত্তিক হিসাব (নিজের ভাগ + নিজের জমা) */
-            const fixedSummary = computeFixedSummary();
-            const myFixed = fixedSummary.perMember[memberId] || { share: 0, paid: 0 };
-
-            let myTotalMealsCount = 0; 
-            myMeals.forEach(m => myTotalMealsCount += m.count);
-            let myMealCost = myTotalMealsCount * mealRate;
-
-            let myTotalBazarSpent = 0; 
-            myBazar.forEach(b => myTotalBazarSpent += b.amount);
-
-            let myGrandCost = myMealCost + myFixed.share;
-            /* জমা = বাজারে দেওয়া টাকা + ফিক্সড খরচে দেওয়া টাকা */
-            let myTotalDeposit = myTotalBazarSpent + myFixed.paid;
-            let finalStatus = myTotalDeposit - myGrandCost;
-            let isRefund = finalStatus >= 0;
-
-            let statusStr = isRefund ? `পাবে: ৳${convertToBanglaNumber(finalStatus.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(finalStatus).toFixed(1))}`;
-
-            let message = `📋 *${member.name}-এর মাসিক মিল হিসাব*\n\n` +
-                          `👤 *নাম:* ${member.name}\n` +
-                          `🍚 মোট মিল: ${convertToBanglaNumber(myTotalMealsCount)}\n` +
-                          `📈 প্রতি মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n` +
-                          `🍽️ মিলের খরচ: ৳${convertToBanglaNumber(myMealCost.toFixed(1))}\n` +
-                          `🏷️ ফিক্সড খরচের ভাগ: ৳${convertToBanglaNumber(myFixed.share.toFixed(1))}\n` +
-                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(myGrandCost.toFixed(1))}\n` +
-                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(myTotalBazarSpent)}\n` +
-                          `🏦 ফিক্সড খরচ জমা দিয়েছেন: ৳${convertToBanglaNumber(myFixed.paid.toFixed(1))}\n` +
+            const message = `📋 *${row.name}-এর ${formatBanglaMonthKey(summary.monthKey)}-এর হিসাব*\n\n` +
+                          `👤 *নাম:* ${row.name}\n` +
+                          `🍚 মোট মিল: ${convertToBanglaNumber(row.meals)}\n` +
+                          `📈 মিল রেট: ৳${convertToBanglaNumber(summary.rate.toFixed(2))}\n` +
+                          `🍽️ মিলের খরচ: ৳${convertToBanglaNumber(row.mealCost.toFixed(1))}\n` +
+                          `🏷️ ফিক্সড খরচের ভাগ: ৳${convertToBanglaNumber(row.fixedShare.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(row.expense.toFixed(1))}\n` +
+                          `🛒 বাজার জমা দিয়েছেন: ৳${convertToBanglaNumber(row.bazarSpent.toFixed(1))}\n` +
+                          `🏦 ফিক্সড খরচ জমা দিয়েছেন: ৳${convertToBanglaNumber(row.fixedPaid.toFixed(1))}\n` +
                           `📌 আর্থিক অবস্থা: *${statusStr}*`;
 
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
@@ -2064,38 +2032,20 @@ window.convertToBanglaNumber = convertToBanglaNumber;
         window.shareMonthOnWhatsApp = shareMonthOnWhatsApp;
 
         function shareAllInOneOnWhatsApp() {
-            let totalMeals = 0;
-            let totalBazar = 0;
-            messData.mealsLog.forEach(l => totalMeals += l.count);
-            messData.bazarLog.forEach(l => totalBazar += l.amount);
-            const mealRate = totalMeals > 0 ? (totalBazar / totalMeals) : 0;
-
-            /* ফিক্সড খরচ — এন্ট্রি-ভিত্তিক হিসাব (সবার সমান ভাগ + নিজের জমা) */
-            const fixedSummary = computeFixedSummary();
-            const totalFixed = fixedSummary.total;
-
-            let message = `📊 *মেসের সম্পূর্ণ মাসিক রিপোর্ট ও ব্যালেন্স শীট*\n\n` +
-                          `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(totalBazar.toFixed(1))}\n` +
-                          `🏷️ মোট ফিক্সড খরচ: ৳${convertToBanglaNumber(totalFixed.toFixed(1))}\n` +
-                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber((totalBazar + totalFixed).toFixed(1))}\n` +
-                          `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(totalMeals)}\n` +
-                          `📈 বর্তমান মিল রেট: ৳${convertToBanglaNumber(mealRate.toFixed(2))}\n\n` +
+            const summary = computeCurrentMonthSummary();
+            let message = `📊 *${formatBanglaMonthKey(summary.monthKey)} — মেসের মাসিক রিপোর্ট ও ব্যালেন্স শীট*\n\n` +
+                          `🛒 মোট বাজার খরচ: ৳${convertToBanglaNumber(summary.totalBazar.toFixed(1))}\n` +
+                          `🏷️ মোট ফিক্সড খরচ: ৳${convertToBanglaNumber(summary.totalFixed.toFixed(1))}\n` +
+                          `💳 সর্বমোট খরচ: ৳${convertToBanglaNumber(summary.totalExpense.toFixed(1))}\n` +
+                          `🍚 মোট মিল সংখ্যা: ${convertToBanglaNumber(summary.totalMeals)}\n` +
+                          `📈 মিল রেট: ৳${convertToBanglaNumber(summary.rate.toFixed(2))}\n\n` +
                           `👥 *সদস্যদের হিসাবের সারসংক্ষেপ:*\n`;
 
-            messData.members.forEach(m => {
-                let mMeals = 0;
-                let mBazar = 0;
-                messData.mealsLog.filter(l => l.memberId === m.id).forEach(l => mMeals += l.count);
-                messData.bazarLog.filter(b => b.memberId === m.id).forEach(b => mBazar += b.amount);
-
-                const mFixed = fixedSummary.perMember[m.id] || { share: 0, paid: 0 };
-                let mMealCost = mMeals * mealRate;
-                let mTotalCost = mMealCost + mFixed.share;
-                let mDeposit = mBazar + mFixed.paid;
-                let mBalance = mDeposit - mTotalCost;
-                let statusStr = mBalance >= 0 ? `পাবে: ৳${convertToBanglaNumber(mBalance.toFixed(1))}` : `দেবে: ৳${convertToBanglaNumber(Math.abs(mBalance).toFixed(1))}`;
-
-                message += `🔹 *${m.name}* | মিল খরচ: ৳${convertToBanglaNumber(mMealCost.toFixed(1))} | মোট খরচ: ৳${convertToBanglaNumber(mTotalCost.toFixed(1))} | ${statusStr}\n`;
+            summary.rows.forEach(row => {
+                const statusStr = row.balance >= 0
+                    ? `পাবে: ৳${convertToBanglaNumber(row.balance.toFixed(1))}`
+                    : `দেবে: ৳${convertToBanglaNumber(Math.abs(row.balance).toFixed(1))}`;
+                message += `🔹 *${row.name}* | মিল: ${convertToBanglaNumber(row.meals)} | মিল খরচ: ৳${convertToBanglaNumber(row.mealCost.toFixed(1))} | ফিক্সড খরচ: ৳${convertToBanglaNumber(row.fixedShare.toFixed(1))} | জমা: ৳${convertToBanglaNumber(row.deposit.toFixed(1))} | ${statusStr}\n`;
             });
 
             window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
