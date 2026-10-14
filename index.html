@@ -2115,7 +2115,7 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             });
 
             // First load: prefer existing Firebase data; if Firebase is empty, upload local data.
-            ref.once("value").then(snapshot => {
+            ref.once("value").then(async snapshot => {
                 const cloud = snapshot.val();
                 const local = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null");
 
@@ -2158,14 +2158,23 @@ window.convertToBanglaNumber = convertToBanglaNumber;
                     renderMembersList();
                     calculateMess();
                     applyingFirebase = false;
-                    if (migratedCloud || mergedDiffers) ref.set(messData).catch(err => {
-                        console.error("Firebase startup merge failed:", err);
-                        firebaseStatus("🔴 Firebase Merge Error", false);
-                    });
+                    if (migratedCloud || mergedDiffers) {
+                        try {
+                            /* Wait for the merged data to be committed before enabling
+                               the live listener, otherwise an older snapshot could win. */
+                            await ref.set(messData);
+                        } catch (err) {
+                            console.error("Firebase startup merge failed:", err);
+                            firebaseStatus("🔴 Firebase Merge Error", false);
+                        }
+                    }
                 } else if (local && local.members) {
                     migrateFixedCostData(local);
                     messData = local;
-                    ref.set(local).catch(console.error);
+                    try { await ref.set(local); } catch (err) {
+                        console.error("Firebase local upload failed:", err);
+                        firebaseStatus("🔴 Firebase Upload Error", false);
+                    }
                 }
                 firebaseReady = true;
                 firebaseStatus("🟢 Firebase Real-time Sync চালু", true);
