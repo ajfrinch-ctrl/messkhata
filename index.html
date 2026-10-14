@@ -1273,39 +1273,14 @@ window.convertToBanglaNumber = convertToBanglaNumber;
             return !!key && key < retentionCutoffKey();
         }
 
+        /* নিরাপদ সংরক্ষণ: পুরনো হিসাব স্বয়ংক্রিয়ভাবে কখনো মুছবেন না।
+           ব্যবহারকারী চাইলে রিপোর্টে তারিখ ফিল্টার করতে পারবেন; রেকর্ড থাকবে। */
         function purgeOldData() {
-            const before = {
-                meals: (messData.mealsLog || []).length,
-                bazar: (messData.bazarLog || []).length,
-                fixed: getFixedEntries().length
-            };
-
-            messData.mealsLog = (messData.mealsLog || []).filter(l => !isPurgeableDate(l && l.date));
-            messData.bazarLog = (messData.bazarLog || []).filter(b => !isPurgeableDate(b && b.date));
-            /* legacy রেকর্ড (তারিখহীন পুরনো ভাড়া/বিল) রাখা হয় — ওগুলোই খাতার চলতি মান */
-            messData.fixedCostLog = getFixedEntries().filter(f => f.legacy || !isPurgeableDate(f && f.date));
-
-            const removed = {
-                meals: before.meals - messData.mealsLog.length,
-                bazar: before.bazar - messData.bazarLog.length,
-                fixed: before.fixed - messData.fixedCostLog.length
-            };
-            const totalRemoved = removed.meals + removed.bazar + removed.fixed;
-
-            if (totalRemoved > 0) {
-                saveToLocalStorage();
-                try {
-                    localStorage.setItem('messKhataLastPurge', JSON.stringify({
-                        at: new Date().toISOString(), removed: removed, total: totalRemoved
-                    }));
-                } catch (e) { /* ignore */ }
-            }
-
             const info = {
                 cutoffKey: retentionCutoffKey(),
                 keptMonths: retainedMonthKeys(),
-                removed: removed,
-                totalRemoved: totalRemoved
+                removed: { meals: 0, bazar: 0, fixed: 0 },
+                totalRemoved: 0
             };
             window.__lastPurgeInfo = info;
             return info;
@@ -2146,24 +2121,47 @@ window.convertToBanglaNumber = convertToBanglaNumber;
 
                 if (cloud && (cloud.members || cloud.mealsLog || cloud.bazarLog || cloud.fixedCostLog || cloud.fixedCosts || cloud.grandBills)) {
                     applyingFirebase = true;
-                    messData = {
-                        members: Array.isArray(cloud.members) ? cloud.members : [],
-                        mealsLog: Array.isArray(cloud.mealsLog) ? cloud.mealsLog : [],
-                        bazarLog: Array.isArray(cloud.bazarLog) ? cloud.bazarLog : [],
-                        fixedCosts: cloud.fixedCosts || { rent: {} },
-                        grandBills: cloud.grandBills || { electricity: 0, maid: 0, wifi: 0, others: 0 }
+                    /* Merge unique local records into cloud on startup instead of silently
+                       discarding entries created on this device while it was offline. */
+                    const mergeRecords = (cloudRows, localRows) => {
+                        const result = [];
+                        const positions = new Map();
+                        (Array.isArray(cloudRows) ? cloudRows : []).forEach(row => {
+                            const key = row && row.id != null ? String(row.id) : "json:" + JSON.stringify(row);
+                            positions.set(key, result.length);
+                            result.push(row);
+                        });
+                        (Array.isArray(localRows) ? localRows : []).forEach(row => {
+                            const key = row && row.id != null ? String(row.id) : "json:" + JSON.stringify(row);
+                            if (!positions.has(key)) {
+                                positions.set(key, result.length);
+                                result.push(row);
+                            }
+                        });
+                        return result;
                     };
-                    if (Array.isArray(cloud.fixedCostLog)) messData.fixedCostLog = cloud.fixedCostLog;
+                    const merged = {
+                        members: mergeRecords(cloud.members, local && local.members),
+                        mealsLog: mergeRecords(cloud.mealsLog, local && local.mealsLog),
+                        bazarLog: mergeRecords(cloud.bazarLog, local && local.bazarLog),
+                        fixedCostLog: mergeRecords(cloud.fixedCostLog, local && local.fixedCostLog),
+                        fixedCosts: Object.assign({}, (local && local.fixedCosts) || {}, cloud.fixedCosts || {}),
+                        grandBills: Object.assign({}, (local && local.grandBills) || {}, cloud.grandBills || {})
+                    };
+                    messData = merged;
                     /* পুরনো ক্লাউড ডেটায় fixedCostLog না থাকলে একবার মাইগ্রেট করে সিঙ্ক */
                     const migratedCloud = migrateFixedCostData(messData);
-                    /* বিগত ৩ মাসের বাইরের ডেটা ক্লাউড থেকেও স্থায়ীভাবে মুছে যায় */
-                    const purgedCloud = purgeOldData().totalRemoved > 0;
+                    purgeOldData(); // হিসাবের পুরনো রেকর্ড অক্ষত রাখে
+                    const mergedDiffers = JSON.stringify(messData) !== JSON.stringify(cloud);
                     localStorage.setItem(LOCAL_KEY, JSON.stringify(messData));
                     updateDropdowns();
                     renderMembersList();
                     calculateMess();
                     applyingFirebase = false;
-                    if (migratedCloud || purgedCloud) ref.set(messData).catch(console.error);
+                    if (migratedCloud || mergedDiffers) ref.set(messData).catch(err => {
+                        console.error("Firebase startup merge failed:", err);
+                        firebaseStatus("🔴 Firebase Merge Error", false);
+                    });
                 } else if (local && local.members) {
                     migrateFixedCostData(local);
                     messData = local;
